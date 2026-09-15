@@ -1272,29 +1272,6 @@ insert  into `creature_respawn`(`guid`,`respawnTime`,`mapId`,`instanceId`) value
 
 
 --
--- Table structure for table `custom_solocraft_character_stats`
---
-
-DROP TABLE IF EXISTS `custom_solocraft_character_stats`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `custom_solocraft_character_stats` (
-  `guid` int unsigned NOT NULL,
-  `Difficulty` float NOT NULL,
-  `GroupSize` int(11) NOT NULL,
-  `SpellPower` int(10) unsigned NOT NULL DEFAULT '0',
-  `Stats` float NOT NULL DEFAULT '100',
-  PRIMARY KEY (`guid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `custom_solocraft_character_stats`
---
-
-LOCK TABLES `custom_solocraft_character_stats` WRITE;
-/*!40000 ALTER TABLE `custom_solocraft_character_stats` DISABLE KEYS */;
-/*!40000 ALTER TABLE `custom_solocraft_character_stats` ENABLE KEYS */;
 UNLOCK TABLES;
 
 
