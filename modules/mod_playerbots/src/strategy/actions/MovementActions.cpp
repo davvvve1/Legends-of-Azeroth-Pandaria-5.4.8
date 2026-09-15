@@ -32,6 +32,7 @@
 #include "MovementGenerator.h"
 #include "ObjectDefines.h"
 #include "ObjectGuid.h"
+#include "ObjectMgr.h"
 #include "PathGenerator.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
@@ -87,6 +88,51 @@ constexpr uint32 ChiJiBeaconEntry = 71978;
 constexpr uint32 YuLonEntry = 71955;
 constexpr uint32 YuLonJadefireBlazeEntry = 72016;
 constexpr uint32 YuLonJadefireWallEntry = 72020;
+constexpr uint32 OrdosEntry = 72057;
+constexpr uint32 OrdosAncientFlameEntry = 72059;
+constexpr uint32 OrdosMagmaCrushSpell = 144688;
+constexpr uint32 OrdosBurningSoulSpell = 144689;
+constexpr uint32 OrdosBurningSoulEffectSpell = 144690;
+constexpr uint32 OrdosAncientFlameSpell = 144691;
+constexpr uint32 OrdosPoolOfFireSpell = 144692;
+constexpr uint32 OrdosPoolOfFireAura = 144693;
+constexpr uint32 OrdosAncientFlameEffect = 144699;
+constexpr float OrdosMagmaShareRadius = 18.0f;
+constexpr float OrdosRaidCombatRadius = 5.5f;
+constexpr float OrdosAncientFlameClearance = 22.0f;
+constexpr float OrdosStackSafetyMargin = 2.0f;
+constexpr uint32 OrdosStackWaypointDuration = 10 * IN_MILLISECONDS;
+constexpr float OrdosBurningSoulRaidClearance = 22.0f;
+constexpr uint32 OrdosBurningSoulWaypointDuration = 12 * IN_MILLISECONDS;
+constexpr uint32 OrdosMovementProgressInterval = 750;
+constexpr float OrdosMovementProgressDistance = 0.75f;
+constexpr float OrdosArenaCenterX = -62.0f;
+constexpr float OrdosArenaCenterY = -5400.0f;
+constexpr uint8 OrdosTankRouteAnchorCount = 11;
+constexpr float OrdosTankRouteAnchorX[OrdosTankRouteAnchorCount] =
+    { -38.0f, -42.0f, -54.0f, -70.0f, -90.0f,
+      -90.0f, -70.0f, -58.0f, -78.0f, -97.0f,
+      -116.0f };
+constexpr float OrdosTankRouteAnchorY[OrdosTankRouteAnchorCount] =
+    { -5390.0f, -5410.0f, -5426.0f, -5438.0f, -5432.0f,
+      -5412.0f, -5414.0f, -5396.0f, -5393.0f, -5387.0f,
+      -5395.0f };
+// The two points after the balcony corners only guide the tank around the
+// sanctuary's angled railing. They are traversed without holding Ordos for a
+// pool. All other interior points are compact pool positions; the last point
+// is the emergency route through the main entrance.
+constexpr bool OrdosTankRouteHoldPosition[OrdosTankRouteAnchorCount] =
+    { true, true, false, false, true, true, true, true, true, true, true };
+constexpr uint8 OrdosTankRouteEntranceIndex =
+    OrdosTankRouteAnchorCount - 1;
+constexpr float OrdosStackAnchorRadius = 4.0f;
+constexpr float OrdosBurningSoulHorizontalGateX[4] =
+    { -32.0f, -52.0f, -72.0f, -92.0f };
+constexpr float OrdosBurningSoulHorizontalGateY = -5400.0f;
+constexpr float OrdosBurningSoulVerticalGateY[4] =
+    { -5376.0f, -5356.0f, -5424.0f, -5444.0f };
+constexpr float OrdosBurningSoulGatePenalty = 3.0f;
+constexpr float OrdosBurningSoulGateRadius = 4.0f;
 constexpr float CelestialCourtCenterX = -650.03f;
 constexpr float CelestialCourtCenterY = -5016.83f;
 constexpr float YuLonTankMaximumCenterDistance = 82.0f;
@@ -263,9 +309,11 @@ bool GetThreateningYuLonWallGap(Player* bot, float& x, float& y, float& z,
     // Assign every group member, including players already inside the gap,
     // one stable point in a three-column grid. Merely retaining the current
     // lane made the raid emerge from the wall in one pile; the next eight
-    // Blaze summons then overlapped four or five times. Longitudinal rows
-    // keep the formation inside the same opening without pushing everybody
-    // toward one exact lateral coordinate.
+    // Blaze summons then overlapped four or five times. Use the complete safe
+    // width and fourteen-yard rows. The old cell-centre placement left only
+    // about 9-10 yards between neighbours, inside the thirteen-yard Blaze
+    // avoidance radius, so the first post-wall volley could overlap six or
+    // more pools before anybody had time to move.
     std::vector<uint32> members;
     if (Group* group = bot->GetGroup())
     {
@@ -289,17 +337,21 @@ bool GetThreateningYuLonWallGap(Player* bot, float& x, float& y, float& z,
         columnCount);
     uint32 const column = uint32(rank) % columnCount;
     uint32 const row = uint32(rank) / columnCount;
-    float const targetLateral = safeLeft +
-        (float(column) + 0.5f) / float(columnCount) *
-        (safeRight - safeLeft);
+    float const targetLateral = columnCount > 1u ?
+        safeLeft + float(column) / float(columnCount - 1u) *
+            (safeRight - safeLeft) :
+        (safeLeft + safeRight) * 0.5f;
     float const courtForward = CelestialCourtCenterX * forwardX +
         CelestialCourtCenterY * forwardY;
     float const targetForward = courtForward +
-        (float(row) - (float(rowCount) - 1.0f) * 0.5f) * 10.0f;
+        (float(row) - (float(rowCount) - 1.0f) * 0.5f) * 14.0f;
     float const lateralCorrection = targetLateral - botLateral;
     float const forwardCorrection = targetForward - botForward;
-    alreadyAligned = std::abs(lateralCorrection) <= 3.0f &&
-        std::abs(forwardCorrection) <= 3.0f;
+    // Do not release the wall reaction several yards before the assigned
+    // point. With fourteen-yard slots, a three-yard tolerance could still
+    // leave two neighbours inside the same Blaze avoidance area.
+    alreadyAligned = std::abs(lateralCorrection) <= 1.5f &&
+        std::abs(forwardCorrection) <= 1.5f;
     x = bot->GetPositionX() + lateralX * lateralCorrection +
         forwardX * forwardCorrection;
     y = bot->GetPositionY() + lateralY * lateralCorrection +
@@ -355,6 +407,775 @@ bool IsPositionNearCreatureEntry(Player* bot, uint32 entry, float searchRange,
     }
 
     return false;
+}
+
+struct OrdosFireHazard
+{
+    float x;
+    float y;
+    float radius;
+    uint32 spellId;
+};
+
+bool GetPersistentSpellHazard(WorldObject* object, Unit*& caster,
+    uint32& spellId, float& radius)
+{
+    if (!object || !object->IsInWorld())
+        return false;
+
+    if (DynamicObject* dynamicObject = object->ToDynObject())
+    {
+        if (dynamicObject->GetType() != DYNAMIC_OBJECT_AREA_SPELL)
+            return false;
+
+        caster = dynamicObject->GetCaster();
+        spellId = dynamicObject->GetSpellId();
+        radius = dynamicObject->GetRadius();
+        return true;
+    }
+
+    if (AreaTrigger* areaTrigger = object->ToAreaTrigger())
+    {
+        caster = areaTrigger->GetCaster();
+        spellId = areaTrigger->GetSpellId();
+        // ScaleX/ScaleY are visual dimensions and are zero for many spherical
+        // spell area triggers. The collision radius in the world template is
+        // the value used by IAreaTriggerAura to apply damage auras.
+        if (AreaTriggerTemplate const* areaTriggerTemplate =
+                sObjectMgr->GetAreaTriggerTemplate(areaTrigger->GetEntry()))
+            radius = areaTriggerTemplate->Radius;
+        else
+            radius = std::max(areaTrigger->GetScaleX(),
+                areaTrigger->GetScaleY());
+        return true;
+    }
+
+    return false;
+}
+
+void CollectOrdosFireHazards(Player* bot,
+    std::vector<OrdosFireHazard>& hazards)
+{
+    if (!bot || !bot->IsInWorld())
+        return;
+
+    std::list<Creature*> ancientFlames;
+    bot->GetCreatureListWithEntryInGrid(
+        ancientFlames, OrdosAncientFlameEntry, 120.0f);
+    for (Creature* flame : ancientFlames)
+    {
+        if (!flame || !flame->IsAlive() || !flame->IsInWorld() ||
+            flame->GetMap() != bot->GetMap())
+            continue;
+
+        hazards.push_back({ flame->GetPositionX(), flame->GetPositionY(),
+            OrdosAncientFlameClearance, OrdosAncientFlameEffect });
+    }
+
+    std::list<WorldObject*> nearbyObjects;
+    Trinity::AllWorldObjectsInRange check(bot, 120.0f);
+    Trinity::WorldObjectListSearcher<Trinity::AllWorldObjectsInRange> searcher(
+        bot, nearbyObjects, check);
+    bot->VisitNearbyObject(120.0f, searcher);
+    for (WorldObject* object : nearbyObjects)
+    {
+        Unit* caster = nullptr;
+        uint32 spellId = 0;
+        float radius = 0.0f;
+        if (!GetPersistentSpellHazard(object, caster, spellId, radius) ||
+            (spellId != OrdosPoolOfFireSpell &&
+             spellId != OrdosAncientFlameSpell &&
+             spellId != OrdosAncientFlameEffect))
+            continue;
+
+        hazards.push_back({ object->GetPositionX(), object->GetPositionY(),
+            std::max(2.0f, std::min(radius, 20.0f)) + 2.0f, spellId });
+    }
+}
+
+int8 GetOrdosStackAnchorIndex(float x, float y)
+{
+    for (uint8 index = 0; index < OrdosTankRouteAnchorCount; ++index)
+    {
+        float const dx = x - OrdosTankRouteAnchorX[index];
+        float const dy = y - OrdosTankRouteAnchorY[index];
+        if (dx * dx + dy * dy <= OrdosStackAnchorRadius *
+                OrdosStackAnchorRadius)
+            return int8(index);
+    }
+    return -1;
+}
+
+bool IsNearOrdosStackAnchor(float x, float y)
+{
+    int8 const index = GetOrdosStackAnchorIndex(x, y);
+    return index >= 0 && OrdosTankRouteHoldPosition[uint8(index)];
+}
+
+bool IsOrdosPointSafe(std::vector<OrdosFireHazard> const& hazards,
+    float x, float y, float margin)
+{
+    for (OrdosFireHazard const& hazard : hazards)
+    {
+        float const clearance = hazard.radius + margin;
+        float const dx = x - hazard.x;
+        float const dy = y - hazard.y;
+        if (dx * dx + dy * dy < clearance * clearance)
+            return false;
+    }
+    return true;
+}
+
+bool CanUseOrdosEntranceFallback(
+    std::vector<OrdosFireHazard> const& hazards)
+{
+    // Do not leave the sanctuary because a navmesh path to a row failed for
+    // one tick. The entrance is unlocked only when Pool of Fire genuinely
+    // covers every interior holding position. Transit points do not need a
+    // pool because they exist solely to follow the railing bends.
+    for (uint8 index = 0; index < OrdosTankRouteEntranceIndex; ++index)
+    {
+        if (!OrdosTankRouteHoldPosition[index])
+            continue;
+
+        bool covered = false;
+        for (OrdosFireHazard const& hazard : hazards)
+        {
+            if (hazard.spellId != OrdosPoolOfFireSpell)
+                continue;
+
+            float const clearance = hazard.radius + OrdosStackSafetyMargin;
+            float const dx = OrdosTankRouteAnchorX[index] - hazard.x;
+            float const dy = OrdosTankRouteAnchorY[index] - hazard.y;
+            if (dx * dx + dy * dy < clearance * clearance)
+            {
+                covered = true;
+                break;
+            }
+        }
+
+        if (!covered)
+            return false;
+    }
+
+    return true;
+}
+
+float GetOrdosFireClearance(std::vector<OrdosFireHazard> const& hazards,
+    float x, float y)
+{
+    float clearance = FLT_MAX;
+    for (OrdosFireHazard const& hazard : hazards)
+    {
+        float const dx = x - hazard.x;
+        float const dy = y - hazard.y;
+        clearance = std::min(clearance,
+            std::sqrt(dx * dx + dy * dy) - hazard.radius);
+    }
+
+    return clearance == FLT_MAX ? 1000.0f : clearance;
+}
+
+bool IsOrdosRouteSafe(std::vector<OrdosFireHazard> const& hazards,
+    float fromX, float fromY, float toX, float toY, float margin)
+{
+    float const segmentX = toX - fromX;
+    float const segmentY = toY - fromY;
+    float const segmentLengthSq = segmentX * segmentX +
+        segmentY * segmentY;
+    for (OrdosFireHazard const& hazard : hazards)
+    {
+        float const clearance = hazard.radius + margin;
+        float const clearanceSq = clearance * clearance;
+        float const startX = fromX - hazard.x;
+        float const startY = fromY - hazard.y;
+        // A movement which starts inside newly spawned fire may leave it, but
+        // every path segment must move away from its centre. Ignoring the
+        // complete starting hazard allowed a long route to cross the pool and
+        // emerge at a small isolated patch on its far side.
+        if (startX * startX + startY * startY < clearanceSq)
+        {
+            if (startX * segmentX + startY * segmentY < -0.01f)
+                return false;
+            continue;
+        }
+
+        float projection = 0.0f;
+        if (segmentLengthSq > 0.01f)
+        {
+            projection = ((hazard.x - fromX) * segmentX +
+                (hazard.y - fromY) * segmentY) / segmentLengthSq;
+            projection = std::max(0.0f, std::min(1.0f, projection));
+        }
+        float const closestX = fromX + segmentX * projection - hazard.x;
+        float const closestY = fromY + segmentY * projection - hazard.y;
+        if (closestX * closestX + closestY * closestY < clearanceSq)
+            return false;
+    }
+    return true;
+}
+
+bool IsPositionInsideOrdosFire(Player* bot, float x, float y,
+    float margin = 0.0f)
+{
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+    return !IsOrdosPointSafe(hazards, x, y, margin);
+}
+
+bool IsInsideOrdosArena(float x, float y)
+{
+    bool const insideSanctuary = x > -96.0f && x < -28.0f &&
+        y > -5446.0f && y < -5354.0f;
+    bool const insideMainEntrance = x > -162.0f && x <= -96.0f &&
+        y > -5412.0f && y < -5380.0f;
+    return insideSanctuary || insideMainEntrance;
+}
+
+bool IsOrdosNavigationPathUsable(Player* bot,
+    std::vector<OrdosFireHazard> const& hazards, float x, float y, float z,
+    float fireMargin, bool requireFireSafe, float* pathLength = nullptr)
+{
+    if (!bot || !IsInsideOrdosArena(x, y))
+        return false;
+
+    PathGenerator path(bot);
+    if (!path.CalculatePath(x, y, z, false))
+        return false;
+
+    PathType const pathType = path.GetPathType();
+    if (!(pathType & PATHFIND_NORMAL) ||
+        (pathType & (PATHFIND_NOPATH | PATHFIND_INCOMPLETE |
+            PATHFIND_SHORTCUT | PATHFIND_FARFROMPOLY_END)))
+        return false;
+
+    Movement::PointsArray const& points = path.GetPath();
+    if (points.empty())
+        return false;
+
+    G3D::Vector3 const& end = points.back();
+    float const endDx = end.x - x;
+    float const endDy = end.y - y;
+    if (endDx * endDx + endDy * endDy > 4.0f)
+        return false;
+
+    if (requireFireSafe)
+    {
+        float fromX = bot->GetPositionX();
+        float fromY = bot->GetPositionY();
+        for (G3D::Vector3 const& point : points)
+        {
+            if (!IsOrdosRouteSafe(hazards, fromX, fromY,
+                    point.x, point.y, fireMargin))
+                return false;
+            fromX = point.x;
+            fromY = point.y;
+        }
+    }
+
+    if (pathLength)
+        *pathLength = path.getPathLength();
+    return true;
+}
+
+bool FindNearestOrdosFireExit(Player* bot, float towardX, float towardY,
+    uint32 retry, float& x, float& y, float& z)
+{
+    if (!bot)
+        return false;
+
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+    if (IsOrdosPointSafe(hazards, bot->GetPositionX(),
+            bot->GetPositionY(), 0.5f))
+        return false;
+
+    float preferredAngle = std::atan2(towardY - bot->GetPositionY(),
+        towardX - bot->GetPositionX());
+    preferredAngle = Position::NormalizeOrientation(preferredAngle +
+        float(retry % 3) * float(M_PI / 12.0));
+
+    // Leave an existing pool before attempting the distant encounter
+    // waypoint. This prevents a railing or a long navmesh detour from keeping
+    // the player in fire for the complete Burning Soul duration.
+    for (float const distance :
+        { 4.0f, 8.0f, 12.0f, 16.0f, 20.0f, 24.0f, 28.0f, 32.0f })
+    {
+        bool foundAtDistance = false;
+        float bestScore = FLT_MAX;
+        for (uint32 step = 0; step < 24; ++step)
+        {
+            int32 const offset = step == 0 ? 0 :
+                ((step & 1u) ? int32((step + 1u) / 2u) :
+                    -int32(step / 2u));
+            float const angle = Position::NormalizeOrientation(
+                preferredAngle + float(offset) * float(M_PI / 12.0));
+            float candidateX = bot->GetPositionX() +
+                std::cos(angle) * distance;
+            float candidateY = bot->GetPositionY() +
+                std::sin(angle) * distance;
+            float candidateZ = bot->GetPositionZ();
+            if (!IsInsideOrdosArena(candidateX, candidateY) ||
+                !IsOrdosPointSafe(hazards, candidateX, candidateY, 1.0f) ||
+                !bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
+                    bot->GetPositionX(), bot->GetPositionY(),
+                    bot->GetPositionZ(), candidateX, candidateY,
+                    candidateZ, false) ||
+                !IsInsideOrdosArena(candidateX, candidateY) ||
+                !IsOrdosPointSafe(hazards, candidateX, candidateY, 1.0f))
+                continue;
+
+            float pathLength = 0.0f;
+            if (!IsOrdosNavigationPathUsable(bot, hazards, candidateX,
+                    candidateY, candidateZ, 1.0f, true, &pathLength))
+                continue;
+
+            float const score = pathLength +
+                std::abs(float(offset)) * 0.1f;
+            if (score >= bestScore)
+                continue;
+
+            bestScore = score;
+            x = candidateX;
+            y = candidateY;
+            z = candidateZ;
+            foundAtDistance = true;
+        }
+
+        if (foundAtDistance)
+            return true;
+    }
+
+    return false;
+}
+
+bool FindSafeOrdosBurningSoulGate(Player* bot, float endpointX,
+    float endpointY, float endpointZ, float& x, float& y, float& z)
+{
+    if (!bot)
+        return false;
+
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+    float bestScore = FLT_MAX;
+    bool found = false;
+    auto considerGate = [&](float requestedX, float requestedY,
+        float penalty)
+    {
+        float candidateX = requestedX;
+        float candidateY = requestedY;
+        float candidateZ = endpointZ;
+        if (!IsInsideOrdosArena(candidateX, candidateY) ||
+            !IsOrdosPointSafe(hazards, candidateX, candidateY, 2.0f) ||
+            !bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
+                bot->GetPositionX(), bot->GetPositionY(),
+                bot->GetPositionZ(), candidateX, candidateY,
+                candidateZ, false) ||
+            !IsInsideOrdosArena(candidateX, candidateY) ||
+            !IsOrdosPointSafe(hazards, candidateX, candidateY, 2.0f) ||
+            !IsOrdosNavigationPathUsable(bot, hazards, candidateX,
+                candidateY, candidateZ, 1.0f, true) ||
+            !IsOrdosRouteSafe(hazards, candidateX, candidateY,
+                endpointX, endpointY, 2.0f))
+            return;
+
+        float const endpointDx = candidateX - endpointX;
+        float const endpointDy = candidateY - endpointY;
+        float const score = bot->GetExactDist2d(candidateX, candidateY) +
+            std::sqrt(endpointDx * endpointDx + endpointDy * endpointDy) *
+                0.25f + penalty;
+        if (score >= bestScore)
+            return;
+
+        bestScore = score;
+        x = candidateX;
+        y = candidateY;
+        z = candidateZ;
+        found = true;
+    };
+
+    // The central junction remains the preferred shared gate. If fire blocks
+    // it, use a point on the same cross arm as this carrier's endpoint. The
+    // endpoint itself is the final fallback, and is accepted only when the
+    // complete navmesh route from the carrier is fire-free.
+    considerGate(OrdosArenaCenterX, OrdosArenaCenterY, 0.0f);
+    bool const horizontalEndpoint =
+        std::abs(endpointX - OrdosArenaCenterX) >=
+        std::abs(endpointY - OrdosArenaCenterY);
+    if (horizontalEndpoint)
+    {
+        for (uint8 index = 0; index < 4; ++index)
+            considerGate(OrdosBurningSoulHorizontalGateX[index],
+                OrdosBurningSoulHorizontalGateY,
+                OrdosBurningSoulGatePenalty + float(index) * 0.01f);
+    }
+    else
+    {
+        for (uint8 index = 0; index < 4; ++index)
+            considerGate(OrdosArenaCenterX,
+                OrdosBurningSoulVerticalGateY[index],
+                OrdosBurningSoulGatePenalty + float(index) * 0.01f);
+    }
+    considerGate(endpointX, endpointY, 100.0f);
+
+    return found;
+}
+
+bool HasOrdosBurningSoul(Unit const* unit)
+{
+    return unit && (unit->HasAura(OrdosBurningSoulSpell) ||
+        unit->HasAura(OrdosBurningSoulEffectSpell));
+}
+
+Player* GetOrdosBurningSoulSwapTank(Player* bot, Creature* ordos,
+    Player* activeTank)
+{
+    Group* group = bot ? bot->GetGroup() : nullptr;
+    if (!group || !activeTank || !HasOrdosBurningSoul(activeTank))
+        return nullptr;
+
+    Player* replacement = nullptr;
+    for (GroupReference* ref = group->GetFirstMember(); ref;
+        ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || member == activeTank || !member->IsAlive() ||
+            !member->IsInWorld() || member->GetMap() != bot->GetMap() ||
+            !member->GetSession() || !member->GetSession()->IsBot() ||
+            !PlayerBotSpec::IsTank(member, true) ||
+            HasOrdosBurningSoul(member))
+            continue;
+
+        uint32 const tauntSpell = GroupPveCombat::TauntSpell(member);
+        if (!tauntSpell || !member->HasSpell(tauntSpell) ||
+            member->HasSpellCooldown(tauntSpell))
+            continue;
+
+        if (!replacement ||
+            std::make_pair(member->GetExactDist2d(ordos), member->GetGUID()) <
+                std::make_pair(replacement->GetExactDist2d(ordos),
+                    replacement->GetGUID()))
+            replacement = member;
+    }
+
+    return replacement;
+}
+
+bool FindSafeOrdosStackAnchor(Player* bot, Creature* ordos, Unit* tank,
+    float& x, float& y, float& z)
+{
+    if (!bot || !ordos || !tank || tank->GetMap() != bot->GetMap())
+        return false;
+
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+    bool const tankHasPoolAura = tank->HasAura(OrdosPoolOfFireAura);
+    auto acceptCurrentTankPosition = [&]()
+    {
+        if (tankHasPoolAura ||
+            !IsNearOrdosStackAnchor(tank->GetPositionX(),
+                tank->GetPositionY()) ||
+            !IsInsideOrdosArena(tank->GetPositionX(),
+                tank->GetPositionY()) ||
+            !IsOrdosPointSafe(hazards, tank->GetPositionX(),
+                tank->GetPositionY(), OrdosStackSafetyMargin))
+            return false;
+
+        if (tank != bot && bot->GetExactDist2d(tank) > 1.5f &&
+            !IsOrdosNavigationPathUsable(bot, hazards,
+                tank->GetPositionX(), tank->GetPositionY(),
+                tank->GetPositionZ(), 2.0f, true))
+            return false;
+
+        x = tank->GetPositionX();
+        y = tank->GetPositionY();
+        z = tank->GetPositionZ();
+        return true;
+    };
+
+    // Once the tank reaches a fixed perimeter anchor it holds the boss there.
+    // Raid members select their own fire-safe attack point around Ordos.
+    if (acceptCurrentTankPosition())
+        return true;
+
+    bool const initialRailingPull = hazards.empty() &&
+        !IsNearOrdosStackAnchor(tank->GetPositionX(),
+            tank->GetPositionY());
+    auto tryAnchor = [&](uint8 index)
+    {
+        if (index == OrdosTankRouteEntranceIndex &&
+            !CanUseOrdosEntranceFallback(hazards))
+            return false;
+
+        float candidateX = OrdosTankRouteAnchorX[index];
+        float candidateY = OrdosTankRouteAnchorY[index];
+        float candidateZ = tank->GetPositionZ();
+        bot->UpdateAllowedPositionZ(candidateX, candidateY, candidateZ);
+        float const tankDx = candidateX - tank->GetPositionX();
+        float const tankDy = candidateY - tank->GetPositionY();
+        if ((tankHasPoolAura && tankDx * tankDx + tankDy * tankDy <=
+                OrdosStackAnchorRadius * OrdosStackAnchorRadius) ||
+            !IsOrdosPointSafe(hazards, candidateX, candidateY,
+                OrdosStackSafetyMargin) ||
+            !IsInsideOrdosArena(candidateX, candidateY) ||
+            !IsOrdosPointSafe(hazards, candidateX, candidateY,
+                OrdosStackSafetyMargin) ||
+            !ordos->IsWithinLOS(candidateX, candidateY, candidateZ) ||
+            !IsOrdosNavigationPathUsable(bot, hazards, candidateX,
+                candidateY, candidateZ, 2.0f, true))
+            return false;
+
+        x = candidateX;
+        y = candidateY;
+        z = candidateZ;
+        return true;
+    };
+
+    // Hold the first two pools in the opposite balcony corners. The following
+    // two points are non-holding guides around the railing, so the tank walks
+    // continuously to the far corner before placing the third pool.
+    if (initialRailingPull)
+        return tryAnchor(0);
+
+    int8 const currentIndex = GetOrdosStackAnchorIndex(
+        tank->GetPositionX(), tank->GetPositionY());
+    if (currentIndex >= 0)
+    {
+        // Advance only one prescribed point at a time. In particular, a
+        // temporary path failure on the second or third row must not jump the
+        // tank straight to the main entrance.
+        uint8 const nextIndex = uint8(currentIndex + 1);
+        return nextIndex < OrdosTankRouteAnchorCount &&
+            tryAnchor(nextIndex);
+    }
+
+    // A tank hand-off or knockback can leave the new tank between anchors.
+    // Resume at the first safe route point rather than the geometrically
+    // nearest one, which could jump into a later row and scatter the pools.
+    for (uint8 index = 0; index < OrdosTankRouteEntranceIndex; ++index)
+        if (tryAnchor(index))
+            return true;
+
+    if (tryAnchor(OrdosTankRouteEntranceIndex))
+        return true;
+
+    return false;
+}
+
+bool FindSafeOrdosAttackPosition(Player* bot, Creature* ordos, Unit* tank,
+    float& x, float& y, float& z)
+{
+    if (!bot || !ordos || !tank || bot->GetMap() != ordos->GetMap() ||
+        tank->GetMap() != bot->GetMap())
+        return false;
+
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+
+    // Without fire, use the open interior side of the boss. Once a pool has
+    // appeared, stand on the side opposite the closest fire source. Ordos has
+    // no frontal cleave, so this side may legitimately be in front of him.
+    float preferredAngle = std::atan2(
+        OrdosArenaCenterY - ordos->GetPositionY(),
+        OrdosArenaCenterX - ordos->GetPositionX());
+    float nearestHazardDistanceSq = FLT_MAX;
+    for (OrdosFireHazard const& hazard : hazards)
+    {
+        float const dx = ordos->GetPositionX() - hazard.x;
+        float const dy = ordos->GetPositionY() - hazard.y;
+        float const distanceSq = dx * dx + dy * dy;
+        if (distanceSq < nearestHazardDistanceSq && distanceSq > 0.25f)
+        {
+            nearestHazardDistanceSq = distanceSq;
+            preferredAngle = std::atan2(dy, dx);
+        }
+    }
+
+    float const maximumAttackRadius = std::max(2.0f,
+        bot->GetMeleeRange(ordos) - 0.5f);
+    float const attackRadius = std::min(OrdosRaidCombatRadius,
+        maximumAttackRadius);
+    for (uint32 step = 0; step < 24; ++step)
+    {
+        int32 const offset = step == 0 ? 0 :
+            ((step & 1u) ? int32((step + 1u) / 2u) :
+                -int32(step / 2u));
+        float const angle = Position::NormalizeOrientation(
+            preferredAngle + float(offset) * float(M_PI / 12.0));
+
+        // Prefer an attack-capable point, but sample a wider recovery ring if
+        // the large pool covers the complete melee circle. This keeps ranged
+        // bots and temporarily displaced melee near the encounter instead of
+        // abandoning the group at Boss Bot Caller.
+        for (float const radiusOffset :
+            { 0.0f, -1.0f, 1.0f, 3.0f, 5.0f })
+        {
+            float const radius = std::max(1.5f,
+                std::min(OrdosMagmaShareRadius - 2.0f,
+                    attackRadius + radiusOffset));
+            float candidateX = ordos->GetPositionX() +
+                std::cos(angle) * radius;
+            float candidateY = ordos->GetPositionY() +
+                std::sin(angle) * radius;
+            float candidateZ = ordos->GetPositionZ();
+            float const tankDx = candidateX - tank->GetPositionX();
+            float const tankDy = candidateY - tank->GetPositionY();
+            if (tankDx * tankDx + tankDy * tankDy >
+                    OrdosMagmaShareRadius * OrdosMagmaShareRadius ||
+                !IsInsideOrdosArena(candidateX, candidateY) ||
+                !IsOrdosPointSafe(hazards, candidateX, candidateY, 1.0f) ||
+                !bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
+                    bot->GetPositionX(), bot->GetPositionY(),
+                    bot->GetPositionZ(), candidateX, candidateY,
+                    candidateZ, false) ||
+                !IsInsideOrdosArena(candidateX, candidateY) ||
+                !IsOrdosPointSafe(hazards, candidateX, candidateY, 1.0f) ||
+                !ordos->IsWithinLOS(candidateX, candidateY, candidateZ) ||
+                !IsOrdosNavigationPathUsable(bot, hazards, candidateX,
+                    candidateY, candidateZ, 1.0f, true))
+                continue;
+
+            x = candidateX;
+            y = candidateY;
+            z = candidateZ;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool FindSafeOrdosBurningSoulPosition(Player* bot, Creature* ordos,
+    Unit* tank, uint32 retry, float& x, float& y, float& z)
+{
+    Group* group = bot ? bot->GetGroup() : nullptr;
+    if (!group || !ordos || !tank || tank->GetMap() != bot->GetMap())
+        return false;
+
+    std::vector<Player*> carriers;
+    for (Group::MemberSlot const& slot : group->GetMemberSlots())
+    {
+        Player* member = ObjectAccessor::FindPlayer(slot.guid);
+        if (member && member->IsAlive() && member->GetMap() == bot->GetMap() &&
+            HasOrdosBurningSoul(member))
+            carriers.push_back(member);
+    }
+
+    auto carrier = std::find(carriers.begin(), carriers.end(), bot);
+    if (carrier == carriers.end())
+        return false;
+
+    float stackX = tank->GetPositionX();
+    float stackY = tank->GetPositionY();
+    float stackZ = tank->GetPositionZ();
+    FindSafeOrdosStackAnchor(bot, ordos, tank, stackX, stackY, stackZ);
+
+    std::sort(carriers.begin(), carriers.end(), [](Player* left,
+        Player* right)
+    {
+        return left->GetGUID().GetCounter() < right->GetGUID().GetCounter();
+    });
+    carrier = std::find(carriers.begin(), carriers.end(), bot);
+    size_t const rank = size_t(std::distance(carriers.begin(), carrier));
+    float const stackCenterX = stackX - OrdosArenaCenterX;
+    float const stackCenterY = stackY - OrdosArenaCenterY;
+    uint8 stackArm = 0;
+    if (std::abs(stackCenterX) >= std::abs(stackCenterY))
+        stackArm = stackCenterX >= 0.0f ? 0 : 2;
+    else
+        stackArm = stackCenterY >= 0.0f ? 1 : 3;
+
+    // Burning Soul normally selects three players. Give their GUID-sorted
+    // ranks the three other arms of the arena cross. Since every carrier
+    // derives this from the same stack position, independent searches can no
+    // longer collapse all three onto one globally safest point.
+    uint8 const assignedArm = uint8((stackArm + 1 + rank) % 4);
+    static float const armX[4] = { 1.0f, 0.0f, -1.0f, 0.0f };
+    static float const armY[4] = { 0.0f, 1.0f, 0.0f, -1.0f };
+    float const directionX = armX[assignedArm];
+    float const directionY = armY[assignedArm];
+    float const lateralX = -directionY;
+    float const lateralY = directionX;
+
+    std::vector<OrdosFireHazard> hazards;
+    CollectOrdosFireHazards(bot, hazards);
+    struct Candidate
+    {
+        float x;
+        float y;
+        float z;
+        float score;
+    };
+
+    auto findCandidate = [&](bool requireSafeRoute)
+    {
+        std::vector<Candidate> candidates;
+        for (float const radius : { 26.0f, 29.0f, 32.0f })
+        {
+            for (float const lateral : { 0.0f, -3.0f, 3.0f, -6.0f, 6.0f })
+            {
+                float candidateX = OrdosArenaCenterX +
+                    directionX * radius + lateralX * lateral;
+                float candidateY = OrdosArenaCenterY +
+                    directionY * radius + lateralY * lateral;
+                float candidateZ = stackZ;
+                float const raidX = candidateX - stackX;
+                float const raidY = candidateY - stackY;
+
+                if (raidX * raidX + raidY * raidY <
+                        OrdosBurningSoulRaidClearance *
+                        OrdosBurningSoulRaidClearance ||
+                    !IsInsideOrdosArena(candidateX, candidateY) ||
+                    !IsOrdosPointSafe(hazards, candidateX, candidateY,
+                        4.0f) ||
+                    !bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
+                        OrdosArenaCenterX, OrdosArenaCenterY, stackZ,
+                        candidateX, candidateY,
+                        candidateZ, false) ||
+                    !IsInsideOrdosArena(candidateX, candidateY))
+                    continue;
+
+                float const correctedRaidX = candidateX - stackX;
+                float const correctedRaidY = candidateY - stackY;
+                if (correctedRaidX * correctedRaidX +
+                        correctedRaidY * correctedRaidY <
+                        OrdosBurningSoulRaidClearance *
+                        OrdosBurningSoulRaidClearance ||
+                    !IsOrdosPointSafe(hazards, candidateX, candidateY,
+                        4.0f))
+                    continue;
+
+                if (requireSafeRoute &&
+                    !IsOrdosRouteSafe(hazards, OrdosArenaCenterX,
+                        OrdosArenaCenterY, candidateX, candidateY, 2.0f))
+                    continue;
+
+                candidates.push_back({ candidateX, candidateY, candidateZ,
+                    bot->GetExactDist2d(candidateX, candidateY) * 0.05f +
+                    std::abs(lateral) * 0.15f +
+                    std::abs(radius - 29.0f) * 0.1f });
+            }
+        }
+
+        if (candidates.empty())
+            return false;
+
+        std::sort(candidates.begin(), candidates.end(),
+            [](Candidate const& left, Candidate const& right)
+        {
+            return left.score < right.score;
+        });
+        Candidate const& selected = candidates[retry % candidates.size()];
+        x = selected.x;
+        y = selected.y;
+        z = selected.z;
+        return true;
+    };
+
+    // Endpoint selection is evaluated from the shared central gate. Execute
+    // first routes every carrier to that opening and only then sends it down
+    // its GUID-assigned arm, avoiding direct diagonal paths into railings.
+    return findCandidate(true) || findCandidate(false);
 }
 
 bool IsSegmentNearCreatureEntry(Player* bot, uint32 entry, float searchRange,
@@ -917,10 +1738,12 @@ Creature* FindThreateningChiJiChild(Player* bot, Creature* chiJi,
         // SpellEffect 144494 has a four-yard radius. The former 11.5-yard
         // lane and 13-yard direct-distance fallback marked neighbouring
         // radial lanes as threats and made every dodge accumulate toward the
-        // arena edge. React only while the child is close to crossing this
-        // exact six-yard corridor (four yards plus a two-yard safety margin).
+        // arena edge. Keep the exact six-yard corridor (four yards plus a
+        // two-yard safety margin), but start the short sidestep earlier. A
+        // fourteen-yard lookahead was shorter than one movement/reaction
+        // cycle for the fastest children and produced repeated Nova hits.
         bool const crossingSoon = botProgress > -5.0f &&
-            childProgress <= botProgress + 14.0f &&
+            childProgress <= botProgress + 22.0f &&
             childProgress >= botProgress - 5.0f &&
             std::abs(lateral) < ChiJiBlazingNovaClearance;
         bool const directlyDangerous = directDistance <
@@ -1226,7 +2049,7 @@ float ScoreChiJiDodgePosition(Player* bot, Creature* chiJi, float x, float y)
         float const candidateY = y - chiJi->GetPositionY();
         float const candidateProgress = candidateX * pathX + candidateY * pathY;
         if (candidateProgress < -5.0f ||
-            childProgress > candidateProgress + 16.0f ||
+            childProgress > candidateProgress + 24.0f ||
             childProgress < candidateProgress - 5.0f)
             continue;
 
@@ -2666,22 +3489,7 @@ bool AvoidAoeAction::FindNearestHazard(Position& position, float& radius) const
         uint32 spellId = 0;
         float hazardRadius = 0.0f;
 
-        if (DynamicObject* dynamicObject = object->ToDynObject())
-        {
-            if (dynamicObject->GetType() != DYNAMIC_OBJECT_AREA_SPELL)
-                continue;
-
-            caster = dynamicObject->GetCaster();
-            spellId = dynamicObject->GetSpellId();
-            hazardRadius = dynamicObject->GetRadius();
-        }
-        else if (AreaTrigger* areaTrigger = object->ToAreaTrigger())
-        {
-            caster = areaTrigger->GetCaster();
-            spellId = areaTrigger->GetSpellId();
-            hazardRadius = std::max(areaTrigger->GetScaleX(), areaTrigger->GetScaleY());
-        }
-        else
+        if (!GetPersistentSpellHazard(object, caster, spellId, hazardRadius))
             continue;
 
         // Do not guess about ownerless triggers or run out of friendly ground
@@ -2726,10 +3534,113 @@ bool AvoidAoeAction::Execute(Event /*event*/)
     return FleePosition(position, radius, 500);
 }
 
+Player* BossMechanicsAction::GetOrdosDesignatedTank(Creature* ordos) const
+{
+    Group* group = bot ? bot->GetGroup() : nullptr;
+    if (!ordos || !group || !ordos->IsInCombat())
+    {
+        ordosEncounterGuid = ObjectGuid::Empty;
+        ordosDesignatedTankGuid = ObjectGuid::Empty;
+        return nullptr;
+    }
+
+    if (ordosEncounterGuid != ordos->GetGUID())
+    {
+        ordosEncounterGuid = ordos->GetGUID();
+        ordosDesignatedTankGuid = ObjectGuid::Empty;
+    }
+
+    auto eligibleTank = [&](Player* member)
+    {
+        return member && member->IsAlive() && member->IsInWorld() &&
+            member->GetMap() == bot->GetMap() &&
+            PlayerBotSpec::IsTank(member, true);
+    };
+
+    Player* designatedTank = nullptr;
+    for (GroupReference* ref = group->GetFirstMember(); ref;
+        ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (eligibleTank(member) &&
+            member->GetGUID() == ordosDesignatedTankGuid)
+        {
+            designatedTank = member;
+            break;
+        }
+    }
+
+    if (!designatedTank)
+    {
+        // Every bot independently chooses the same group main tank at pull.
+        // This prevents an assist tank's opening threat from redirecting the
+        // boss before the first balcony anchor is reached.
+        for (GroupReference* ref = group->GetFirstMember(); ref;
+            ref = ref->next())
+        {
+            Player* member = ref->GetSource();
+            if (eligibleTank(member) && PlayerBotSpec::IsMainTank(member))
+            {
+                designatedTank = member;
+                break;
+            }
+        }
+
+        Player* currentTank = ordos->GetVictim() ?
+            ordos->GetVictim()->ToPlayer() : nullptr;
+        if (!designatedTank && eligibleTank(currentTank))
+            designatedTank = currentTank;
+
+        // A dead main tank may leave the boss on a damage dealer briefly.
+        // Select one deterministic living tank so all bot clients agree on
+        // who must recover it.
+        if (!designatedTank)
+        {
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+            {
+                Player* member = ref->GetSource();
+                if (!eligibleTank(member) || HasOrdosBurningSoul(member))
+                    continue;
+
+                if (!designatedTank ||
+                    std::make_pair(member->GetExactDist2d(ordos),
+                        member->GetGUID()) <
+                    std::make_pair(designatedTank->GetExactDist2d(ordos),
+                        designatedTank->GetGUID()))
+                    designatedTank = member;
+            }
+        }
+
+        ordosDesignatedTankGuid = designatedTank ?
+            designatedTank->GetGUID() : ObjectGuid::Empty;
+    }
+
+    // Persist the selected replacement after the taunt. The old main tank
+    // becomes the standby instead of automatically fighting to take Ordos
+    // back as soon as Burning Soul expires.
+    if (designatedTank && HasOrdosBurningSoul(designatedTank))
+        if (Player* replacement = GetOrdosBurningSoulSwapTank(
+                bot, ordos, designatedTank))
+        {
+            designatedTank = replacement;
+            ordosDesignatedTankGuid = replacement->GetGUID();
+        }
+
+    return designatedTank;
+}
+
 BossMechanicsAction::Reaction BossMechanicsAction::GetReaction() const
 {
     if (!bot || !bot->IsInWorld() || !bot->IsAlive() || !bot->IsInCombat())
+    {
+        if (bot && !bot->IsInCombat())
+        {
+            ordosEncounterGuid = ObjectGuid::Empty;
+            ordosDesignatedTankGuid = ObjectGuid::Empty;
+        }
         return Reaction::None;
+    }
 
     // Galleon (entry 62346), local boss_galion.cpp: every minute the boss
     // summons six Salyin Warmongers (entry 62351).  Damage dealers and the
@@ -2841,23 +3752,71 @@ BossMechanicsAction::Reaction BossMechanicsAction::GetReaction() const
             if (spell->GetSpellInfo() && spell->GetSpellInfo()->Id == 137505)
                 return Reaction::AvoidOondastaFrillBlast;
 
-    // Ordos (entry 72057), local boss_ordos.cpp: Burning Soul (144689,
-    // effect aura 144690) is a selected-player mechanic. Keep either spell ID
-    // because the caster and target aura differ in this 5.4.8 implementation.
-    if ((bot->HasAura(144689) || bot->HasAura(144690)) && bot->GetGroup() &&
-        bot->FindNearestCreature(72057, 200.0f, true))
-        return Reaction::SpreadOrdosBurningSoul;
-
-    // Magma Crush (144688) divides its damage by the number of players hit.
-    // During the cast, everyone except a Burning Soul carrier stacks on the
-    // current tank.  Burning Soul is checked first above and therefore keeps
-    // its higher-priority spread response.
-    if (Creature* ordos = bot->FindNearestCreature(72057, 200.0f, true))
+    // Pool of Fire is placed on the current tank, while Ancient Flame damages
+    // a broad area around its summon. Burning Soul can also select the active
+    // tank; hand the boss to one deterministic backup tank before that player
+    // follows the ordinary carrier escape.
+    if (Creature* ordos = bot->FindNearestCreature(
+            OrdosEntry, 200.0f, true))
     {
+        Player* designatedTank = GetOrdosDesignatedTank(ordos);
+
+        // Keep either aura ID because the caster and target aura differ in
+        // this 5.4.8 implementation.
+        if (HasOrdosBurningSoul(bot) && bot->GetGroup())
+            return Reaction::SpreadOrdosBurningSoul;
+
+        if (designatedTank == bot && ordos->GetVictim() != bot)
+            return Reaction::TakeOverOrdosTank;
+
+        if (designatedTank && designatedTank != bot &&
+            PlayerBotSpec::IsTank(bot, true))
+            return Reaction::MaintainOrdosStandbyTank;
+
+        Unit* tank = ordos->GetVictim();
+        if (tank && tank->GetTypeId() == TYPEID_PLAYER)
+        {
+            bool const standingInFire =
+                bot->HasAura(OrdosPoolOfFireAura) ||
+                bot->HasAura(OrdosAncientFlameEffect) ||
+                IsPositionInsideOrdosFire(bot, bot->GetPositionX(),
+                    bot->GetPositionY());
+            bool const tankInFire =
+                tank->HasAura(OrdosPoolOfFireAura) ||
+                tank->HasAura(OrdosAncientFlameEffect) ||
+                IsPositionInsideOrdosFire(bot, tank->GetPositionX(),
+                    tank->GetPositionY());
+            bool const followingLockedAnchor =
+                getMSTime() < ordosStackWaypointLockUntil &&
+                IsInsideOrdosArena(ordosStackWaypointX,
+                    ordosStackWaypointY) &&
+                bot->GetExactDist2d(ordosStackWaypointX,
+                    ordosStackWaypointY) > 1.5f;
+            bool const tankOffLane = !IsNearOrdosStackAnchor(
+                tank->GetPositionX(), tank->GetPositionY());
+            bool const outsideRaidEnvelope = tank != bot &&
+                (bot->GetExactDist2d(ordos) > 14.0f ||
+                 bot->GetExactDist2d(tank) > OrdosMagmaShareRadius);
+
+            // Only the tank follows the compact perimeter route. Other raid
+            // members hold a fire-safe attack position inside the Magma Crush
+            // sharing envelope. Burning Soul carriers returned above and are
+            // the only players allowed to leave it.
+            if ((tank == bot && (followingLockedAnchor || tankInFire ||
+                    tankOffLane)) ||
+                (tank != bot && (standingInFire || outsideRaidEnvelope)))
+                return Reaction::RelocateOrdosStack;
+        }
+
+        // Magma Crush divides its damage by the number of players hit. The
+        // normal Ordos formation remains stacked throughout the fight; this
+        // cast-time reaction only collects a late straggler. Burning Soul is
+        // checked first above and retains its higher-priority spread response.
         if (Spell* spell = ordos->GetCurrentSpell(CURRENT_GENERIC_SPELL))
-            if (spell->GetSpellInfo() && spell->GetSpellInfo()->Id == 144688 &&
-                ordos->GetVictim() && ordos->GetVictim()->GetTypeId() == TYPEID_PLAYER &&
-                bot->GetExactDist2d(ordos->GetVictim()) > 7.0f)
+            if (spell->GetSpellInfo() &&
+                spell->GetSpellInfo()->Id == OrdosMagmaCrushSpell && tank &&
+                tank->GetTypeId() == TYPEID_PLAYER &&
+                bot->GetExactDist2d(tank) > OrdosMagmaShareRadius)
                 return Reaction::StackOrdosMagmaCrush;
     }
 
@@ -3050,25 +4009,16 @@ BossMechanicsAction::Reaction BossMechanicsAction::GetReaction() const
         bool const wallThreatening = GetThreateningYuLonWallGap(bot,
             wallGapX, wallGapY, wallGapZ, wallGapAligned);
 
-        // Once an advancing wall requires lateral movement, reaching its
-        // opening outranks the pool dodge. Otherwise entering a pool on the
-        // only route makes the pool action pull the bot backwards, and the
-        // two reactions alternate until the wall arrives.
-        if (wallThreatening &&
-            ((getMSTime() < yuLonWallWaypointLockUntil &&
-              bot->GetExactDist2d(yuLonWallWaypointX,
-                  yuLonWallWaypointY) > 1.5f) ||
-             !wallGapAligned))
-            return Reaction::MoveYuLonJadefireWallGap;
+        bool const insideBlaze = IsPositionNearCreatureEntry(bot,
+            YuLonJadefireBlazeEntry, 120.0f, 13.0f,
+            bot->GetPositionX(), bot->GetPositionY());
 
-        // Keep one escape direction until the bot clears every pool plus a
-        // two-yard reserve. The route itself is selected away from the full
-        // starting cluster; abandoning it at the exact damage edge let a bot
-        // fall back into an overlapping neighbour on its next movement tick.
+        // Never keep following a wall waypoint after it has entered a pool.
+        // The Blaze escape already prefers the wall opening, but first selects
+        // the shortest route out of the complete overlapping starting cluster.
+        // Once clear, wall alignment resumes without alternating backwards.
         if (getMSTime() < yuLonDodgeLockUntil &&
-            (activeTank || IsPositionNearCreatureEntry(bot,
-                YuLonJadefireBlazeEntry, 120.0f, 13.0f,
-                bot->GetPositionX(), bot->GetPositionY())) &&
+            (activeTank || insideBlaze) &&
             bot->GetExactDist2d(yuLonDodgeX, yuLonDodgeY) > 1.5f &&
             !IsPositionNearCreatureEntry(bot, YuLonJadefireBlazeEntry,
                 120.0f, 13.0f, yuLonDodgeX, yuLonDodgeY))
@@ -3076,14 +4026,17 @@ BossMechanicsAction::Reaction BossMechanicsAction::GetReaction() const
             return Reaction::AvoidYuLonJadefireBlaze;
         }
 
-        if (Creature* blaze = bot->FindNearestCreature(
-                YuLonJadefireBlazeEntry, 20.0f, true))
-            // React inside a small two-yard buffer so adjacent ranged players
-            // begin separating before eight simultaneous pool auras tick.
-            // The formation action holds the first safe in-range point and
-            // no longer sends them back to their old slot afterward.
-            if (bot->GetExactDist2d(blaze) < 13.0f)
-                return Reaction::AvoidYuLonJadefireBlaze;
+        if (insideBlaze)
+            return Reaction::AvoidYuLonJadefireBlaze;
+
+        // A safely positioned bot may now align with the opening. Direct and
+        // locked wall routes are checked against every live pool in Execute.
+        if (wallThreatening &&
+            ((getMSTime() < yuLonWallWaypointLockUntil &&
+              bot->GetExactDist2d(yuLonWallWaypointX,
+                  yuLonWallWaypointY) > 1.5f) ||
+             !wallGapAligned))
+            return Reaction::MoveYuLonJadefireWallGap;
 
         // The tank can be personally safe while the entire rear melee arc is
         // covered. Pull Yu'lon forward until both the tank point and enough
@@ -3121,7 +4074,12 @@ bool BossMechanicsAction::Execute(Event /*event*/)
     // is too late; once the bot has crossed the safe boundary GetReaction()
     // becomes None and ordinary damage/healing actions are immediately free
     // to resume while the bot holds that safe point.
-    if ((reaction == Reaction::AvoidChiJiFirestorm ||
+    if ((reaction == Reaction::TakeOverOrdosTank ||
+         reaction == Reaction::MaintainOrdosStandbyTank ||
+         reaction == Reaction::RelocateOrdosStack ||
+         reaction == Reaction::StackOrdosMagmaCrush ||
+         reaction == Reaction::SpreadOrdosBurningSoul ||
+         reaction == Reaction::AvoidChiJiFirestorm ||
          reaction == Reaction::AvoidChiJiBlazingNova ||
          reaction == Reaction::MoveChiJiBeacon ||
          reaction == Reaction::SpreadXuenLightning ||
@@ -3263,13 +4221,430 @@ bool BossMechanicsAction::Execute(Event /*event*/)
                     true, MovementPriority::MOVEMENT_FORCED);
             }
             break;
+        case Reaction::TakeOverOrdosTank:
+            if (Creature* ordos = bot->FindNearestCreature(
+                    OrdosEntry, 200.0f, true))
+            {
+                if (GetOrdosDesignatedTank(ordos) != bot)
+                    return true;
+
+                context->GetValue<Unit*>("current target")->Set(ordos);
+                context->GetValue<ObjectGuid>("pull target")->Set(
+                    ordos->GetGUID());
+                bot->SetSelection(ordos->GetGUID());
+                bot->SetTarget(ordos->GetGUID());
+                if (bot->GetVictim() != ordos)
+                    bot->Attack(ordos, true);
+                botAI->ChangeEngine(BOT_STATE_COMBAT);
+
+                // Both the opening assignment and a Burning Soul hand-off
+                // intentionally bypass the generic rescue policy. Waiting
+                // for normal threat logic lets two tank specializations pull
+                // Ordos in different directions before the first pool.
+                uint32 const tauntSpell = GroupPveCombat::TauntSpell(bot);
+                if (SpellInfo const* spellInfo =
+                        sSpellMgr->GetSpellInfo(tauntSpell))
+                    if (bot->HasSpell(tauntSpell) &&
+                        !bot->HasSpellCooldown(tauntSpell) &&
+                        !ordos->IsImmunedToSpell(spellInfo,
+                            spellInfo->NegativeEffectMask))
+                    {
+                        Spell probe(bot, spellInfo, TRIGGERED_NONE);
+                        if (probe.CanAutoCast(ordos))
+                            bot->CastSpell(ordos, tauntSpell, false);
+                    }
+                return true;
+            }
+            break;
+        case Reaction::MaintainOrdosStandbyTank:
+            if (Creature* ordos = bot->FindNearestCreature(
+                    OrdosEntry, 200.0f, true))
+                if (Player* designatedTank =
+                        GetOrdosDesignatedTank(ordos))
+                {
+                    if (designatedTank == bot)
+                        return true;
+
+                    if (context->GetValue<Unit*>("current target")->Get() ==
+                            ordos)
+                        context->GetValue<Unit*>("current target")->Set(
+                            nullptr);
+                    if (context->GetValue<ObjectGuid>("pull target")->Get() ==
+                            ordos->GetGUID())
+                        context->GetValue<ObjectGuid>("pull target")->Set(
+                            ObjectGuid::Empty);
+                    if (bot->GetVictim() == ordos)
+                        bot->AttackStop();
+                    if (Unit* pet = bot->GetPet())
+                        if (pet->GetVictim() == ordos)
+                            pet->AttackStop();
+
+                    bool const inFire = IsPositionInsideOrdosFire(bot,
+                        bot->GetPositionX(), bot->GetPositionY(), 0.5f);
+                    if (inFire)
+                    {
+                        float exitX = 0.0f;
+                        float exitY = 0.0f;
+                        float exitZ = 0.0f;
+                        if (FindNearestOrdosFireExit(bot,
+                                designatedTank->GetPositionX(),
+                                designatedTank->GetPositionY(), 0,
+                                exitX, exitY, exitZ))
+                            return MoveTo(bot->GetMapId(), exitX, exitY,
+                                exitZ, false, false, true, true,
+                                MovementPriority::MOVEMENT_FORCED, true);
+                    }
+
+                    if (bot->GetExactDist2d(designatedTank) > 10.0f)
+                    {
+                        float standbyX = ordos->GetPositionX();
+                        float standbyY = ordos->GetPositionY();
+                        float standbyZ = ordos->GetPositionZ();
+                        if (FindSafeOrdosAttackPosition(bot, ordos,
+                                designatedTank, standbyX, standbyY,
+                                standbyZ))
+                            return MoveTo(bot->GetMapId(), standbyX,
+                                standbyY, standbyZ, false, false, true,
+                                true, MovementPriority::MOVEMENT_FORCED,
+                                true);
+                    }
+
+                    bot->StopMoving();
+                    return true;
+                }
+            break;
         case Reaction::StackOrdosMagmaCrush:
-            if (Creature* ordos = bot->FindNearestCreature(72057, 200.0f, true))
+            if (Creature* ordos = bot->FindNearestCreature(
+                    OrdosEntry, 200.0f, true))
                 if (Unit* tank = ordos->GetVictim())
-                    return MoveTo(tank, 4.0f, MovementPriority::MOVEMENT_FORCED);
+                {
+                    float x = 0.0f;
+                    float y = 0.0f;
+                    float z = 0.0f;
+                    if (tank != bot && FindSafeOrdosAttackPosition(
+                            bot, ordos, tank, x, y, z))
+                    {
+                        MoveTo(bot->GetMapId(), x, y, z, false, false,
+                            true, true, MovementPriority::MOVEMENT_FORCED,
+                            true);
+                        // IsDuplicateMove intentionally returns false while a
+                        // previous point movement is still active. Consume the
+                        // AI tick so an attack action cannot replace it.
+                        return true;
+                    }
+                }
+            break;
+        case Reaction::RelocateOrdosStack:
+            if (Creature* ordos = bot->FindNearestCreature(
+                    OrdosEntry, 200.0f, true))
+                if (Unit* tank = ordos->GetVictim())
+                {
+                    if (tank != bot)
+                    {
+                        // Non-tanks do not chase the tank's pool waypoint.
+                        // Leave the nearest fire edge first, heading toward a
+                        // verified attack point on the boss's clear side.
+                        ordosStackWaypointLockUntil = 0;
+                        float attackX = ordos->GetPositionX();
+                        float attackY = ordos->GetPositionY();
+                        float attackZ = ordos->GetPositionZ();
+                        bool const attackPositionValid =
+                            FindSafeOrdosAttackPosition(bot, ordos, tank,
+                                attackX, attackY, attackZ);
+                        float exitX = 0.0f;
+                        float exitY = 0.0f;
+                        float exitZ = 0.0f;
+                        if (FindNearestOrdosFireExit(bot, attackX, attackY,
+                                0, exitX, exitY, exitZ))
+                        {
+                            MoveTo(bot->GetMapId(), exitX, exitY, exitZ,
+                                false, false, true, true,
+                                MovementPriority::MOVEMENT_FORCED, true);
+                            return true;
+                        }
+
+                        if (attackPositionValid)
+                        {
+                            MoveTo(bot->GetMapId(), attackX, attackY, attackZ,
+                                false, false, true, true,
+                                MovementPriority::MOVEMENT_FORCED, true);
+                            return true;
+                        }
+
+                        bot->StopMoving();
+                        return true;
+                    }
+
+                    uint32 const now = getMSTime();
+                    bool waypointValid =
+                        now < ordosStackWaypointLockUntil &&
+                        IsInsideOrdosArena(ordosStackWaypointX,
+                            ordosStackWaypointY) &&
+                        !IsPositionInsideOrdosFire(bot,
+                            ordosStackWaypointX, ordosStackWaypointY,
+                            OrdosStackSafetyMargin);
+                    if (!waypointValid)
+                    {
+                        waypointValid = FindSafeOrdosStackAnchor(bot, ordos,
+                            tank, ordosStackWaypointX,
+                            ordosStackWaypointY, ordosStackWaypointZ);
+                        ordosStackWaypointLockUntil = waypointValid ?
+                            now + OrdosStackWaypointDuration : 0;
+                    }
+
+                    // When already standing in fire, use a short, verified
+                    // navmesh path to leave its nearest edge first. A distant
+                    // common waypoint can otherwise send the motion generator
+                    // into a railing while every failed second deals damage.
+                    if (IsPositionInsideOrdosFire(bot, bot->GetPositionX(),
+                            bot->GetPositionY()))
+                    {
+                        float exitX = 0.0f;
+                        float exitY = 0.0f;
+                        float exitZ = 0.0f;
+                        float const towardX = waypointValid ?
+                            ordosStackWaypointX : tank->GetPositionX();
+                        float const towardY = waypointValid ?
+                            ordosStackWaypointY : tank->GetPositionY();
+                        if (FindNearestOrdosFireExit(bot, towardX, towardY,
+                                0, exitX, exitY, exitZ))
+                        {
+                            MoveTo(bot->GetMapId(), exitX, exitY, exitZ,
+                                false, false, true, true,
+                                MovementPriority::MOVEMENT_FORCED, true);
+                            return true;
+                        }
+                    }
+
+                    if (waypointValid)
+                    {
+                        float const distance = bot->GetExactDist2d(
+                            ordosStackWaypointX, ordosStackWaypointY);
+                        if (distance <= 1.5f)
+                        {
+                            ordosStackWaypointLockUntil = 0;
+                            int8 const reachedIndex =
+                                GetOrdosStackAnchorIndex(
+                                    bot->GetPositionX(),
+                                    bot->GetPositionY());
+                            if (reachedIndex >= 0 &&
+                                !OrdosTankRouteHoldPosition[
+                                    uint8(reachedIndex)] &&
+                                FindSafeOrdosStackAnchor(bot, ordos, tank,
+                                    ordosStackWaypointX,
+                                    ordosStackWaypointY,
+                                    ordosStackWaypointZ))
+                            {
+                                ordosStackWaypointLockUntil = now +
+                                    OrdosStackWaypointDuration;
+                                MoveTo(bot->GetMapId(),
+                                    ordosStackWaypointX,
+                                    ordosStackWaypointY,
+                                    ordosStackWaypointZ, false, false, true,
+                                    true, MovementPriority::MOVEMENT_FORCED,
+                                    true);
+                                return true;
+                            }
+
+                            bot->StopMoving();
+                            return true;
+                        }
+
+                        if (distance > 12.0f)
+                            TryActivateWorldBossRunSpeed(botAI, bot);
+                        MoveTo(bot->GetMapId(), ordosStackWaypointX,
+                            ordosStackWaypointY, ordosStackWaypointZ,
+                            false, false, true, true,
+                            MovementPriority::MOVEMENT_FORCED, true);
+                        return true;
+                    }
+
+                    // Do not replace a failed verified route with an arbitrary
+                    // movement which can cross a different old pool.
+                    bot->StopMoving();
+                    return true;
+                }
             break;
         case Reaction::SpreadOrdosBurningSoul:
-            return MoveFromGroup(20.0f, MovementPriority::MOVEMENT_FORCED);
+            if (Creature* ordos = bot->FindNearestCreature(
+                    OrdosEntry, 200.0f, true))
+                if (Unit* tank = ordos->GetVictim())
+                {
+                    uint32 const now = getMSTime();
+                    if (now >= ordosBurningSoulSequenceUntil)
+                    {
+                        ordosBurningSoulWaypointLockUntil = 0;
+                        ordosBurningSoulProgressCheckAt = 0;
+                        ordosBurningSoulWaypointRetry = 0;
+                        ordosBurningSoulGateReached = false;
+                    }
+                    ordosBurningSoulSequenceUntil =
+                        now + 5 * IN_MILLISECONDS;
+
+                    bool waypointValid =
+                        now < ordosBurningSoulWaypointLockUntil &&
+                        IsInsideOrdosArena(ordosBurningSoulWaypointX,
+                            ordosBurningSoulWaypointY) &&
+                        !IsPositionInsideOrdosFire(bot,
+                            ordosBurningSoulWaypointX,
+                            ordosBurningSoulWaypointY, 4.0f);
+                    if (!waypointValid)
+                    {
+                        waypointValid = FindSafeOrdosBurningSoulPosition(bot,
+                            ordos, tank, ordosBurningSoulWaypointRetry,
+                            ordosBurningSoulWaypointX,
+                            ordosBurningSoulWaypointY,
+                            ordosBurningSoulWaypointZ);
+                        ordosBurningSoulWaypointLockUntil = waypointValid ?
+                            now + OrdosBurningSoulWaypointDuration : 0;
+                        ordosBurningSoulProgressCheckAt = 0;
+                    }
+
+                    if (waypointValid)
+                    {
+                        float moveX = ordosBurningSoulWaypointX;
+                        float moveY = ordosBurningSoulWaypointY;
+                        float moveZ = ordosBurningSoulWaypointZ;
+                        bool const standingInFire =
+                            IsPositionInsideOrdosFire(bot,
+                                bot->GetPositionX(), bot->GetPositionY());
+                        if (standingInFire)
+                        {
+                            FindNearestOrdosFireExit(bot,
+                                ordosBurningSoulWaypointX,
+                                ordosBurningSoulWaypointY,
+                                ordosBurningSoulWaypointRetry,
+                                moveX, moveY, moveZ);
+                        }
+                        else if (!ordosBurningSoulGateReached)
+                        {
+                            // Take a direct verified route whenever possible.
+                            // The old mandatory central gate delayed carriers
+                            // beside the raid until their explosions fired.
+                            std::vector<OrdosFireHazard> hazards;
+                            CollectOrdosFireHazards(bot, hazards);
+                            if (IsOrdosNavigationPathUsable(bot, hazards,
+                                    ordosBurningSoulWaypointX,
+                                    ordosBurningSoulWaypointY,
+                                    ordosBurningSoulWaypointZ,
+                                    2.0f, true))
+                            {
+                                ordosBurningSoulGateReached = true;
+                            }
+                            else
+                            {
+                                float gateX = 0.0f;
+                                float gateY = 0.0f;
+                                float gateZ = 0.0f;
+                                if (FindSafeOrdosBurningSoulGate(bot,
+                                        ordosBurningSoulWaypointX,
+                                        ordosBurningSoulWaypointY,
+                                        ordosBurningSoulWaypointZ,
+                                        gateX, gateY, gateZ))
+                                {
+                                    if (bot->GetExactDist2d(gateX, gateY) <=
+                                        OrdosBurningSoulGateRadius)
+                                    {
+                                        ordosBurningSoulGateReached = true;
+                                    }
+                                    else
+                                    {
+                                        moveX = gateX;
+                                        moveY = gateY;
+                                        moveZ = gateZ;
+                                    }
+                                }
+                                else
+                                {
+                                    // Never replace a rejected fire-free route
+                                    // with a diagonal shortcut across an old
+                                    // pool. Retry as hazards and paths change.
+                                    bot->StopMoving();
+                                    return true;
+                                }
+                            }
+                        }
+
+                        float const distance = bot->GetExactDist2d(
+                            moveX, moveY);
+                        float const progressTargetX = moveX -
+                            ordosBurningSoulProgressTargetX;
+                        float const progressTargetY = moveY -
+                            ordosBurningSoulProgressTargetY;
+                        bool const progressTargetChanged =
+                            progressTargetX * progressTargetX +
+                                progressTargetY * progressTargetY > 1.0f;
+                        if (!ordosBurningSoulProgressCheckAt ||
+                            progressTargetChanged)
+                        {
+                            ordosBurningSoulProgressCheckAt =
+                                now + OrdosMovementProgressInterval;
+                            ordosBurningSoulProgressX = bot->GetPositionX();
+                            ordosBurningSoulProgressY = bot->GetPositionY();
+                            ordosBurningSoulProgressTargetX = moveX;
+                            ordosBurningSoulProgressTargetY = moveY;
+                            ordosBurningSoulProgressDistance = distance;
+                        }
+                        else if (now >= ordosBurningSoulProgressCheckAt &&
+                            distance > 2.0f)
+                        {
+                            float const movedX = bot->GetPositionX() -
+                                ordosBurningSoulProgressX;
+                            float const movedY = bot->GetPositionY() -
+                                ordosBurningSoulProgressY;
+                            float const movedSq = movedX * movedX +
+                                movedY * movedY;
+                            float const distanceProgress =
+                                ordosBurningSoulProgressDistance - distance;
+                            if (movedSq < OrdosMovementProgressDistance *
+                                    OrdosMovementProgressDistance &&
+                                distanceProgress < 0.5f)
+                            {
+                                // The navmesh path did not result in actual
+                                // motion (usually a railing edge). Cancel the
+                                // duplicate-move lock and choose the next safe
+                                // point in this carrier's assigned cross arm.
+                                bot->GetMotionMaster()->Clear();
+                                AI_VALUE(LastMovement&,
+                                    "last movement").clear();
+                                ordosBurningSoulWaypointLockUntil = 0;
+                                ordosBurningSoulProgressCheckAt = 0;
+                                ordosBurningSoulWaypointRetry = uint8(
+                                    std::min<uint32>(
+                                        ordosBurningSoulWaypointRetry + 1,
+                                        254u));
+                                return true;
+                            }
+
+                            ordosBurningSoulProgressCheckAt =
+                                now + OrdosMovementProgressInterval;
+                            ordosBurningSoulProgressX = bot->GetPositionX();
+                            ordosBurningSoulProgressY = bot->GetPositionY();
+                            ordosBurningSoulProgressDistance = distance;
+                        }
+
+                        if (distance <= 1.5f)
+                        {
+                            bot->StopMoving();
+                            return true;
+                        }
+
+                        if (distance > 12.0f)
+                            TryActivateWorldBossRunSpeed(botAI, bot);
+                        MoveTo(bot->GetMapId(), moveX, moveY, moveZ,
+                            false, false, true,
+                            true, MovementPriority::MOVEMENT_FORCED, true);
+                        // Retain ownership of movement while MoveTo reports a
+                        // duplicate in subsequent AI cycles.
+                        return true;
+                    }
+                }
+
+            // Do not let ordinary formation or melee movement pull a carrier
+            // back into the raid when the arena temporarily has no fully safe
+            // sampled point.
+            MoveFromGroup(24.0f, MovementPriority::MOVEMENT_FORCED);
+            return true;
         case Reaction::MoveChiJiBeacon:
             if (Creature* beacon = bot->FindNearestCreature(
                     ChiJiBeaconEntry, 120.0f, true))
@@ -3524,7 +4899,7 @@ bool BossMechanicsAction::Execute(Event /*event*/)
                         chiJiDodgeX = bestX;
                         chiJiDodgeY = bestY;
                         chiJiDodgeZ = bestZ;
-                        chiJiDodgeLockUntil = getMSTime() + 1800u;
+                        chiJiDodgeLockUntil = getMSTime() + 2500u;
                         chiJiIgnoredChildGuid =
                             child->GetGUID().GetCounter();
                         chiJiIgnoredChildUntil = getMSTime() + 4500u;
@@ -3788,7 +5163,11 @@ bool BossMechanicsAction::Execute(Event /*event*/)
                     bot->GetExactDist2d(yuLonDodgeX, yuLonDodgeY) > 1.5f &&
                     !IsPositionNearCreatureEntry(bot,
                         YuLonJadefireBlazeEntry, 120.0f, 13.0f,
-                        yuLonDodgeX, yuLonDodgeY))
+                        yuLonDodgeX, yuLonDodgeY) &&
+                    CountSegmentNearCreatureEntry(bot,
+                        YuLonJadefireBlazeEntry, 120.0f, 13.0f,
+                        bot->GetPositionX(), bot->GetPositionY(),
+                        yuLonDodgeX, yuLonDodgeY, true) == 0u)
                 {
                     return MoveTo(bot->GetMapId(), yuLonDodgeX,
                         yuLonDodgeY, yuLonDodgeZ, false, false, true, true,
@@ -3861,7 +5240,7 @@ bool BossMechanicsAction::Execute(Event /*event*/)
                     CountSegmentNearCreatureEntry(bot,
                         YuLonJadefireBlazeEntry, 120.0f, 13.0f,
                         bot->GetPositionX(), bot->GetPositionY(),
-                        yuLonWallWaypointX, yuLonWallWaypointY, true) == 0u)
+                        yuLonWallWaypointX, yuLonWallWaypointY) == 0u)
                 {
                     if (bot->GetExactDist2d(yuLonWallWaypointX,
                             yuLonWallWaypointY) > 8.0f)
@@ -4393,6 +5772,23 @@ bool CombatFormationMoveAction::GetWorldBossFormationPosition(Unit* target,
     if (!target || !group || !bot->HasWorldBossStagingAccess())
         return false;
 
+    if (target->GetEntry() == OrdosEntry)
+    {
+        Unit* tank = target->GetVictim();
+        Creature* ordos = target->ToCreature();
+        if (HasOrdosBurningSoul(bot) || !tank || !ordos || tank == bot ||
+            tank->GetTypeId() != TYPEID_PLAYER)
+            return false;
+
+        if (!FindSafeOrdosAttackPosition(bot, ordos, tank, x, y, z))
+            return false;
+
+        // Sharing a point is intentional here: Magma Crush rewards a compact
+        // raid, while the fire-side search keeps that pile out of old pools.
+        tolerance = 1.25f;
+        return true;
+    }
+
     // The boss faces its active victim. Every other staged bot receives a
     // stable slot in the rear hemisphere, so melee never shares the tank's
     // frontal arc and ranged missile targets cannot collapse into one pile.
@@ -4754,6 +6150,12 @@ bool TankFaceAction::isUseful()
         !bot->IsValidAttackTarget(target) ||
         !bot->IsWithinMeleeRange(target) ||
         !AI_VALUE2(bool, "has aggro", "current target"))
+        return false;
+
+    // Ordos has no frontal mechanic. Its tank is moved by the compact
+    // perimeter controller; generic facing corrections could otherwise
+    // walk the tank back into the Pool of Fire it just left.
+    if (target->GetEntry() == OrdosEntry)
         return false;
 
     // Boss Caller tanks turn a moving boss as soon as taunt succeeds. Other

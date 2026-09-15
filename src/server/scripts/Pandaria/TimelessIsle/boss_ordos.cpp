@@ -18,6 +18,7 @@
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "ObjectMgr.h"
+#include "ObjectAccessor.h"
 #include "ScriptMgr.h"
 #include "Group.h"
 #include "timeless_isle.h"
@@ -287,16 +288,115 @@ class spell_ordos_burning_soul : public AuraScript
 {
     PrepareAuraScript(spell_ordos_burning_soul);
 
-    void HandleOnRemove(AuraEffect const* aureff, AuraEffectHandleModes /*mode*/)
+    bool IsOtherAffectedHuman(Player* candidate, Player* player) const
+    {
+        return candidate && candidate != player && candidate->IsAlive() &&
+            candidate->GetSession() && !candidate->GetSession()->IsBot() &&
+            candidate->HasAura(SPELL_ORDOS_BURNING_SOUL);
+    }
+
+    void EnsurePlayerMarker()
+    {
+        Player* player = GetOwner()->ToPlayer();
+        if (!player || !player->GetSession() || player->GetSession()->IsBot())
+            return;
+        Group* group = player->GetGroup();
+        if (!group)
+            return;
+
+        uint8 const crossIcon = 6;
+
+        // Reuse this aura's assigned marker whenever possible. Role marker
+        // automation may replace it between ticks; SetTargetIcon removes the
+        // stale marker from this player while restoring the mechanic marker.
+        if (burningSoulMarker < TARGETICONCOUNT)
+        {
+            if (group->GetTargetIcon(burningSoulMarker) == player->GetGUID())
+                return;
+
+            ObjectGuid const assignedTarget =
+                group->GetTargetIcon(burningSoulMarker);
+            Player* assignedPlayer = assignedTarget ?
+                ObjectAccessor::FindPlayer(assignedTarget) : nullptr;
+            if (!IsOtherAffectedHuman(assignedPlayer, player))
+            {
+                group->SetTargetIcon(burningSoulMarker, player->GetGUID(),
+                    player->GetGUID(), 0);
+                return;
+            }
+        }
+
+        // Burning Soul can select several players at once. Reserve the red
+        // cross for the first affected real player even if role automation
+        // temporarily placed it on a bot; additional humans receive another
+        // free icon.
+        ObjectGuid const crossTarget = group->GetTargetIcon(crossIcon);
+        Player* crossPlayer = crossTarget ?
+            ObjectAccessor::FindPlayer(crossTarget) : nullptr;
+        if (!IsOtherAffectedHuman(crossPlayer, player))
+        {
+            group->SetTargetIcon(crossIcon, player->GetGUID(),
+                player->GetGUID(), 0);
+            burningSoulMarker = crossIcon;
+            return;
+        }
+
+        static uint8 const preferredIcons[TARGETICONCOUNT - 1] =
+            { 0, 1, 2, 3, 4, 5, 7 };
+        for (uint8 icon : preferredIcons)
+        {
+            ObjectGuid const iconTarget = group->GetTargetIcon(icon);
+            Player* iconPlayer = iconTarget ?
+                ObjectAccessor::FindPlayer(iconTarget) : nullptr;
+            if (IsOtherAffectedHuman(iconPlayer, player))
+                continue;
+
+            group->SetTargetIcon(icon, player->GetGUID(),
+                player->GetGUID(), 0);
+            burningSoulMarker = icon;
+            break;
+        }
+    }
+
+    void HandleOnApply(AuraEffect const* /*aureff*/,
+        AuraEffectHandleModes /*mode*/)
+    {
+        EnsurePlayerMarker();
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aureff*/)
+    {
+        // Other bot/role systems can rewrite raid icons after aura apply.
+        // Reassert the warning every damage tick so a real player keeps a
+        // visible mechanic marker for the complete debuff.
+        EnsurePlayerMarker();
+    }
+
+    void HandleOnRemove(AuraEffect const* /*aureff*/, AuraEffectHandleModes /*mode*/)
     {
         if (Unit* owner = GetOwner()->ToUnit())
+        {
+            if (burningSoulMarker < TARGETICONCOUNT)
+                if (Player* player = owner->ToPlayer())
+                    if (Group* group = player->GetGroup())
+                        if (group->GetTargetIcon(burningSoulMarker) ==
+                                player->GetGUID())
+                            group->SetTargetIcon(burningSoulMarker,
+                                player->GetGUID(), ObjectGuid::Empty, 0);
+
             owner->CastSpell(owner, SPELL_BURNING_SOUL_EFF, true);
+        }
     }
 
     void Register() override
     {
+        OnEffectApply += AuraEffectApplyFn(spell_ordos_burning_soul::HandleOnApply, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_ordos_burning_soul::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
         OnEffectRemove += AuraEffectRemoveFn(spell_ordos_burning_soul::HandleOnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
     }
+
+private:
+    uint8 burningSoulMarker = TARGETICONCOUNT;
 };
 
 // 1090 - Pool of Fire

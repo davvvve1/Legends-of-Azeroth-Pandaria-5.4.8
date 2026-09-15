@@ -196,6 +196,9 @@ private:
         SpreadOondastaBeam,
         MaintainOondastaOffTank,
         AvoidOondastaFrillBlast,
+        TakeOverOrdosTank,
+        MaintainOrdosStandbyTank,
+        RelocateOrdosStack,
         StackOrdosMagmaCrush,
         SpreadOrdosBurningSoul,
         MoveChiJiBeacon,
@@ -211,6 +214,7 @@ private:
     };
 
     Reaction GetReaction() const;
+    Player* GetOrdosDesignatedTank(Creature* ordos) const;
     uint32 niuzaoDodgeLockUntil = 0;
     float niuzaoDodgeX = 0.0f;
     float niuzaoDodgeY = 0.0f;
@@ -225,10 +229,29 @@ private:
     float chiJiFirestormX = 0.0f;
     float chiJiFirestormY = 0.0f;
     float chiJiFirestormZ = 0.0f;
+    uint32 ordosStackWaypointLockUntil = 0;
+    float ordosStackWaypointX = 0.0f;
+    float ordosStackWaypointY = 0.0f;
+    float ordosStackWaypointZ = 0.0f;
+    mutable ObjectGuid ordosEncounterGuid = ObjectGuid::Empty;
+    mutable ObjectGuid ordosDesignatedTankGuid = ObjectGuid::Empty;
     uint32 chiJiBeaconWaypointLockUntil = 0;
     float chiJiBeaconWaypointX = 0.0f;
     float chiJiBeaconWaypointY = 0.0f;
     float chiJiBeaconWaypointZ = 0.0f;
+    uint32 ordosBurningSoulWaypointLockUntil = 0;
+    float ordosBurningSoulWaypointX = 0.0f;
+    float ordosBurningSoulWaypointY = 0.0f;
+    float ordosBurningSoulWaypointZ = 0.0f;
+    uint32 ordosBurningSoulSequenceUntil = 0;
+    uint32 ordosBurningSoulProgressCheckAt = 0;
+    float ordosBurningSoulProgressX = 0.0f;
+    float ordosBurningSoulProgressY = 0.0f;
+    float ordosBurningSoulProgressTargetX = 0.0f;
+    float ordosBurningSoulProgressTargetY = 0.0f;
+    float ordosBurningSoulProgressDistance = 0.0f;
+    uint8 ordosBurningSoulWaypointRetry = 0;
+    bool ordosBurningSoulGateReached = false;
     uint32 xuenSpreadLockUntil = 0;
     uint32 xuenSpreadMechanic = 0;
     float xuenSpreadX = 0.0f;
