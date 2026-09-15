@@ -262,6 +262,9 @@ public:
 
     void OnPlayerbotUpdate(uint32 diff) override
     {
+
+
+        sRandomPlayerbotMgr->UpdateAutoQueueObserver(diff);
         sRandomPlayerbotMgr->UpdateAI(diff);
         sRandomPlayerbotMgr->UpdateSessions();
     }

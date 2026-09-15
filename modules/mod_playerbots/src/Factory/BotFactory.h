@@ -21,6 +21,7 @@ public:
     static void Init();
     void Refresh();
     void Randomize(bool incremental);
+    void PrepareManagedLevel();
     void ClearEverything();
 
     void InitBags();

@@ -17,7 +17,10 @@
 
 #include "PlayerbotAIConfig.h"
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
+#include <sstream>
 
 #include "Config.h"
 #include "Helper.h"
@@ -138,6 +141,12 @@ bool PlayerbotAIConfig::Initialize()
     randomBotAutologin = sConfigMgr->GetBoolDefault("AiPlayerbot.RandomBotAutologin", true);
     randomBotAccountPrefix = sConfigMgr->GetStringDefault("AiPlayerbot.RandomBotAccountPrefix", "rndbot");
     randomBotAccountCount = sConfigMgr->GetIntDefault("AiPlayerbot.RandomBotAccountCount", 200);
+
+    playerbotPoolEnabled = sConfigMgr->GetBoolDefault("AiPlayerbot.PlayerbotPool.Enabled", true);
+    playerbotPoolAccountPrefix = sConfigMgr->GetStringDefault("AiPlayerbot.PlayerbotPool.AccountPrefix", "poolbot");
+    playerbotPoolAccountCount = sConfigMgr->GetIntDefault("AiPlayerbot.PlayerbotPool.AccountCount", 200);
+    playerbotPoolTeleportDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.PlayerbotPool.TeleportDistance", 100.0f);
+
     maxAddedBotsPerClass = sConfigMgr->GetIntDefault("AiPlayerbot.MaxAddedBotsPerClass", 50);
     maxAddedBots = sConfigMgr->GetIntDefault("AiPlayerbot.MaxAddedBots", 200);
     minRandomBots = sConfigMgr->GetIntDefault("AiPlayerbot.MinRandomBots", 50);
@@ -238,6 +247,8 @@ bool PlayerbotAIConfig::Initialize()
 
 
     RandomPlayerbotFactory::CreateRandomBots();
+    RandomPlayerbotFactory::CreatePlayerbotPool();
+
     if (World::IsStopped())
     {
         return true;
@@ -380,4 +391,9 @@ void PlayerbotAIConfig::log(std::string const fileName, char const* str, ...)
 bool PlayerbotAIConfig::IsInRandomAccountList(uint32 id)
 {
     return std::find(randomBotAccounts.begin(), randomBotAccounts.end(), id) != randomBotAccounts.end();
+}
+
+bool PlayerbotAIConfig::IsInPlayerbotPoolAccountList(uint32 id)
+{
+    return std::find(playerbotPoolAccounts.begin(), playerbotPoolAccounts.end(), id) != playerbotPoolAccounts.end();
 }

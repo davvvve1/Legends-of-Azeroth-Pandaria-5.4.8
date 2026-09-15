@@ -201,6 +201,12 @@ void BotFactory::Prepare()
     bot->InitStatsForLevel();
     CancelAuras();
 }
+
+void BotFactory::PrepareManagedLevel()
+{
+    Prepare();
+    bot->SaveToDB(true);
+}
  
 void BotFactory::Randomize(bool incremental)
 {

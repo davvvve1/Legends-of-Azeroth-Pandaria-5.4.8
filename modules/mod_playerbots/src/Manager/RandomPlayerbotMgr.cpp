@@ -110,16 +110,28 @@ namespace
     std::map<uint32, uint32> LfgAutoQueueIneligibleBots;
     std::set<uint32> LfgAutoQueueOrphanCleanupChecked;
 
+    std::string GetPlayerbotPoolAccountSqlList()
+    {
+        std::ostringstream accounts;
+        for (size_t i = 0; i < sPlayerbotAIConfig->playerbotPoolAccounts.size(); ++i)
+        {
+            if (i)
+                accounts << ",";
+            accounts << sPlayerbotAIConfig->playerbotPoolAccounts[i];
+        }
+        return accounts.str();
+    }
+
     void CleanupOrphanedLfgBotGroups(uint32 requesterGuid)
     {
         if (!requesterGuid ||
-            sPlayerbotAIConfig->randomBotAccounts.empty())
+            sPlayerbotAIConfig->playerbotPoolAccounts.empty())
             return;
 
-        uint32 const minAccount =
-            sPlayerbotAIConfig->randomBotAccounts.front();
-        uint32 const maxAccount =
-            sPlayerbotAIConfig->randomBotAccounts.back();
+        std::string const poolAccounts = GetPlayerbotPoolAccountSqlList();
+        if (poolAccounts.empty())
+            return;
+
         QueryResult result = CharacterDatabase.PQuery(
             "SELECT g.guid FROM `groups` g "
             "WHERE g.leaderGuid=%u AND (g.groupType & %u)<>0 "
@@ -129,8 +141,8 @@ namespace
             "WHERE any_member.guid=g.guid) "
             "AND NOT EXISTS (SELECT 1 FROM group_member gm "
             "JOIN characters c ON c.guid=gm.memberGuid "
-            "WHERE gm.guid=g.guid AND (c.account<%u OR c.account>%u))",
-            requesterGuid, uint32(GROUPTYPE_LFG), minAccount, maxAccount);
+            "WHERE gm.guid=g.guid AND c.account NOT IN (%s))",
+            requesterGuid, uint32(GROUPTYPE_LFG), poolAccounts.c_str());
         if (!result)
             return;
 
@@ -423,8 +435,6 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
 
     totalPmo = sPerformanceMonitor->start(PERF_MON_TOTAL, "RandomPlayerbotMgr::FullTick");
 
-    UpdateAutoQueueObserver(elapsed);
-
     if (!sPlayerbotAIConfig->randomBotAutologin || !sPlayerbotAIConfig->enabled)
         return;
 
@@ -515,16 +525,20 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
         pmo->finish();
 }
 
-void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 elapsed)
+void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
 {
     if (!sPlayerbotAIConfig->autoQueueEnabled)
         return;
 
-    _autoQueueElapsed += elapsed;
-    if (_autoQueueElapsed < sPlayerbotAIConfig->autoQueueCheckInterval)
+    static uint32 lastAutoQueueUpdate = 0;
+    uint32 const autoQueueNow = getMSTime();
+
+    if (lastAutoQueueUpdate &&
+        getMSTimeDiff(lastAutoQueueUpdate, autoQueueNow) <
+            sPlayerbotAIConfig->autoQueueCheckInterval)
         return;
 
-    _autoQueueElapsed = 0;
+    lastAutoQueueUpdate = autoQueueNow;
 
     // Let a rejected character be reconsidered after one minute. The normal
     // eligibility and managed-loadout validation still run in full on every
@@ -809,6 +823,23 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 elapsed)
             // coordinator's world-thread containers.
             if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot))
                 botAI->SetLfgAutoQueueControl(true, staged.RequesterGuid);
+
+            // Offline PvE pool characters are stored at their natural creation
+            // level. Scale the temporary filler to the real requester's level
+            // before specialization, role and managed PvE loadout validation.
+            if (sPlayerbotAIConfig->IsInPlayerbotPoolAccountList(
+                    bot->GetSession()->GetAccountId()) &&
+                bot->GetLevel() != requester->GetLevel())
+            {
+                uint32 oldLevel = bot->GetLevel();
+                BotFactory levelFactory(bot, requester->GetLevel());
+                levelFactory.PrepareManagedLevel();
+
+                TC_LOG_INFO("server",
+                    "AutoQueue LFG scaled poolbot name=%s guid=%u level=%u->%u requester=%u",
+                    bot->GetName().c_str(), botGuid, oldLevel,
+                    uint32(bot->GetLevel()), staged.RequesterGuid);
+            }
 
             // The queue may select an inactive saved specialization, or a
             // class-compatible fallback specialization when the offline pool
@@ -1428,7 +1459,11 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 elapsed)
                 ObjectAccessor::FindConnectedPlayer(
                     ObjectGuid::Create<HighGuid::Player>(demand.RequesterGuid)) : nullptr;
             if (!requester || !requester->IsUsingLfg() ||
-                sPlayerbotAIConfig->randomBotAccounts.empty())
+                sPlayerbotAIConfig->playerbotPoolAccounts.empty())
+                continue;
+
+            std::string const poolAccounts = GetPlayerbotPoolAccountSqlList();
+            if (poolAccounts.empty())
                 continue;
 
             auto stageRole = [&](lfg::LfgRoles role, uint32& needed)
@@ -1436,17 +1471,15 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 elapsed)
                 while (needed && lfgBotsStaged <
                     sPlayerbotAIConfig->autoQueueMaxBotsPerCycle)
                 {
-                    uint32 minAccount = sPlayerbotAIConfig->randomBotAccounts.front();
-                    uint32 maxAccount = sPlayerbotAIConfig->randomBotAccounts.back();
                     QueryResult candidates = CharacterDatabase.PQuery(
                         "SELECT guid,name,race,class,talentTree,activespec "
-                        "FROM characters WHERE account >= %u AND account <= %u "
-                        "AND level=%u AND online=0 "
+                        "FROM characters WHERE account IN (%s) "
+                        "AND online=0 "
                         "AND guid NOT IN (SELECT guid FROM guild_member) "
                         "AND guid NOT IN (SELECT memberGuid FROM group_member) "
                         "AND guid NOT IN (SELECT owner_guid FROM solo_arena_loadout_backup) "
                         "ORDER BY RAND()",
-                        minAccount, maxAccount, requester->GetLevel());
+                        poolAccounts.c_str());
                     if (!candidates)
                         break;
 

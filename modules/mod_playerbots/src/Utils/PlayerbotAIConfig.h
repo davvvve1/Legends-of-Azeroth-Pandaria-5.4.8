@@ -71,6 +71,13 @@ public:
     bool randomBotRandomPassword;
     std::vector<uint32> randomBotAccounts;
 
+    // Offline PvE Playerbot pool. Separate from RandomBots.
+    bool playerbotPoolEnabled;
+    std::string playerbotPoolAccountPrefix;
+    uint32 playerbotPoolAccountCount;
+    float playerbotPoolTeleportDistance;
+    std::vector<uint32> playerbotPoolAccounts;
+
     bool autoQueueEnabled, autoQueueDryRun, autoQueueLfg, autoQueueLfgAutomatic;
     bool autoQueueBattleground, autoQueueArena;
     bool autoQueueBattlegroundAutomatic, autoQueueBattlegroundLoadout;
@@ -106,6 +113,7 @@ public:
 
     // METHODS
     bool IsInRandomAccountList(uint32 id);
+    bool IsInPlayerbotPoolAccountList(uint32 id);
 
     std::string const GetTimestampStr();
     bool hasLog(std::string const fileName)
