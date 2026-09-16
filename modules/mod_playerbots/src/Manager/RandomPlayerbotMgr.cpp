@@ -318,6 +318,7 @@ namespace
         TeamId Team = TEAM_NEUTRAL;
         uint32 RequesterGuid = 0;
         bool Healer = false;
+        uint8 SpecializationTab = 0;
     };
 
     std::map<uint32, BgAutoQueueManagedBot> BgAutoQueueManagedBots;
@@ -1798,6 +1799,32 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                 continue;
             }
 
+            if (requester && bot->GetLevel() != requester->GetLevel())
+            {
+                BotFactory levelFactory(bot, requester->GetLevel());
+                levelFactory.PrepareManagedLevel();
+            }
+
+            if (staged.SpecializationTab < MAX_TALENT_TABS)
+            {
+                dbc::TalentTabs classSpecializations =
+                    dbc::GetClassSpecializations(bot->GetClass());
+                if (staged.SpecializationTab < classSpecializations.size() &&
+                    bot->GetSpecialization() !=
+                        Specializations(classSpecializations[
+                            staged.SpecializationTab]))
+                {
+                    bot->ResetTalents(true, true, true);
+                    WorldPacket specialization(CMSG_SET_PRIMARY_TALENT_TREE);
+                    specialization << uint32(staged.SpecializationTab);
+                    bot->GetSession()->HandeSetTalentSpecialization(
+                        specialization);
+                    bot->ActivateSpec(0);
+                    BotFactory specializationFactory(bot, bot->GetLevel());
+                    specializationFactory.InitTalentsTree(false);
+                }
+            }
+
             std::string rejectionReason;
             if (!CanAutoQueueBgBot(bot, staged.Team, staged.MapId,
                 staged.Bracket, &rejectionReason))
@@ -1977,6 +2004,9 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                     "AutoQueue BG removed bot name=%s guid=%u because requester=%u left type=%u",
                     bot->GetName().c_str(), botGuid, managed.RequesterGuid,
                     uint32(managed.Type));
+                if (sPlayerbotAIConfig->IsInPlayerbotPoolAccountList(
+                        bot->GetSession()->GetAccountId()))
+                    LogoutPlayerBot(bot->GetGUID());
                 itr = BgAutoQueueManagedBots.erase(itr);
                 continue;
             }
@@ -2009,6 +2039,9 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                     managed.Entered ? 1 : 0);
                 if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot))
                     botAI->ResetStrategies();
+                if (sPlayerbotAIConfig->IsInPlayerbotPoolAccountList(
+                        bot->GetSession()->GetAccountId()))
+                    LogoutPlayerBot(bot->GetGUID());
                 itr = BgAutoQueueManagedBots.erase(itr);
                 continue;
             }
@@ -2095,7 +2128,7 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                         // offline character from the configured random-bot
                         // accounts and stage its login. The next observer tick
                         // applies the protected loadout and queues it.
-                        if (sPlayerbotAIConfig->randomBotAccounts.empty())
+                        if (sPlayerbotAIConfig->playerbotPoolAccounts.empty())
                             break;
 
                         Player* requester = requesterGuid ?
@@ -2104,17 +2137,20 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                         if (!requester)
                             break;
 
-                        uint32 minAccount = sPlayerbotAIConfig->randomBotAccounts.front();
-                        uint32 maxAccount = sPlayerbotAIConfig->randomBotAccounts.back();
+                        std::string const poolAccounts =
+                            GetPlayerbotPoolAccountSqlList();
+                        if (poolAccounts.empty())
+                            break;
+
                         QueryResult candidates = CharacterDatabase.PQuery(
                             "SELECT guid,name,race,class,talentTree,activespec "
-                            "FROM characters WHERE account >= %u AND account <= %u "
-                            "AND level=%u AND online=0 AND instance_id=0 "
+                            "FROM characters WHERE account IN (%s) "
+                            "AND online=0 AND instance_id=0 "
                             "AND guid NOT IN (SELECT guid FROM guild_member) "
                             "AND guid NOT IN (SELECT memberGuid FROM group_member) "
                             "AND guid NOT IN (SELECT owner_guid FROM solo_arena_loadout_backup) "
                             "ORDER BY RAND()",
-                            minAccount, maxAccount, requester->GetLevel());
+                            poolAccounts.c_str());
                         if (!candidates)
                             break;
 
@@ -2122,10 +2158,12 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                         std::string selectedName;
                         bool selectedHealer = false;
                         uint8 selectedPriority = 0;
+                        uint8 selectedSpecializationTab = 0;
                         uint32 fallbackGuid = 0;
                         std::string fallbackName;
                         bool fallbackHealer = false;
                         uint8 fallbackPriority = 0;
+                        uint8 fallbackSpecializationTab = 0;
                         do
                         {
                             Field* fields = candidates->Fetch();
@@ -2150,12 +2188,54 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                             uint8 activeSpec = fields[5].GetUInt8();
                             if (activeSpec >= MAX_TALENT_SPECS)
                                 activeSpec = 0;
-                            Specializations specialization =
-                                Specializations(specs[activeSpec]);
-                            bool healer = IsBgHealerSpecialization(
-                                specialization);
-                            if (!HasAutomatedPvpBotLoadout(specialization))
+
+                            uint8 candidateClass = fields[3].GetUInt8();
+                            dbc::TalentTabs classSpecializations =
+                                dbc::GetClassSpecializations(candidateClass);
+                            uint8 candidateSpecializationTab = MAX_TALENT_TABS;
+                            Specializations specialization = SPEC_NONE;
+                            uint32 bestScore = 0;
+                            for (uint8 tab = 0;
+                                 tab < classSpecializations.size() &&
+                                 tab < MAX_TALENT_TABS; ++tab)
+                            {
+                                Specializations candidateSpecialization =
+                                    Specializations(classSpecializations[tab]);
+                                if (!HasAutomatedPvpBotLoadout(
+                                        candidateSpecialization))
+                                    continue;
+
+                                uint32 score = uint32(
+                                    GetAutomatedBotSpecializationPriority(
+                                        candidateSpecialization, true)) * 4;
+                                if (Specializations(specs[activeSpec]) ==
+                                    candidateSpecialization)
+                                    score += 2;
+                                else
+                                    for (uint8 specSlot = 0;
+                                         specSlot < MAX_TALENT_SPECS; ++specSlot)
+                                        if (Specializations(specs[specSlot]) ==
+                                            candidateSpecialization)
+                                        {
+                                            ++score;
+                                            break;
+                                        }
+
+                                if (candidateSpecializationTab >=
+                                        MAX_TALENT_TABS ||
+                                    score > bestScore)
+                                {
+                                    candidateSpecializationTab = tab;
+                                    specialization = candidateSpecialization;
+                                    bestScore = score;
+                                }
+                            }
+
+                            if (candidateSpecializationTab >= MAX_TALENT_TABS)
                                 continue;
+
+                            bool healer =
+                                IsBgHealerSpecialization(specialization);
                             uint8 priority =
                                 GetAutomatedBotSpecializationPriority(
                                     specialization, true);
@@ -2168,6 +2248,8 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                                     fallbackName = fields[1].GetString();
                                     fallbackHealer = false;
                                     fallbackPriority = priority;
+                                    fallbackSpecializationTab =
+                                        candidateSpecializationTab;
                                 }
                                 continue;
                             }
@@ -2178,6 +2260,8 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                                 selectedName = fields[1].GetString();
                                 selectedHealer = healer;
                                 selectedPriority = priority;
+                                selectedSpecializationTab =
+                                    candidateSpecializationTab;
                             }
                         }
                         while (candidates->NextRow());
@@ -2189,6 +2273,8 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                             selectedGuid = fallbackGuid;
                             selectedName = fallbackName;
                             selectedHealer = fallbackHealer;
+                            selectedSpecializationTab =
+                                fallbackSpecializationTab;
                         }
                         if (!selectedGuid)
                             break;
@@ -2197,7 +2283,8 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                             ObjectGuid::Create<HighGuid::Player>(selectedGuid);
                         BgAutoQueueStagedLogins[selectedGuid] =
                             { demandPair.first.first, demand.Type, demand.MapId,
-                              demand.Bracket, team, requesterGuid, selectedHealer };
+                              demand.Bracket, team, requesterGuid, selectedHealer,
+                              selectedSpecializationTab };
                         AddPlayerBot(selectedObjectGuid, 0);
                         ++demand.BotPlayers[team];
                         if (selectedHealer)
@@ -2289,20 +2376,6 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
         realBg || botBg || bgBotsStaged || bgBotsJoined || bgInvitesAccepted ||
         !bgDemands.empty() || !BgAutoQueueStagedLogins.empty() ||
         !BgAutoQueueManagedBots.empty() || realArena || botArena;
-    if (hasQueueActivity)
-    {
-        TC_LOG_INFO("server",
-            "AutoQueue observer (dry-run=%u, max-bots=%u, bg-max-bots=%u): LFG real/bot=%u/%u staged=%u joined=%u accepted=%u demands=%u pending=%u managed=%u, BG real/bot=%u/%u staged=%u joined=%u accepted=%u demands=%u pending=%u managed=%u, Arena real/bot=%u/%u",
-            sPlayerbotAIConfig->autoQueueDryRun ? 1 : 0, sPlayerbotAIConfig->autoQueueMaxBotsPerCycle,
-            sPlayerbotAIConfig->autoQueueBattlegroundMaxBotsPerCycle,
-            realLfg, botLfg, lfgBotsStaged, lfgBotsJoined, lfgProposalsAccepted,
-            uint32(lfgDemands.size()), uint32(LfgAutoQueueStagedLogins.size()),
-            uint32(LfgAutoQueueManagedBots.size()),
-            realBg, botBg, bgBotsStaged, bgBotsJoined, bgInvitesAccepted,
-            uint32(bgDemands.size()), uint32(BgAutoQueueStagedLogins.size()),
-            uint32(BgAutoQueueManagedBots.size()),
-            realArena, botArena);
-    }
 }
 
 uint32 RandomPlayerbotMgr::AddRandomBots()

@@ -567,13 +567,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         // with one normal raid buff from the same request.
         bool cast = safe && CastAutomatedRoleMode(bot);
         if (safe && !cast)
-            cast = CastAutomatedPvpPreparationBuff(bot);
-        if (cast)
-            TC_LOG_INFO("server",
-                "AutoQueue LFG map-thread preparation cast bot=%s guid=%u requester=%u map=%u",
-                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
-                requesterGuid, bot->GetMapId());
-    }
+            cast = CastAutomatedPvpPreparationBuff(bot);}
 
     // A bot logged in only to fill an LFG request must not wander, grind or
     // acquire an open-world target while the queue/proposal is being built.
