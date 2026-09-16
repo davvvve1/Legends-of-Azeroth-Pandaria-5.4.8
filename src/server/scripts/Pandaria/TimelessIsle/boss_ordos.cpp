@@ -21,6 +21,7 @@
 #include "ObjectAccessor.h"
 #include "ScriptMgr.h"
 #include "Group.h"
+#include "Log.h"
 #include "timeless_isle.h"
 
 enum Spells
@@ -44,6 +45,13 @@ enum Events
     EVENT_ORDOS_POOL_OF_FIRE,
     EVENT_ORDOS_ETERNAL_AGONY,
     EVENT_ORDOS_MAGMA_CRUSH,
+};
+
+enum OrdosData
+{
+    DATA_ORDOS_POOL_COUNT = 1,
+    DATA_ORDOS_DEFEATED = 2,
+    DATA_ORDOS_POOL_IMMINENT = 3,
 };
 
 enum Creatures
@@ -77,10 +85,46 @@ class boss_ordos : public CreatureScript
             TaskScheduler scheduler;
             SummonList summons;
             EventMap events;
+            uint32 poolOfFireCount = 0;
+            bool defeated = false;
+
+            Unit* GetPoolOfFireTarget()
+            {
+                Unit* victim = me->GetVictim();
+                Player* playerVictim = victim ? victim->ToPlayer() : nullptr;
+                if (!playerVictim ||
+                    !playerVictim->HasWorldBossStagingAccess())
+                    return victim;
+
+                Group* group = playerVictim->GetGroup();
+                if (!group)
+                    return victim;
+
+                // The staged playerbot raid publishes one authoritative main
+                // tank. A momentary threat flicker must not put a permanent
+                // pool on a damage dealer (or at that player's Burning Soul
+                // airborne Z) and destroy the ordered placement route.
+                for (Group::MemberSlot const& slot : group->GetMemberSlots())
+                {
+                    if (!(slot.flags & MEMBER_FLAG_MAINTANK))
+                        continue;
+
+                    Player* mainTank = ObjectAccessor::FindPlayer(slot.guid);
+                    if (mainTank && mainTank->IsAlive() &&
+                        mainTank->IsInWorld() && mainTank->GetMap() == me->GetMap() &&
+                        mainTank->HasWorldBossStagingAccess() &&
+                        mainTank->GetExactDist2d(me) <= 80.0f)
+                        return mainTank;
+                }
+
+                return victim;
+            }
 
             void Reset() override
             {
                 events.Reset();
+                poolOfFireCount = 0;
+                defeated = false;
                 me->RemoveAllAreasTrigger();
                 summons.DespawnAll();
                 HandleDoor(me, GO_HEATET_DOOR, true);
@@ -91,6 +135,23 @@ class boss_ordos : public CreatureScript
                 {
                     me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_NON_ATTACKABLE);
                 });
+            }
+
+            uint32 GetData(uint32 type) const override
+            {
+                switch (type)
+                {
+                    case DATA_ORDOS_POOL_COUNT:
+                        return poolOfFireCount;
+                    case DATA_ORDOS_DEFEATED:
+                        return defeated ? 1 : 0;
+                    case DATA_ORDOS_POOL_IMMINENT:
+                        return events.GetTimeUntilEvent(
+                            EVENT_ORDOS_POOL_OF_FIRE) <=
+                                3500;
+                    default:
+                        return 0;
+                }
             }
 
             void KilledUnit(Unit* victim) override
@@ -140,6 +201,7 @@ class boss_ordos : public CreatureScript
 
             void EnterEvadeMode() override
             {
+                defeated = false;
                 ScriptedAI::EnterEvadeMode();
                 summons.DespawnAll();
                 events.Reset();
@@ -162,6 +224,7 @@ class boss_ordos : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
+                defeated = true;
                 Talk(SAY_ORDOS_DEATH);
                 me->RemoveAllAreasTrigger();
                 summons.DespawnAll();
@@ -217,8 +280,21 @@ class boss_ordos : public CreatureScript
                     }
                     case EVENT_ORDOS_POOL_OF_FIRE:
                     {
-                        if (Unit* target = me->GetVictim())
+                        if (Unit* target = GetPoolOfFireTarget())
+                        {
+                            ++poolOfFireCount;
+                            Unit* victim = me->GetVictim();
+                            TC_LOG_INFO("server",
+                                "Ordos Pool of Fire count=%u target=%s/%u position=(%.2f,%.2f,%.2f) victim=%s/%u",
+                                poolOfFireCount,
+                                target->GetName().c_str(),
+                                target->GetGUID().GetCounter(),
+                                target->GetPositionX(), target->GetPositionY(),
+                                target->GetPositionZ(),
+                                victim ? victim->GetName().c_str() : "none",
+                                victim ? victim->GetGUID().GetCounter() : 0u);
                             me->CastSpell(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), SPELL_ORDOS_POOL_OF_FIRE, false);
+                        }
 
                         Talk(SAY_ORDOS_POOL_OF_FIRE);
                         events.ScheduleEvent(EVENT_ORDOS_POOL_OF_FIRE, 31 * IN_MILLISECONDS);
@@ -288,18 +364,71 @@ class spell_ordos_burning_soul : public AuraScript
 {
     PrepareAuraScript(spell_ordos_burning_soul);
 
+    bool IsRealPlayer(Player const* player) const
+    {
+        return player && player->GetSession() &&
+            !player->GetSession()->IsBot();
+    }
+
+    void SendPlayerWarning(uint8 seconds)
+    {
+        Player* player = GetOwner()->ToPlayer();
+        if (!player || !player->GetSession() || player->GetSession()->IsBot() ||
+            lastWarningSecond == seconds)
+            return;
+
+        if (seconds == 1)
+            player->GetSession()->SendNotification(
+                "BURNING SOUL - RUN OUT OF THE RAID! 1 second");
+        else
+            player->GetSession()->SendNotification(
+                "BURNING SOUL - RUN OUT OF THE RAID! %u seconds", seconds);
+
+        // Interface\\RaidWarning.wav. Send it only to the affected human.
+        player->PlayDirectSound(8959, player);
+        lastWarningSecond = seconds;
+    }
+
     bool IsOtherAffectedHuman(Player* candidate, Player* player) const
     {
         return candidate && candidate != player && candidate->IsAlive() &&
-            candidate->GetSession() && !candidate->GetSession()->IsBot() &&
+            IsRealPlayer(candidate) &&
             candidate->HasAura(SPELL_ORDOS_BURNING_SOUL);
+    }
+
+    void ClearAffectedBotMechanicMarkers(Player* player)
+    {
+        if (!player || !player->GetSession() ||
+            !player->GetSession()->IsBot())
+            return;
+
+        Group* group = player->GetGroup();
+        if (!group)
+            return;
+
+        // Square, Moon and Diamond identify the staged raid's tank, healer
+        // and main tank. Preserve those role markers. Cross and the remaining
+        // non-role icons are reserved for human Burning Soul warnings and
+        // must never remain on an affected bot.
+        static uint8 const mechanicIcons[] = { 6, 0, 1, 3, 7 };
+        for (uint8 icon : mechanicIcons)
+            if (group->GetTargetIcon(icon) == player->GetGUID())
+                group->SetTargetIcon(icon, player->GetGUID(),
+                    ObjectGuid::Empty, 0);
     }
 
     void EnsurePlayerMarker()
     {
         Player* player = GetOwner()->ToPlayer();
-        if (!player || !player->GetSession() || player->GetSession()->IsBot())
+        if (!player || !player->GetSession())
             return;
+
+        if (player->GetSession()->IsBot())
+        {
+            ClearAffectedBotMechanicMarkers(player);
+            return;
+        }
+
         Group* group = player->GetGroup();
         if (!group)
             return;
@@ -341,8 +470,10 @@ class spell_ordos_burning_soul : public AuraScript
             return;
         }
 
+        // Use non-role markers first. The staged raid reserves Diamond, Moon
+        // and Square for its main tank, healer and tank, respectively.
         static uint8 const preferredIcons[TARGETICONCOUNT - 1] =
-            { 0, 1, 2, 3, 4, 5, 7 };
+            { 0, 1, 3, 7, 2, 4, 5 };
         for (uint8 icon : preferredIcons)
         {
             ObjectGuid const iconTarget = group->GetTargetIcon(icon);
@@ -362,29 +493,49 @@ class spell_ordos_burning_soul : public AuraScript
         AuraEffectHandleModes /*mode*/)
     {
         EnsurePlayerMarker();
+        SendPlayerWarning(10);
     }
 
-    void HandlePeriodic(AuraEffect const* /*aureff*/)
+    void HandlePeriodic(AuraEffect const* aureff)
     {
         // Other bot/role systems can rewrite raid icons after aura apply.
         // Reassert the warning every damage tick so a real player keeps a
         // visible mechanic marker for the complete debuff.
         EnsurePlayerMarker();
+
+        int32 const duration = aureff->GetBase()->GetDuration();
+        uint8 const remaining = uint8(std::max<int32>(1,
+            (duration + IN_MILLISECONDS - 1) / IN_MILLISECONDS));
+        if (remaining == 5 || remaining == 3 || remaining == 2 ||
+            remaining == 1)
+            SendPlayerWarning(remaining);
     }
 
     void HandleOnRemove(AuraEffect const* /*aureff*/, AuraEffectHandleModes /*mode*/)
     {
         if (Unit* owner = GetOwner()->ToUnit())
         {
+            // Trigger the explosion/knock-up first, then remove the warning
+            // marker in the same update so it disappears as soon as the
+            // mechanic has resolved.
+            owner->CastSpell(owner, SPELL_BURNING_SOUL_EFF, true);
+
             if (burningSoulMarker < TARGETICONCOUNT)
                 if (Player* player = owner->ToPlayer())
                     if (Group* group = player->GetGroup())
-                        if (group->GetTargetIcon(burningSoulMarker) ==
-                                player->GetGUID())
-                            group->SetTargetIcon(burningSoulMarker,
-                                player->GetGUID(), ObjectGuid::Empty, 0);
+                        // Another raid system can move the icon after it was
+                        // assigned. Clear whichever icon is actually on this
+                        // player instead of trusting only the stored index.
+                        for (uint8 icon = 0; icon < TARGETICONCOUNT; ++icon)
+                            if (group->GetTargetIcon(icon) ==
+                                    player->GetGUID())
+                            {
+                                group->SetTargetIcon(icon,
+                                    player->GetGUID(), ObjectGuid::Empty, 0);
+                                break;
+                            }
 
-            owner->CastSpell(owner, SPELL_BURNING_SOUL_EFF, true);
+            burningSoulMarker = TARGETICONCOUNT;
         }
     }
 
@@ -397,6 +548,7 @@ class spell_ordos_burning_soul : public AuraScript
 
 private:
     uint8 burningSoulMarker = TARGETICONCOUNT;
+    uint8 lastWarningSecond = 0;
 };
 
 // 1090 - Pool of Fire

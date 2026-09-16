@@ -198,6 +198,7 @@ private:
         AvoidOondastaFrillBlast,
         TakeOverOrdosTank,
         MaintainOrdosStandbyTank,
+        EvadeOrdosPoolCast,
         RelocateOrdosStack,
         StackOrdosMagmaCrush,
         SpreadOrdosBurningSoul,
@@ -233,6 +234,16 @@ private:
     float ordosStackWaypointX = 0.0f;
     float ordosStackWaypointY = 0.0f;
     float ordosStackWaypointZ = 0.0f;
+    uint32 ordosAncientFlameRetryAt = 0;
+    uint32 ordosRaidTransitLockUntil = 0;
+    float ordosRaidTransitX = 0.0f;
+    float ordosRaidTransitY = 0.0f;
+    float ordosRaidTransitZ = 0.0f;
+    uint32 ordosRaidTransitRetryAt = 0;
+    uint32 ordosPoolEscapeWaypointLockUntil = 0;
+    float ordosPoolEscapeWaypointX = 0.0f;
+    float ordosPoolEscapeWaypointY = 0.0f;
+    float ordosPoolEscapeWaypointZ = 0.0f;
     mutable ObjectGuid ordosEncounterGuid = ObjectGuid::Empty;
     mutable ObjectGuid ordosDesignatedTankGuid = ObjectGuid::Empty;
     uint32 chiJiBeaconWaypointLockUntil = 0;
@@ -251,6 +262,7 @@ private:
     float ordosBurningSoulProgressTargetY = 0.0f;
     float ordosBurningSoulProgressDistance = 0.0f;
     uint8 ordosBurningSoulWaypointRetry = 0;
+    uint8 ordosBurningSoulAssignedArm = 4;
     bool ordosBurningSoulGateReached = false;
     uint32 xuenSpreadLockUntil = 0;
     uint32 xuenSpreadMechanic = 0;
