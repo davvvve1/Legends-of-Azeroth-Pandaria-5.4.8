@@ -2103,18 +2103,6 @@ void TraceManagedPveMovement(PlayerbotAI* ai, char const* action,
     if (!master || !master->IsInWorld() || master->GetMap() != bot->GetMap() ||
         master->GetVictim())
         return;
-
-    Unit* target = ai->GetAiObjectContext()->GetValue<Unit*>("current target")->Get();
-    TC_LOG_INFO("server",
-        "AutoQueue LFG prepull movement bot=%s guid=%u action=%s motion=%s state=%u combat=%u map=%u from=(%.2f,%.2f,%.2f) to=(%.2f,%.2f,%.2f) master=%s master-pos=(%.2f,%.2f,%.2f) master-combat=%u target=%s target-entry=%u target-guid=%u",
-        bot->GetName().c_str(), bot->GetGUID().GetCounter(), action, motion,
-        uint32(ai->GetState()), bot->IsInCombat() ? 1u : 0u, bot->GetMapId(),
-        bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(), x, y, z,
-        master->GetName().c_str(), master->GetPositionX(), master->GetPositionY(),
-        master->GetPositionZ(), master->IsInCombat() ? 1u : 0u,
-        target ? target->GetName().c_str() : "<none>",
-        target ? target->GetEntry() : 0u,
-        target ? target->GetGUID().GetCounter() : 0u);
 }
 }
 
@@ -2650,7 +2638,7 @@ bool MovementAction::IsMovingAllowed(WorldObject* target)
         return false;
 
     if (Unit* unit = target->ToUnit())
-        if (bot->IsValidAttackTarget(unit) &&
+        if (bot->IsValidAttackTarget(unit) && !bot->InBattleground() &&
             !botAI->CanLfgAutoQueueEngage(unit))
             return false;
 
