@@ -22,6 +22,7 @@
 #include "MoveSplineInit.h"
 #include "GameObjectAI.h"
 #include "CombatAI.h" 
+#include "Transport.h"
 
 enum spells
 {
@@ -584,6 +585,49 @@ class go_setting_sun_brasier : public GameObjectScript
         GameObjectAI* GetAI(GameObject* go) const override
         {
             return new go_setting_sun_brasierAI(go);
+        }
+};
+
+class go_setting_sun_elevator_lever : public GameObjectScript
+{
+    public:
+        go_setting_sun_elevator_lever() : GameObjectScript("go_setting_sun_elevator_lever") { }
+
+        struct go_setting_sun_elevator_leverAI : public GameObjectAI
+        {
+            go_setting_sun_elevator_leverAI(GameObject* go) : GameObjectAI(go) { }
+
+            void OnStateChanged(uint32 state, Unit* /*unit*/) override
+            {
+                if (state != GO_ACTIVATED)
+                    return;
+
+                if (InstanceScript* instance = me->GetInstanceScript())
+                    if (GameObject* elevator = me->GetMap()->GetGameObject(instance->GetGuidData(DATA_ELEVATOR)))
+                        if (Transport* transport = elevator->ToTransport())
+                        {
+                            uint32 period = transport->GetTransportPeriod();
+                            uint32 pause = elevator->GetGOInfo()->transport.pause;
+                            if (!period || !pause)
+                                return;
+
+                            uint32 timer = transport->GetTimer() % period;
+                            bool atReadyEnd = timer == period - 1;
+                            bool atActiveEnd = timer == pause;
+
+                            // A second click while the lift is travelling must not
+                            // reverse it in the middle of the shaft.
+                            if (!atReadyEnd && !atActiveEnd)
+                                return;
+
+                            elevator->SetGoState(atReadyEnd ? GO_STATE_ACTIVE : GO_STATE_READY);
+                        }
+            }
+        };
+
+        GameObjectAI* GetAI(GameObject* go) const override
+        {
+            return new go_setting_sun_elevator_leverAI(go);
         }
 };
 
@@ -1208,7 +1252,7 @@ class npc_gss_pandaren_cannoneer : public CreatureScript
                         case EVENT_LEFT_MOVE_AFTER_JUMP:
                         {
                             Movement::MoveSplineInit init(me);
-                            for (uint8 i = 11; i < 24; ++i)
+                            for (uint8 i = 10; i < 24; ++i)
                             {
                                 G3D::Vector3 path(LeftCannoneerWPPath[i][0], LeftCannoneerWPPath[i][1], LeftCannoneerWPPath[i][2]);
                                 init.Path().push_back(path);
@@ -1223,7 +1267,7 @@ class npc_gss_pandaren_cannoneer : public CreatureScript
                         case EVENT_RIGHT_MOVE_BEFORE_JUMP:
                         {
                             Movement::MoveSplineInit init(me);
-                            for (uint8 i = 0; i < 9; ++i)
+                            for (uint8 i = 0; i < 8; ++i)
                             {
                                 G3D::Vector3 path(RightCannoneerWPPath[i][0], RightCannoneerWPPath[i][1], RightCannoneerWPPath[i][2]);
                                 init.Path().push_back(path);
@@ -1259,7 +1303,7 @@ class npc_gss_pandaren_cannoneer : public CreatureScript
                         case EVENT_RIGHT_MOVE_AFTER_JUMP:
                         {
                             Movement::MoveSplineInit init(me);
-                            for (uint8 i = 10; i < 27; ++i)
+                            for (uint8 i = 8; i < 27; ++i)
                             {
                                 G3D::Vector3 path(RightCannoneerWPPath[i][0], RightCannoneerWPPath[i][1], RightCannoneerWPPath[i][2]);
                                 init.Path().push_back(path);
@@ -1780,6 +1824,7 @@ void AddSC_gate_of_the_setting_sun()
     new npc_gss_pandaren_cannoneer();
 
     new go_setting_sun_brasier();
+    new go_setting_sun_elevator_lever();
     new go_gss_generic();
     new vehicle_artillery_to_wall();
     new AreaTrigger_at_destroy_corner_a();

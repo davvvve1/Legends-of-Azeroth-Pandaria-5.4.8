@@ -85,7 +85,10 @@ enum eSpells
 
     // Disruptor
     SPELL_BOMB                   = 115110,
-    SPELL_TELEPORT_VISUAL        = 52096
+    SPELL_TELEPORT_VISUAL        = 52096,
+
+    // Flak Cannon
+    SPELL_FLAK_FIRE              = 133711
 };
 
 enum eEvents
@@ -123,8 +126,7 @@ enum eTalks
     SAY_INTRO       = 0,
     SAY_AGGRO       = 1,
     SAY_DEATH       = 2,
-    SAY_SLAY        = 3,
-    SAY_STIKE_EMOTE = 4
+    SAY_SLAY        = 3
 };
 
 #define MAX_DISRUPTOR   5
@@ -514,7 +516,6 @@ class boss_striker_gadok : public CreatureScript
                 }
 
                 Talk(SAY_DEATH);
-                Talk(SAY_STIKE_EMOTE);         
             }
 
         private:
@@ -772,26 +773,51 @@ class npc_flak_cannon : public CreatureScript
 
             void Reset() override { }
 
-            void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
+            void OnSpellClick(Unit* /*clicker*/, bool& result) override
             {
-                if (!instance)
+                if (!result || !instance)
                     return;
 
                 if (instance->GetBossState(DATA_GADOK) != DONE)
                     return;
 
-                if (spell->Id == 116554) // Fire Flak Cannon
+                for (uint8 i = 0; i < 5; ++i)
                 {
-                    for (uint8 i = 0; i < 5; ++i)
+                    ObjectGuid bombarderGuid = instance->GetGuidData(DATA_RANDOM_BOMBARDER);
+                    if (!bombarderGuid)
+                        break;
+
+                    // Remove the GUID before selecting the next target so one cannon shot
+                    // always hits up to five different bombardiers.
+                    instance->SetGuidData(DATA_BOMBARDER_DEFEATED, bombarderGuid);
+
+                    if (Creature* bombarder = instance->instance->GetCreature(bombarderGuid))
                     {
-                        if (Creature* bombarder = instance->instance->GetCreature(instance->GetGuidData(DATA_RANDOM_BOMBARDER)))
+                        // Cast the actual MoP Flak Fire missile. A bare spell-visual
+                        // packet is not rendered by this client, while this spell has
+                        // both a travelling projectile and an impact visual.
+                        me->CastSpell(bombarder, SPELL_FLAK_FIRE, true);
+
+                        constexpr float FlakProjectileSpeed = 20.0f;
+                        uint32 travelTime = uint32(me->GetDistance(bombarder) / FlakProjectileSpeed * IN_MILLISECONDS);
+                        if (travelTime < 500)
+                            travelTime = 500;
+                        else if (travelTime > 2500)
+                            travelTime = 2500;
+
+                        bombarder->m_Events.Schedule(travelTime, [bombarder]()
                         {
-                            me->CastSpell(bombarder, 116553, true);
                             bombarder->GetMotionMaster()->MoveFall();
                             bombarder->DespawnOrUnsummon(2000);
-                        }
+                        });
                     }
                 }
+
+                // Eighteen bombardiers are present and one shot removes at most
+                // five. Keep both cannons usable until the final target is gone;
+                // RemoveBombarder then also clears the fire from the walkway.
+                if (!instance->GetGuidData(DATA_RANDOM_BOMBARDER))
+                    me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
             }
 
         private:

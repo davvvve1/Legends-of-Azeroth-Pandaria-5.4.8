@@ -18,7 +18,10 @@
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
 #include "ScriptedCreature.h"
+#include "Transport.h"
 #include "gate_of_the_setting_sun.h"
+
+#include <cmath>
 
 static std::vector<DoorData> const doorData =
 {
@@ -52,7 +55,8 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
 
         enum eSpells
         {
-            SPELL_SPAWNER = 115141
+            SPELL_SPAWNER          = 115141,
+            SPELL_BOMBARDMENT_FIRE = 106875
         };
 
         struct instance_gate_of_the_setting_sun_InstanceMapScript : public InstanceScript
@@ -72,6 +76,7 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                 braiserState          = NOT_STARTED;
                 fallEvent             = false;
                 playersInInstanceCnt  = 0;
+                liftDefenderAttachTimer = 0;
                 kiptilakGuid = ObjectGuid::Empty;
                 gadokGuid = ObjectGuid::Empty;
                 rimokGuid = ObjectGuid::Empty;
@@ -90,9 +95,11 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                 fireSignalGuid = ObjectGuid::Empty;
                 greatDoorGUID = ObjectGuid::Empty;
                 greatDoor2GUID        = ObjectGuid::Empty;
+                elevatorGUID          = ObjectGuid::Empty;
 
                 bombarderGuids.clear();
                 fallDefendersGUIDS.clear();
+                liftDefenderGUIDS.clear();
                 bombStalkerGuids.clear();
                 mantidBombsGUIDs.clear();
                 rimokAddGenetarorsGUIDs.clear();
@@ -138,6 +145,21 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                                    cSpawner->CastSpell(cSpawner, SPELL_SPAWNER, false);
                 }
 
+                // The lift can be at either endpoint when its world spawns are
+                // loaded. Only convert the three corpses to local passengers
+                // once the platform is physically at their upper spawn point;
+                // calculating the offset while it is downstairs leaves them
+                // suspended high above the platform for the whole trip.
+                if (liftDefenderAttachTimer <= diff)
+                {
+                    liftDefenderAttachTimer = 500;
+                    for (ObjectGuid const& guid : liftDefenderGUIDS)
+                        if (Creature* defender = instance->GetCreature(guid))
+                            AttachLiftDefender(defender);
+                }
+                else
+                    liftDefenderAttachTimer -= diff;
+
                 ScheduleBeginningTimeUpdate(diff);
                 ScheduleChallengeStartup(diff);
                 ScheduleChallengeTimeUpdate(diff);
@@ -166,13 +188,28 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                         raigonnGuid = creature->GetGUID();
                         break;
                     case NPC_KRITHUK_BOMBARDER:
-                        bombarderGuids.push_back(creature->GetGUID());
+                        if (braiserState == DONE)
+                            creature->DespawnOrUnsummon();
+                        else
+                            bombarderGuids.push_back(creature->GetGUID());
                         break;
                     case NPC_FALL_DEFENDER:
                         fallDefendersGUIDS.push_back(creature->GetGUID());
                         break;
+                    case NPC_LIFT_DEFENDER:
+                        // The three feign-death defenders lying on the Gadok lift
+                        // are world spawns. Attach them to the local transport or
+                        // they remain suspended in the shaft when the lift moves.
+                        if (creature->GetExactDist2d(&ElevatorCenterPos) < 10.0f && creature->GetPositionZ() > 425.0f)
+                        {
+                            liftDefenderGUIDS.push_back(creature->GetGUID());
+                            AttachLiftDefender(creature);
+                        }
+                        break;
                     case NPC_BOMB_STALKER:
                         bombStalkerGuids.push_back(creature->GetGUID());
+                        if (braiserState == DONE)
+                            creature->RemoveAurasDueToSpell(SPELL_BOMBARDMENT_FIRE);
                         break;
                     case NPC_ADD_GENERATOR:
                         rimokAddGenetarorsGUIDs.push_back(creature->GetGUID());
@@ -226,16 +263,7 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
             void OnCreatureRemove(Creature* creature) override
             {
                 if (creature->GetEntry() == NPC_KRITHUK_BOMBARDER)
-                {
-                    for (std::list<ObjectGuid>::iterator it = bombarderGuids.begin(); it != bombarderGuids.end(); ++it)
-                    {
-                        if (*it == creature->GetGUID())
-                        {
-                            bombarderGuids.erase(it);
-                            break;
-                        }
-                    }
-                }
+                    RemoveBombarder(creature->GetGUID());
             }
 
             void OnGameObjectCreate(GameObject* go) override
@@ -248,8 +276,15 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                     case GO_SIGNAL_FIRE:
                         fireSignalGuid = go->GetGUID();
                         break;
+                    case GO_ELEVATOR:
+                        elevatorGUID = go->GetGUID();
+                        for (ObjectGuid const& guid : liftDefenderGUIDS)
+                            if (Creature* defender = instance->GetCreature(guid))
+                                AttachLiftDefender(defender);
+                        break;
                     case GO_KIPTILAK_WALLS:
                     case GO_RIMAK_AFTER_DOOR:
+                    case GO_RAIGONN_DOOR:
                     case GO_RAIGONN_AFTER_DOOR:
                     case GO_KIPTILAK_EXIT_DOOR:
                         AddDoor(go, true);
@@ -343,10 +378,24 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
 
             void OnUnitDeath(Unit* unit) override
             {
-                if (instance->IsChallengeDungeon() && !IsChallengeModeCompleted())
-                    if (Creature* creature = unit->ToCreature())
-                        if (creature->GetEntry() != NPC_KRITHIK_GLIDER && creature->GetEntry() != NPC_SERPENTS_SPINE_DEFENDER)
-                            UpdateConditionInfo(creature, ENEMIES_COUNT);
+                Creature* creature = unit->ToCreature();
+                if (!creature)
+                    return;
+
+                // These ambient defenders can die on or above the moving elevator.
+                // Corpses are not attached to the transport and otherwise remain
+                // suspended in the shaft after the elevator changes height.
+                if (creature->GetEntry() == NPC_FALL_DEFENDER ||
+                    creature->GetEntry() == NPC_LIFT_DEFENDER ||
+                    creature->GetEntry() == NPC_SERPENTS_SPINE_DEFENDER)
+                {
+                    creature->DespawnOrUnsummon(1 * IN_MILLISECONDS);
+                    return;
+                }
+
+                if (instance->IsChallengeDungeon() && !IsChallengeModeCompleted() &&
+                    creature->GetEntry() != NPC_KRITHIK_GLIDER)
+                    UpdateConditionInfo(creature, ENEMIES_COUNT);
             }
 
             void SetData(uint32 type, uint32 data) override
@@ -415,6 +464,15 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                                 {
                                     if (Creature* defender = instance->GetCreature(itr))
                                     {
+                                        // Defenders can die in the ambient fight before the player
+                                        // reaches this trigger. A corpse cannot perform the scripted
+                                        // jump and would otherwise float in the moving elevator shaft.
+                                        if (!defender->IsAlive())
+                                        {
+                                            defender->DespawnOrUnsummon();
+                                            continue;
+                                        }
+
                                         if (defender->IsAIEnabled)
                                             defender->AI()->Talk(0);
 
@@ -496,6 +554,8 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                         break;
                     case DATA_BRASIER_CLICKED:
                         braiserState = data;
+                        if (data == DONE)
+                            ClearBombardment();
                         break;
                     default:
                         if (type < MAX_DATA)
@@ -537,6 +597,9 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                     case NPC_WEAK_SPOT:
                         raigonWeakGuid = data;
                         break;
+                    case DATA_BOMBARDER_DEFEATED:
+                        RemoveBombarder(data);
+                        break;
                 }
             }
 
@@ -555,9 +618,9 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                     case NPC_WEAK_SPOT:
                         return raigonWeakGuid;
                     case DATA_RANDOM_BOMBARDER:
-                        return Trinity::Containers::SelectRandomContainerElement(bombarderGuids);
+                        return bombarderGuids.empty() ? ObjectGuid::Empty : Trinity::Containers::SelectRandomContainerElement(bombarderGuids);
                     case DATA_RANDOM_BOMB_STALKER:
-                        return Trinity::Containers::SelectRandomContainerElement(bombStalkerGuids);
+                        return bombStalkerGuids.empty() ? ObjectGuid::Empty : Trinity::Containers::SelectRandomContainerElement(bombStalkerGuids);
                     case DATA_CORNER_A:
                         return explosionTarget1GUID;
                     case DATA_CORNER_B:
@@ -572,6 +635,8 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
                         return traineeGUID;
                     case DATA_SIGNAL_FIRE:
                         return fireSignalGuid;
+                    case DATA_ELEVATOR:
+                        return elevatorGUID;
                     case DATA_ROPE:
                         for (auto&& guid : ropeGUIDs)
                              return guid;
@@ -633,6 +698,9 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
 
                     loadStream >> temp;
                     braiserState = temp ? DONE : NOT_STARTED;
+
+                    if (braiserState == DONE)
+                        ClearBombardment();
                 }
                 else OUT_LOAD_INST_DATA_FAIL;
 
@@ -666,10 +734,63 @@ class instance_gate_of_the_setting_sun : public InstanceMapScript
             ObjectGuid defenderBGUID;
             ObjectGuid greatDoorGUID;
             ObjectGuid greatDoor2GUID;
+
+            void AttachLiftDefender(Creature* defender)
+            {
+                if (!defender || defender->GetTransport())
+                    return;
+
+                GameObject* elevator = instance->GetGameObject(elevatorGUID);
+                Transport* transport = elevator ? elevator->ToTransport() : nullptr;
+                if (!transport)
+                    return;
+
+                // Their DB positions belong to the upper endpoint. Waiting for
+                // the moving platform to be aligned also covers either object
+                // creation order without baking in a transport-local Z offset.
+                if (defender->GetExactDist2d(elevator) > 10.0f ||
+                    std::fabs(defender->GetPositionZ() - elevator->GetPositionZ()) > 5.0f)
+                    return;
+
+                float x, y, z, o;
+                defender->GetPosition(x, y, z, o);
+                transport->CalculatePassengerOffset(x, y, z, &o);
+                defender->m_movementInfo.transport.pos.Relocate(x, y, z, o);
+                defender->SetTransportHomePosition(defender->m_movementInfo.transport.pos);
+                transport->AddPassenger(defender);
+            }
+
+            void RemoveBombarder(ObjectGuid guid)
+            {
+                bombarderGuids.remove(guid);
+
+                if (!bombarderGuids.empty())
+                    return;
+
+                for (ObjectGuid const& stalkerGuid : bombStalkerGuids)
+                    if (Creature* stalker = instance->GetCreature(stalkerGuid))
+                        stalker->RemoveAurasDueToSpell(SPELL_BOMBARDMENT_FIRE);
+            }
+
+            void ClearBombardment()
+            {
+                std::list<ObjectGuid> bombarders = bombarderGuids;
+                bombarderGuids.clear();
+
+                for (ObjectGuid const& bombarderGuid : bombarders)
+                    if (Creature* bombarder = instance->GetCreature(bombarderGuid))
+                        bombarder->DespawnOrUnsummon();
+
+                for (ObjectGuid const& stalkerGuid : bombStalkerGuids)
+                    if (Creature* stalker = instance->GetCreature(stalkerGuid))
+                        stalker->RemoveAurasDueToSpell(SPELL_BOMBARDMENT_FIRE);
+            }
             ObjectGuid elevatorGUID;
+            uint32 liftDefenderAttachTimer;
             uint32 dataStorage[MAX_DATA];
             std::list<ObjectGuid> bombarderGuids;
             std::list<ObjectGuid> fallDefendersGUIDS;
+            std::list<ObjectGuid> liftDefenderGUIDS;
             std::list<ObjectGuid> bombStalkerGuids;
             std::list<ObjectGuid> mantidBombsGUIDs;
             std::list<ObjectGuid> rimokAddGenetarorsGUIDs;
