@@ -26,7 +26,11 @@
 #include "Log.h"
 #include "ObjectMgr.h"
 //#include "Random.h"
+#include <algorithm>
+#include <cctype>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 AuctionBotSeller::AuctionBotSeller()
 {
@@ -108,14 +112,93 @@ bool AuctionBotSeller::Initialize()
 
     uint32 itemsAdded = 0;
 
+    // For bags, only keep one item per bag subclass:
+    // the bag with the most slots. If several have the same number
+    // of slots, keep the lowest item ID.
+    std::unordered_map<uint8, uint32> bestContainerItems;
+
+    for (uint32 itemId = 0; itemId < sItemStore.GetNumRows(); ++itemId)
+    {
+        ItemTemplate const* prototype = sObjectMgr->GetItemTemplate(itemId);
+        if (!prototype || prototype->GetClass() != ITEM_CLASS_CONTAINER)
+            continue;
+
+        uint8 subclass = prototype->GetSubClass();
+        auto it = bestContainerItems.find(subclass);
+
+        if (it == bestContainerItems.end())
+        {
+            bestContainerItems[subclass] = itemId;
+            continue;
+        }
+
+        ItemTemplate const* currentBest = sObjectMgr->GetItemTemplate(it->second);
+        if (!currentBest ||
+            prototype->ContainerSlots > currentBest->ContainerSlots ||
+            (prototype->ContainerSlots == currentBest->ContainerSlots && itemId < it->second))
+        {
+            it->second = itemId;
+        }
+    }
+
     for (uint32 itemId = 0; itemId < sItemStore.GetNumRows(); ++itemId)
     {
         ItemTemplate const* prototype = sObjectMgr->GetItemTemplate(itemId);
         if (!prototype)
             continue;
 
+        // Never put deprecated/placeholder items on the AH.
+        std::string itemName = prototype->Name1;
+        std::transform(itemName.begin(), itemName.end(), itemName.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+
+        if (itemName.find("deprecated") != std::string::npos ||
+            itemName.find("[ph]") != std::string::npos ||
+            itemName.find("placeholder") != std::string::npos)
+            continue;
+
         // skip items with too high quality (code can't properly work with its)
         if (prototype->GetQuality() >= MAX_AUCTION_QUALITY)
+            continue;
+
+        // Bags: only sell the single largest bag of each bag subclass.
+        // This removes all smaller duplicate bag variants from the AH.
+        if (prototype->GetClass() == ITEM_CLASS_CONTAINER)
+        {
+            auto best = bestContainerItems.find(prototype->GetSubClass());
+            if (best == bestContainerItems.end() || best->second != itemId)
+                continue;
+        }
+
+        // Custom AHBot availability rules.
+        // Always allow:
+        //   - all gems
+        //   - all recipes
+        //   - all glyphs
+        //   - the single largest bag of each bag subclass
+        //   - all rare (blue) and epic (purple) items
+        //
+        // Difficult dungeon/raid profession materials are added separately.
+        bool customAllowed =
+            prototype->GetClass() == ITEM_CLASS_GEM ||
+            prototype->GetClass() == ITEM_CLASS_RECIPE ||
+            prototype->GetClass() == ITEM_CLASS_GLYPH ||
+            prototype->GetClass() == ITEM_CLASS_CONTAINER ||
+            prototype->GetQuality() == ITEM_QUALITY_RARE ||
+            prototype->GetQuality() == ITEM_QUALITY_EPIC ||
+            itemId == 11370 || // Dark Iron Ore
+            itemId == 12811 || // Righteous Orb
+            itemId == 17012 || // Core Leather
+            itemId == 20520 || // Dark Rune
+            itemId == 21882;   // Soul Essence
+
+        if (!customAllowed)
+            continue;
+
+        // Skip junk glyph variants requiring level 1 or level 50.
+        if (prototype->GetClass() == ITEM_CLASS_GLYPH &&
+            (prototype->GetRequiredLevel() == 1 ||
+             prototype->GetRequiredLevel() == 50))
             continue;
 
         // forced exclude filter
@@ -130,106 +213,17 @@ bool AuctionBotSeller::Initialize()
             continue;
         }
 
-        // bounding filters
-        switch (prototype->GetBonding())
-        {
-            case BIND_NONE:
-                if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIND_NO))
-                    continue;
-                break;
-            case BIND_ON_ACQUIRE:
-                if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIND_PICKUP))
-                    continue;
-                break;
-            case BIND_ON_EQUIP:
-                if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIND_EQUIP))
-                    continue;
-                break;
-            case BIND_ON_USE:
-                if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIND_USE))
-                    continue;
-                break;
-            case BIND_QUEST:
-                if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIND_QUEST))
-                    continue;
-                break;
-            default:
-                continue;
-        }
+        // Bonding filtering is intentionally bypassed for the custom AHBot pool.
+        // This allows selected BoP items, including rare/epic dungeon and raid
+        // items, to be sold by AHBot.
 
-        bool allowZero = false;
-        switch (prototype->GetClass())
-        {
-            case ITEM_CLASS_CONSUMABLE:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_CONSUMABLE_ALLOW_ZERO); break;
-            case ITEM_CLASS_CONTAINER:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_CONTAINER_ALLOW_ZERO); break;
-            case ITEM_CLASS_WEAPON:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_WEAPON_ALLOW_ZERO); break;
-            case ITEM_CLASS_GEM:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_GEM_ALLOW_ZERO); break;
-            case ITEM_CLASS_ARMOR:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_ARMOR_ALLOW_ZERO); break;
-            case ITEM_CLASS_REAGENT:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_REAGENT_ALLOW_ZERO); break;
-            case ITEM_CLASS_PROJECTILE:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_PROJECTILE_ALLOW_ZERO); break;
-            case ITEM_CLASS_TRADE_GOODS:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_TRADEGOOD_ALLOW_ZERO); break;
-            case ITEM_CLASS_RECIPE:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_RECIPE_ALLOW_ZERO); break;
-            case ITEM_CLASS_QUIVER:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_QUIVER_ALLOW_ZERO); break;
-            case ITEM_CLASS_QUEST:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_QUEST_ALLOW_ZERO); break;
-            case ITEM_CLASS_KEY:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_KEY_ALLOW_ZERO); break;
-            case ITEM_CLASS_MISCELLANEOUS:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_MISC_ALLOW_ZERO); break;
-            case ITEM_CLASS_GLYPH:
-                allowZero = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_CLASS_GLYPH_ALLOW_ZERO); break;
-            default:
-                allowZero = false;
-        }
+        // Price filtering is intentionally bypassed for the custom AHBot pool.
+        // Some valid gems, recipes, glyphs and rare/epic items have no
+        // normal vendor buy/sell price.
 
-        // Filter out items with no buy/sell price unless otherwise flagged in the config.
-        if (!allowZero)
-        {
-            if (sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_SELLER))
-            {
-                if (prototype->GetSellPrice() == 0)
-                    continue;
-            }
-            else
-            {
-                if (prototype->GetBuyPrice() == 0)
-                    continue;
-            }
-        }
-
-        // vendor filter
-        if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMS_VENDOR))
-        {
-            if (npcItems.count(itemId))
-                continue;
-        }
-
-        // loot filter
-        if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMS_LOOT))
-        {
-            if (lootItems.count(itemId))
-                continue;
-        }
-
-        // not vendor/loot filter
-        if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMS_MISC))
-        {
-            bool const isVendorItem = npcItems.count(itemId) > 0;
-            bool const isLootItem = lootItems.count(itemId) > 0;
-
-            if (!isLootItem && !isVendorItem)
-                continue;
-        }
+        // Source filtering (vendor/loot/misc) is intentionally bypassed.
+        // The customAllowed rules above define exactly which item categories
+        // AHBot is allowed to sell, regardless of where the item originates.
 
         // item class/subclass specific filters
         switch (prototype->GetClass())
@@ -473,6 +467,12 @@ void AuctionBotSeller::LoadItemsQuantity(SellerConfiguration& config)
                 classPrio = 0;
 
             uint32 weightedAmount = std::lroundf(classPrio / float(totalPrioPerQuality[j]) * qualityAmount);
+
+            // Keep a target of 50 auctions for every item in the custom pool.
+            // Example: 200 allowed item entries => target 10,000 auctions.
+            if (!_itemPool[j][i].empty())
+                weightedAmount = static_cast<uint32>(_itemPool[j][i].size()) * 50;
+
             config.SetItemsAmountPerClass(AuctionQuality(j), ItemClass(i), weightedAmount);
         }
     }
@@ -526,19 +526,16 @@ void AuctionBotSeller::LoadSellerValues(SellerConfiguration& config)
 // Fill ItemInfos object with real content of AH.
 uint32 AuctionBotSeller::SetStat(SellerConfiguration& config)
 {
-    AllItemsArray itemsSaved(MAX_AUCTION_QUALITY, std::vector<uint32>(MAX_ITEM_CLASS));
+    std::unordered_map<uint32, uint32> itemCounts;
 
     AuctionHouseObject* auctionHouse = sAuctionMgr->GetAuctionsMap(config.GetHouseType());
     for (AuctionHouseObject::AuctionEntryMap::const_iterator itr = auctionHouse->GetAuctionsBegin(); itr != auctionHouse->GetAuctionsEnd(); ++itr)
     {
         AuctionEntry* auctionEntry = itr->second;
-        Item* item = sAuctionMgr->GetAItem(auctionEntry->itemGUIDLow);
-        if (item)
+        if (auctionEntry &&
+            (!auctionEntry->owner || sAuctionBotConfig->IsBotChar(auctionEntry->owner)))
         {
-            ItemTemplate const* prototype = item->GetTemplate();
-            if (prototype)
-                if (!auctionEntry->owner || sAuctionBotConfig->IsBotChar(auctionEntry->owner)) // Add only ahbot items
-                    ++itemsSaved[prototype->GetQuality()][prototype->GetClass()];
+            ++itemCounts[auctionEntry->itemEntry];
         }
     }
 
@@ -547,7 +544,25 @@ uint32 AuctionBotSeller::SetStat(SellerConfiguration& config)
     {
         for (uint32 i = 0; i < MAX_ITEM_CLASS; ++i)
         {
-            config.SetMissedItemsPerClass((AuctionQuality)j, (ItemClass)i, itemsSaved[j][i]);
+            uint32 missing = 0;
+
+            for (uint32 itemId : _itemPool[j][i])
+            {
+                uint32 current = itemCounts[itemId];
+                if (current < 50)
+                    missing += 50 - current;
+            }
+
+            uint32 target = config.GetItemsAmountPerClass((AuctionQuality)j, (ItemClass)i);
+
+            // SetMissedItemsPerClass calculates target - current internally.
+            // Feed it a synthetic current value so the resulting missed count
+            // exactly equals the sum needed to bring every item back to 50.
+            config.SetMissedItemsPerClass(
+                (AuctionQuality)j,
+                (ItemClass)i,
+                target >= missing ? target - missing : 0);
+
             count += config.GetMissedItemsPerClass((AuctionQuality)j, (ItemClass)i);
         }
     }
@@ -854,19 +869,92 @@ void AuctionBotSeller::AddNewAuctions(SellerConfiguration& config)
 
     ItemsToSellArray itemsToSell;
     AllItemsArray allItems(MAX_AUCTION_QUALITY, std::vector<uint32>(MAX_ITEM_CLASS));
+
+    // Track the number of AHBot auctions for every item entry on this house.
+    // Every allowed item is maintained at a target of 50 auctions.
+    std::unordered_map<uint32, uint32> existingItemCounts;
+
+    for (AuctionHouseObject::AuctionEntryMap::const_iterator itr = auctionHouse->GetAuctionsBegin();
+         itr != auctionHouse->GetAuctionsEnd(); ++itr)
+    {
+        AuctionEntry const* auctionEntry = itr->second;
+        if (auctionEntry &&
+            (!auctionEntry->owner || sAuctionBotConfig->IsBotChar(auctionEntry->owner)))
+        {
+            ++existingItemCounts[auctionEntry->itemEntry];
+        }
+    }
+
     // Main loop
-    // getRandomArray will give what categories of items should be added (return true if there is at least 1 items missed)
+    // Fill the allowed item pool evenly until every item has 50 auctions.
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     while (GetItemsToSell(config, itemsToSell, allItems) && items > 0)
     {
         --items;
 
-        // Select random position from missed items table
-        ItemToSell const& sellItem = Trinity::Containers::SelectRandomContainerElement(itemsToSell);
+        // Pick a category that still has at least one item below 50.
+        ItemsToSellArray availableItemsToSell;
 
-        // Set itemId with random item ID for selected categories and color, from _itemPool table
-        uint32 itemId = Trinity::Containers::SelectRandomContainerElement(_itemPool[sellItem.Color][sellItem.Itemclass]);
-        ++allItems[sellItem.Color][sellItem.Itemclass]; // Helper table to avoid rescan from DB in this loop. (has we add item in random orders)
+        for (ItemToSell const& candidateCategory : itemsToSell)
+        {
+            ItemPool const& candidatePool =
+                _itemPool[candidateCategory.Color][candidateCategory.Itemclass];
+
+            bool hasItemBelowTarget = false;
+            for (uint32 candidateItemId : candidatePool)
+            {
+                if (existingItemCounts[candidateItemId] < 50)
+                {
+                    hasItemBelowTarget = true;
+                    break;
+                }
+            }
+
+            if (hasItemBelowTarget)
+                availableItemsToSell.push_back(candidateCategory);
+        }
+
+        if (availableItemsToSell.empty())
+            break;
+
+        ItemToSell const& sellItem =
+            Trinity::Containers::SelectRandomContainerElement(availableItemsToSell);
+
+        ItemPool const& pool = _itemPool[sellItem.Color][sellItem.Itemclass];
+
+        // Fill one item completely to 50 before moving to the next item.
+        // Prefer an item that already has auctions but is still below 50,
+        // so partially filled items are completed first.
+        uint32 itemId = 0;
+
+        for (uint32 candidate : pool)
+        {
+            uint32 currentCount = existingItemCounts[candidate];
+            if (currentCount > 0 && currentCount < 50)
+            {
+                itemId = candidate;
+                break;
+            }
+        }
+
+        // If there is no partially filled item, start the next missing item.
+        if (!itemId)
+        {
+            for (uint32 candidate : pool)
+            {
+                if (existingItemCounts[candidate] == 0)
+                {
+                    itemId = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (!itemId)
+            continue;
+
+        ++existingItemCounts[itemId];
+        ++allItems[sellItem.Color][sellItem.Itemclass]; // Helper table to avoid rescan from DB in this loop.
 
         if (!itemId)
         {
