@@ -45,6 +45,7 @@ enum eQuests
     QUEST_OVERTHRONE       = 31782,
     QUEST_EMPRESS_GAMBIT   = 31959,
     QUEST_SHADOW_OF_EMPIRE = 31612,
+    QUEST_DISSECTOR_WAKENS = 31606,
 };
 
 enum eCreatures
@@ -55,6 +56,7 @@ enum eCreatures
     NPC_KILRUK_QUEST                 = 66800,
     NPC_KORTHIK_WARCALLER            = 62754,
     NPC_IK_THIK_AMBERSTINGER         = 63728,
+    NPC_RIKKAL_DISSECTOR_QUEST        = 65253,
 };
 
 enum eYells
@@ -3432,6 +3434,81 @@ class spell_dread_waster_sonic_emission : public SpellScript
     }
 };
 
+
+// Rik'kal the Dissector - The Dissector Wakens (31606)
+class npc_rikkal_dissector_quest : public CreatureScript
+{
+public:
+    npc_rikkal_dissector_quest() : CreatureScript("npc_rikkal_dissector_quest") { }
+
+    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_DISSECTOR_WAKENS)
+            creature->AI()->SetGUID(player->GetGUID());
+
+        return true;
+    }
+
+    struct npc_rikkal_dissector_questAI : public ScriptedAI
+    {
+        npc_rikkal_dissector_questAI(Creature* creature) : ScriptedAI(creature) { }
+
+        ObjectGuid playerGUID;
+        uint32 wakeTimer;
+        bool eventActive;
+
+        void Reset() override
+        {
+            playerGUID = ObjectGuid::Empty;
+            wakeTimer = 0;
+            eventActive = false;
+        }
+
+        void SetGUID(ObjectGuid guid, int32 /*type*/) override
+        {
+            if (eventActive)
+                return;
+
+            playerGUID = guid;
+            wakeTimer = 30000;
+            eventActive = true;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (!eventActive)
+                return;
+
+            Player* player = ObjectAccessor::GetPlayer(*me, playerGUID);
+
+            if (!player ||
+                player->GetQuestStatus(QUEST_DISSECTOR_WAKENS) != QUEST_STATUS_INCOMPLETE ||
+                !player->IsWithinDistInMap(me, 80.0f))
+            {
+                Reset();
+                return;
+            }
+
+            if (wakeTimer <= diff)
+            {
+                player->KilledMonsterCredit(NPC_RIKKAL_DISSECTOR_QUEST);
+
+                eventActive = false;
+                playerGUID = ObjectGuid::Empty;
+                wakeTimer = 0;
+                return;
+            }
+
+            wakeTimer -= diff;
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_rikkal_dissector_questAI(creature);
+    }
+};
+
 void AddSC_dread_wastes()
 {
     // Rare Mobs
@@ -3469,6 +3546,7 @@ void AddSC_dread_wastes()
     new spell_zet_uk_sha_eruption();
     new spell_zet_uk_sha_eruption_periodic_summon();
     // Quest scripts
+    new npc_rikkal_dissector_quest();
     new AreaTrigger_at_q_wood_and_shade();
     new go_full_crab_pot();
     new spell_item_living_amber();

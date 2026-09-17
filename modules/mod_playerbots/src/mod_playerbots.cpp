@@ -108,6 +108,7 @@ public:
         UpdateSoloArenaAutomaticQueue(diff);
         UpdateSoloArenaAutomaticExit(diff);
         UpdateWorldBossStagedRaid(diff);
+        UpdateLegacyRaidStagedRaid(diff);
     }
 };
 

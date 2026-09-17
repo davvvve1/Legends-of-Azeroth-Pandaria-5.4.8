@@ -742,6 +742,17 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recvData)
             std::string IP_str = GetRemoteAddress();
             TC_LOG_INFO("entities.player.character", "Account: %d (IP: %s) Create Character:[%s] (GUID: %u)", GetAccountId(), IP_str.c_str(), createInfo->Name.c_str(), newChar.GetGUID().GetCounter());
             sScriptMgr->OnPlayerCreate(&newChar);
+
+            // Automatically add newly created player characters to Linuxusers
+            // and give them maximum guild reputation.
+            if (Guild* guild = sGuildMgr->GetGuildByName("Linuxusers"))
+            {
+                guild->AddMember(newChar.GetGUID(), GR_MEMBER);
+
+                if (FactionEntry const* faction = sFactionStore.LookupEntry(GUILD_REPUTATION_ID))
+                    newChar.GetReputationMgr().SetReputation(faction, ReputationMgr::Reputation_Cap);
+            }
+
             sWorld->AddCharacterNameData(newChar.GetGUID(), newChar.GetName(), newChar.GetGender(), newChar.GetRace(), newChar.GetClass(), newChar.GetLevel());
 
             newChar.CleanupsBeforeDelete();

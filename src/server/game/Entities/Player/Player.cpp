@@ -30391,6 +30391,13 @@ void Player::_LoadGuildInfo(PreparedQueryResult result)
             SetRank(fields[1].GetUInt8());
             SetGuildLevel(guild->GetLevel());
 
+            // Linuxusers: always give members maximum guild reputation.
+            if (guild->GetName() == "Linuxusers")
+            {
+                if (FactionEntry const* faction = sFactionStore.LookupEntry(GUILD_REPUTATION_ID))
+                    GetReputationMgr().SetReputation(faction, ReputationMgr::Reputation_Cap);
+            }
+
             if (!sWorld->getBoolConfig(CONFIG_GUILD_LEVELING_ENABLED))
                 return;
 

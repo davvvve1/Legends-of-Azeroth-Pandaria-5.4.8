@@ -186,6 +186,69 @@ namespace
         }
     }
 
+    bool IsLfgRaidAllowedForLevel(Player* player, lfg::LFGDungeonData const* dungeon)
+    {
+        if (!player || !dungeon)
+            return false;
+
+        // Only apply this special progression rule to Raid Finder.
+        if (dungeon->difficulty != RAID_DIFFICULTY_25MAN_LFR)
+            return true;
+
+        uint8 level = player->GetLevel();
+
+        // Raid Finder starts at level 60.
+        if (level < 60)
+            return false;
+
+        // Level 90 is the transmog exception: allow every older LFR raid.
+        if (level >= 90)
+            return true;
+
+        // Expansion unlock levels:
+        // Classic 60, TBC 70, WotLK 80, Cataclysm 85.
+        uint8 requiredLevel = 60;
+        switch (dungeon->expansion)
+        {
+            case EXPANSION_CLASSIC:
+                requiredLevel = 60;
+                break;
+            case EXPANSION_THE_BURNING_CRUSADE:
+                requiredLevel = 70;
+                break;
+            case EXPANSION_WRATH_OF_THE_LICH_KING:
+                requiredLevel = 80;
+                break;
+            case EXPANSION_CATACLYSM:
+                requiredLevel = 85;
+                break;
+            default:
+                // Mists and any future expansion use the normal LFG
+                // min/max-level checks rather than this legacy-raid rule.
+                return true;
+        }
+
+        return level >= requiredLevel;
+    }
+
+    bool IsLfgRaidSetAllowedForLevel(Player* player, lfg::LfgDungeonSet const& dungeons)
+    {
+        if (!player)
+            return false;
+
+        for (uint32 dungeonId : dungeons)
+        {
+            lfg::LFGDungeonData const* dungeon = sLFGMgr->GetLFGDungeon(dungeonId);
+            if (!dungeon)
+                dungeon = sLFGMgr->GetLFGDungeon(dungeonId & 0x00FFFFFF);
+
+            if (dungeon && !IsLfgRaidAllowedForLevel(player, dungeon))
+                return false;
+        }
+
+        return true;
+    }
+
     uint32 GetLfgMinimumItemLevel(lfg::LfgDungeonSet const& dungeons)
     {
         uint32 minimumItemLevel = 0;
@@ -610,6 +673,11 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
 
                         if (requesterGuid)
                         {
+                            Player* requester = ObjectAccessor::FindConnectedPlayer(
+                                ObjectGuid::Create<HighGuid::Player>(requesterGuid));
+                            if (!requester)
+                                continue;
+
                             uint32 dungeonId = *queuePair.second.Dungeons.begin();
                             lfg::DungeonQueue const& dungeonQueue =
                                 managerPair.second.GetQueue(dungeonId);
@@ -625,6 +693,13 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
                                 demand.Team = managerPair.first;
                                 demand.RequesterGuid = requesterGuid;
                                 demand.Dungeons = queuePair.second.Dungeons;
+
+                                // Legacy Raid Finder progression:
+                                // 60 Classic, 70 TBC, 80 WotLK, 85 Cataclysm.
+                                // Level 90 can use all older LFR raids for transmog.
+                                if (!IsLfgRaidSetAllowedForLevel(requester, demand.Dungeons))
+                                    continue;
+
                                 demand.RandomDungeon = sLFGMgr->GetRandomDungeon(
                                     ObjectGuid::Create<HighGuid::Player>(requesterGuid),
                                     queuePair.second.QueueId);

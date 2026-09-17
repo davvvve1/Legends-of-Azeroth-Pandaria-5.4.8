@@ -438,6 +438,36 @@ void LFGMgr::InitializeLockedDungeons(Player* player, uint8 level /* = 0 */)
             lockStatus = LFG_LOCKSTATUS_RAID_LOCKED;
         else if (dungeon->expansion > expansion)
             lockStatus = LFG_LOCKSTATUS_INSUFFICIENT_EXPANSION;
+        else if (dungeon->category == LFG_CATEGORY_LFR &&
+                 (dungeon->type == LFG_TYPE_RAID ||
+                  dungeon->difficulty == RAID_DIFFICULTY_25MAN_LFR))
+        {
+            uint8 requiredLevel = dungeon->minlevel;
+
+            switch (dungeon->expansion)
+            {
+                case EXPANSION_CLASSIC:
+                    requiredLevel = 60;
+                    break;
+                case EXPANSION_THE_BURNING_CRUSADE:
+                    requiredLevel = 70;
+                    break;
+                case EXPANSION_WRATH_OF_THE_LICH_KING:
+                    requiredLevel = 80;
+                    break;
+                case EXPANSION_CATACLYSM:
+                    requiredLevel = 85;
+                    break;
+                case EXPANSION_MISTS_OF_PANDARIA:
+                    requiredLevel = 90;
+                    break;
+                default:
+                    break;
+            }
+
+            if (level < requiredLevel)
+                lockStatus = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
+        }
         else if (dungeon->minlevel > level)
             lockStatus = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
         else if (dungeon->maxlevel && dungeon->maxlevel < level)
