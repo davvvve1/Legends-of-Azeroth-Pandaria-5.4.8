@@ -2775,6 +2775,7 @@ class npc_nectarbreeze_farmer : public CreatureScript
                 if (player->GetQuestStatus(29579) == QUEST_STATUS_INCOMPLETE)
                 {
                     player->CastSpell(player, 102469, true);
+                    player->KilledMonsterCredit(54872);
                     creature->AI()->Talk(0);
                     creature->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     creature->DespawnOrUnsummon(2000);
@@ -4843,6 +4844,61 @@ class spell_reverse_cast_ride_seat_1 : public SpellScript
     }
 };
 
+
+// Sully "The Pickle" McLeary - SI:7 Report: Fire From the Sky (29725)
+enum q29725
+{
+    QUEST_FIRE_FROM_THE_SKY = 29725,
+    NPC_SULLY_SE_CREDIT     = 55349,
+    NPC_SULLY_SW_CREDIT     = 55350,
+    NPC_SULLY_N_CREDIT      = 55351,
+    NPC_SULLY_RETURN_CREDIT = 55352
+};
+
+class npc_sully_fire_from_the_sky : public CreatureScript
+{
+public:
+    npc_sully_fire_from_the_sky() : CreatureScript("npc_sully_fire_from_the_sky") { }
+
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    {
+        if (quest->GetQuestId() != QUEST_FIRE_FROM_THE_SKY)
+            return true;
+
+        ObjectGuid playerGuid = player->GetGUID();
+
+        player->m_Events.Schedule(2000, [player, playerGuid]()
+        {
+            if (player->GetGUID() == playerGuid &&
+                player->GetQuestStatus(QUEST_FIRE_FROM_THE_SKY) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_SULLY_SE_CREDIT);
+        });
+
+        player->m_Events.Schedule(4000, [player, playerGuid]()
+        {
+            if (player->GetGUID() == playerGuid &&
+                player->GetQuestStatus(QUEST_FIRE_FROM_THE_SKY) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_SULLY_SW_CREDIT);
+        });
+
+        player->m_Events.Schedule(6000, [player, playerGuid]()
+        {
+            if (player->GetGUID() == playerGuid &&
+                player->GetQuestStatus(QUEST_FIRE_FROM_THE_SKY) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_SULLY_N_CREDIT);
+        });
+
+        player->m_Events.Schedule(8000, [player, playerGuid]()
+        {
+            if (player->GetGUID() == playerGuid &&
+                player->GetQuestStatus(QUEST_FIRE_FROM_THE_SKY) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_SULLY_RETURN_CREDIT);
+        });
+
+        return true;
+    }
+};
+
 void AddSC_jade_forest()
 {
     // Rare mobs
@@ -4889,6 +4945,7 @@ void AddSC_jade_forest()
     new creature_script<npc_shadowfae_trickster>("npc_shadowfae_trickster");
     new creature_script<npc_thunderfist_gorilla>("npc_thunderfist_gorilla");
     // Quest scripts
+    new npc_sully_fire_from_the_sky();
     new npc_nectarbreeze_farmer();
     new creature_script<npc_windward_hatchling>("npc_windward_hatchling");
     new creature_script<npc_windward_nest_trigger>("npc_windward_nest_trigger");

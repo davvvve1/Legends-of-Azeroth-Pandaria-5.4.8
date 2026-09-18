@@ -250,9 +250,8 @@ bool AutoReleaseSpiritAction::isUseful()
     if (!botAI->HasActivePlayerMaster())
         return true;
 
-    if (botAI->HasActivePlayerMaster() && botAI->GetGroupMaster()->GetMapId() == bot->GetMapId() && bot->GetMap() &&
-        (bot->GetMap()->IsRaid() || bot->GetMap()->IsDungeon()))
-        return false;
+    // Dead dungeon/raid bots should release and run back to their corpse
+    // instead of waiting indefinitely for a combat resurrection.
 
     if (botAI->GetGroupMaster()->isDead())
         return true;

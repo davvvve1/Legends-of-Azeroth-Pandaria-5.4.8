@@ -1061,8 +1061,21 @@ class AreaTrigger_at_hyjal_alysra : public AreaTriggerScript
 
         bool OnTrigger(Player* player, AreaTriggerEntry const* trigger) override
         {
-            if (player->GetQuestStatus(QUEST_THROUGH_THE_DREAM) == QUEST_STATUS_INCOMPLETE)
+            QuestStatus status = player->GetQuestStatus(QUEST_THROUGH_THE_DREAM);
+
+            if (status == QUEST_STATUS_INCOMPLETE)
                 player->CompleteQuest(QUEST_THROUGH_THE_DREAM);
+
+            // Leave the Emerald Dream when exiting the Barrow Dens.
+            // Also repairs players who already completed/rewarded the quest
+            // but still have the permanent Emerald Dream aura.
+            if (status == QUEST_STATUS_INCOMPLETE ||
+                status == QUEST_STATUS_COMPLETE ||
+                status == QUEST_STATUS_REWARDED)
+            {
+                player->RemoveAurasDueToSpell(SPELL_EMERALD_DREAM_EFF);
+                player->SetPhaseMask(1, true);
+            }
 
             return false;
         }

@@ -655,6 +655,68 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     else
         _invalidFollowPositionSince = 0;
 
+
+    // Keep living playerbots close to their real player master.
+    // If normal follow movement leaves the bot more than 40 yards away,
+    // recover directly beside the master. This only applies to the same
+    // map, living real-player follow context.
+    Player* distanceRecoveryMaster = GetMaster();
+    bool tooFarFromMaster = distanceRecoveryMaster &&
+        !GET_PLAYERBOT_AI(distanceRecoveryMaster) &&
+        distanceRecoveryMaster->IsInWorld() &&
+        distanceRecoveryMaster->GetMap() == bot->GetMap() &&
+        bot->IsAlive() &&
+        distanceRecoveryMaster->IsAlive() &&
+        !bot->IsBeingTeleported() &&
+        !distanceRecoveryMaster->IsBeingTeleported() &&
+        !bot->GetVehicle() &&
+        !distanceRecoveryMaster->GetVehicle() &&
+        !bot->GetTransport() &&
+        !distanceRecoveryMaster->GetTransport() &&
+        bot->GetDistance(distanceRecoveryMaster) > 40.0f;
+
+    if (tooFarFromMaster)
+    {
+        float x, y, z;
+        distanceRecoveryMaster->GetClosePoint(
+            x, y, z,
+            bot->GetObjectSize(),
+            1.5f,
+            static_cast<float>(M_PI));
+
+        z += 0.5f;
+
+        float oldDistance = bot->GetDistance(distanceRecoveryMaster);
+
+        bot->GetMotionMaster()->Clear();
+        bot->NearTeleportTo(
+            x, y, z,
+            distanceRecoveryMaster->GetOrientation());
+
+        if (Pet* pet = bot->GetPet())
+        {
+            float petX, petY, petZ;
+            bot->GetClosePoint(
+                petX, petY, petZ,
+                pet->GetObjectSize(),
+                PET_FOLLOW_DIST,
+                pet->GetFollowAngle());
+
+            petZ += 0.5f;
+            pet->GetMotionMaster()->Clear();
+            pet->NearTeleportTo(
+                petX, petY, petZ,
+                bot->GetOrientation());
+        }
+
+        TC_LOG_WARN("server",
+            "Playerbot recovered to real master bot=%s guid=%u distance=%.2f master=%s",
+            bot->GetName().c_str(),
+            bot->GetGUID().GetCounter(),
+            oldDistance,
+            distanceRecoveryMaster->GetName().c_str());
+    }
+
     // Strategy containers belong to this map update thread. The LFG
     // coordinator only posts an atomic request so actions cannot be destroyed
     // while Engine::DoNextAction is using them.
