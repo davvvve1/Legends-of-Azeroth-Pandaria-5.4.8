@@ -2968,6 +2968,8 @@ bool StartLegacyRaidStage(Player* requester,
 
     if (dungeon->id == 48) // Molten Core is 25-player in this 5.4.8 client.
         raidSize = 25;
+    else if (dungeon->id == 160) // Ruins of Ahn'Qiraj is 10-player here.
+        raidSize = 10;
 
     if (raidSize < 10)
     {
@@ -3042,33 +3044,82 @@ bool StartLegacyRaidStage(Player* requester,
         if (activeSpec >= MAX_TALENT_SPECS)
             activeSpec = 0;
 
-        Specializations specialization =
-            Specializations(specs[activeSpec]);
-        WorldBossPreviewRole role =
-            GetWorldBossPreviewRole(specialization);
-        if (role == WorldBossPreviewRole::None)
-            continue;
+        uint8 candidateClass = fields[3].GetUInt8();
+        dbc::TalentTabs classSpecializations =
+            dbc::GetClassSpecializations(candidateClass);
 
         SoloArenaPreviewCandidate gear;
         ReadSoloArenaGear(fields[6].GetString(), gear);
 
-        size_t roleIndex = role == WorldBossPreviewRole::Tank ? 0 :
-            (role == WorldBossPreviewRole::Healer ? 1 : 2);
+        // A legacy raid may need a role that is not the character's currently
+        // saved specialization. Make the character a candidate for every raid
+        // role its class supports and remember the best PvE specialization
+        // for each role. The selected specialization is applied after login.
+        for (size_t roleIndex = 0; roleIndex < candidates.size(); ++roleIndex)
+        {
+            WorldBossPreviewRole wantedRole = roleIndex == 0 ?
+                WorldBossPreviewRole::Tank :
+                (roleIndex == 1 ? WorldBossPreviewRole::Healer :
+                    WorldBossPreviewRole::Damage);
 
-        WorldBossStagedCandidate candidate;
-        candidate.Guid = guidLow;
-        candidate.Name = fields[1].GetString();
-        candidate.Class = fields[3].GetUInt8();
-        candidate.Role = role;
-        candidate.Specialization = specialization;
-        candidate.PvpItems = gear.PvpItems;
-        candidate.AverageItemLevel = gear.AverageItemLevel;
-        candidate.OriginalMap = fields[7].GetUInt32();
-        candidate.OriginalX = fields[8].GetFloat();
-        candidate.OriginalY = fields[9].GetFloat();
-        candidate.OriginalZ = fields[10].GetFloat();
-        candidate.OriginalO = fields[11].GetFloat();
-        candidates[roleIndex].push_back(candidate);
+            Specializations bestSpecialization = SPEC_NONE;
+            uint32 bestScore = 0;
+
+            for (uint8 tab = 0;
+                 tab < classSpecializations.size() &&
+                 tab < MAX_TALENT_TABS; ++tab)
+            {
+                Specializations specialization =
+                    Specializations(classSpecializations[tab]);
+
+                if (GetWorldBossPreviewRole(specialization) != wantedRole)
+                    continue;
+
+                uint32 score = uint32(
+                    GetAutomatedBotSpecializationPriority(
+                        specialization, false)) * 4;
+
+                if (Specializations(specs[activeSpec]) == specialization)
+                    score += 2;
+                else
+                {
+                    for (uint8 specSlot = 0;
+                         specSlot < MAX_TALENT_SPECS; ++specSlot)
+                    {
+                        if (Specializations(specs[specSlot]) ==
+                            specialization)
+                        {
+                            ++score;
+                            break;
+                        }
+                    }
+                }
+
+                if (bestSpecialization == SPEC_NONE || score > bestScore)
+                {
+                    bestSpecialization = specialization;
+                    bestScore = score;
+                }
+            }
+
+            if (bestSpecialization == SPEC_NONE)
+                continue;
+
+            WorldBossStagedCandidate candidate;
+            candidate.Guid = guidLow;
+            candidate.Name = fields[1].GetString();
+            candidate.Class = candidateClass;
+            candidate.Role = wantedRole;
+            candidate.Specialization = bestSpecialization;
+            candidate.PvpItems = gear.PvpItems;
+            candidate.AverageItemLevel = gear.AverageItemLevel;
+            candidate.OriginalMap = fields[7].GetUInt32();
+            candidate.OriginalX = fields[8].GetFloat();
+            candidate.OriginalY = fields[9].GetFloat();
+            candidate.OriginalZ = fields[10].GetFloat();
+            candidate.OriginalO = fields[11].GetFloat();
+            candidates[roleIndex].push_back(candidate);
+        }
     }
     while (result->NextRow());
 
@@ -3111,6 +3162,7 @@ bool StartLegacyRaidStage(Player* requester,
         GetWorldBossRaidBuffMask(requester->GetSpecialization());
     std::array<uint32, 3> selectedCounts =
         {{ neededTanks, neededHealers, neededDamage }};
+    std::set<uint32> selectedGuids;
 
     for (size_t roleIndex = 0; roleIndex < candidates.size(); ++roleIndex)
     {
@@ -3119,14 +3171,28 @@ bool StartLegacyRaidStage(Player* requester,
             (roleIndex == 1 ? WorldBossPreviewRole::Healer :
                 WorldBossPreviewRole::Damage);
 
-        if (!SelectWorldBossDiverseRole(candidates[roleIndex],
+        // A hybrid class can be a candidate for several roles. Never allow
+        // the same character GUID to occupy more than one raid slot.
+        auto& roleCandidates = candidates[roleIndex];
+        roleCandidates.erase(
+            std::remove_if(roleCandidates.begin(), roleCandidates.end(),
+                [&](WorldBossStagedCandidate const& candidate)
+                {
+                    return selectedGuids.count(candidate.Guid) != 0;
+                }),
+            roleCandidates.end());
+
+        if (!SelectWorldBossDiverseRole(roleCandidates,
             selectedCounts[roleIndex], requester->GetClass(),
             requesterRole == role, coveredBuffs,
             selectedIndices[roleIndex], selectedClasses[roleIndex]))
         {
-            error = "class-diverse raid composition could not be formed";
+            error = "class-diverse raid composition could not be formed with unique bots";
             return false;
         }
+
+        for (uint32 index : selectedIndices[roleIndex])
+            selectedGuids.insert(roleCandidates[index].Guid);
     }
 
     LegacyRaidStagedBots.clear();
@@ -3247,6 +3313,75 @@ void UpdateLegacyRaidStagedRaid(uint32 diff)
             }
 
             PrepareLegacyRaidBotForSummon(bot);
+
+            // Apply the specialization selected during raid staging. A poolbot
+            // may have been chosen for a role different from its saved active
+            // specialization, for example an Arms warrior filling a tank slot
+            // as Protection.
+            auto stagedCandidate =
+                LegacyRaidStagedBots.find(bot->GetGUID().GetCounter());
+            if (stagedCandidate == LegacyRaidStagedBots.end())
+            {
+                BeginLegacyRaidStageCleanup(
+                    "a staged bot lost its raid candidate data");
+                return;
+            }
+
+            Specializations wantedSpecialization =
+                stagedCandidate->second.Specialization;
+
+            if (wantedSpecialization != SPEC_NONE &&
+                bot->GetSpecialization() != wantedSpecialization)
+            {
+                dbc::TalentTabs classSpecializations =
+                    dbc::GetClassSpecializations(bot->GetClass());
+
+                uint8 specializationTab = MAX_TALENT_TABS;
+                for (uint8 tab = 0;
+                     tab < classSpecializations.size() &&
+                     tab < MAX_TALENT_TABS; ++tab)
+                {
+                    if (Specializations(classSpecializations[tab]) ==
+                        wantedSpecialization)
+                    {
+                        specializationTab = tab;
+                        break;
+                    }
+                }
+
+                if (specializationTab >= MAX_TALENT_TABS)
+                {
+                    BeginLegacyRaidStageCleanup(
+                        "a staged bot has an invalid raid specialization");
+                    return;
+                }
+
+                bot->ResetTalents(true, true, true);
+                WorldPacket specialization(CMSG_SET_PRIMARY_TALENT_TREE);
+                specialization << uint32(specializationTab);
+                bot->GetSession()->HandeSetTalentSpecialization(
+                    specialization);
+                bot->ActivateSpec(0);
+
+                BotFactory specializationFactory(bot, bot->GetLevel());
+                specializationFactory.InitTalentsTree(false);
+
+                TC_LOG_INFO("server",
+                    "Legacy raid changed bot specialization name=%s guid=%u specialization=%u role=%u",
+                    bot->GetName().c_str(),
+                    bot->GetGUID().GetCounter(),
+                    uint32(bot->GetSpecialization()),
+                    uint32(stagedCandidate->second.Role));
+            }
+
+            if (bot->GetSpecialization() != wantedSpecialization ||
+                GetWorldBossPreviewRole(bot->GetSpecialization()) !=
+                    stagedCandidate->second.Role)
+            {
+                BeginLegacyRaidStageCleanup(
+                    "a staged bot could not enter its required raid role");
+                return;
+            }
 
             BotFactory factory(bot, bot->GetLevel());
             std::string loadoutError;
