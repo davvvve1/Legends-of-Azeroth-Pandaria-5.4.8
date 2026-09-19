@@ -45,7 +45,10 @@ enum Spells
     SPELL_INCITING_ROAR      = 122959,
 
     SPELL_DART_AURA          = 120143,
-    SPELL_DART_DAMAGE        = 120142
+    SPELL_DART_DAMAGE        = 120142,
+
+    SPELL_GLOWING_GEM              = 124524,
+    SPELL_SECRET_DEFENSE_MECHANISM = 124527
 };
 
 enum Creatures
@@ -58,6 +61,19 @@ enum Actions
     ACTION_ACTIVATE_BUTTON   = 0,
     ACTION_DEACTIVATE_BUTTON = 1,
 };
+
+enum GuidTypes
+{
+    GUID_GEM_CLICKED = 1,
+};
+
+enum DataTypes
+{
+    DATA_GEM_ATTEMPT_FAILED = 100,
+    DATA_SECOND_GEM_ACTIVATED = 101,
+};
+
+static const uint32 GEM_CLICK_WINDOW = 6 * IN_MILLISECONDS;
 
 // Constants to define which world triggers can be chosen as blade launchers
 
@@ -110,6 +126,13 @@ class boss_xin_the_weaponmaster : public CreatureScript
 
             bool m_bHasYelled;
             std::list <Creature*> gems;
+            ObjectGuid activationGemGUIDs[2];
+            ObjectGuid mechanismGemGUID;
+            ObjectGuid clickedGemGUID;
+            uint32 gemClickTimer;
+            bool mechanismReady;
+            bool gemAttemptFailed;
+            bool secondGemActivated;
             ObjectGuid targetGUID;
 
             void InitializeAI() override
@@ -121,24 +144,127 @@ class boss_xin_the_weaponmaster : public CreatureScript
                 me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_PULL_TOWARDS_DEST, true);
                 me->HandleEmoteStateCommand(EMOTE_STATE_SIT_CHAIR_HIGH);
                 targetGUID = ObjectGuid::Empty;
+                gemClickTimer = 0;
+                mechanismReady = false;
+                gemAttemptFailed = false;
+                secondGemActivated = false;
             }
 
             void InitializeGems()
             {
                 gems.clear();
                 GetCreatureListWithEntryInGrid(gems, me, CREATURE_FAINTLY_GLOWING_GEM, 200.0f);
+
+                activationGemGUIDs[0] = ObjectGuid::Empty;
+                activationGemGUIDs[1] = ObjectGuid::Empty;
+                mechanismGemGUID = ObjectGuid::Empty;
+                clickedGemGUID = ObjectGuid::Empty;
+                gemClickTimer = 0;
+                mechanismReady = false;
+                gemAttemptFailed = false;
+                secondGemActivated = false;
+
+                for (Creature* gem : gems)
+                {
+                    gem->AI()->DoAction(ACTION_DEACTIVATE_BUTTON);
+
+                    bool const north = gem->GetPositionX() > m_fCenterPos.GetPositionX();
+                    bool const west = gem->GetPositionY() > m_fCenterPos.GetPositionY();
+
+                    // Retail uses the front-left and back-right gems. The gem in
+                    // the remaining south-east corner becomes the firing control.
+                    if (north && west)
+                        activationGemGUIDs[1] = gem->GetGUID();
+                    else if (!north && !west)
+                        activationGemGUIDs[0] = gem->GetGUID();
+                    else if (north && !west)
+                        mechanismGemGUID = gem->GetGUID();
+                }
             }
 
-            void ActivateGem()
+            void DeactivateGems(bool attemptFailed = false)
             {
-                if (gems.empty())
+                std::list<Creature*> nearbyGems;
+                GetCreatureListWithEntryInGrid(nearbyGems, me, CREATURE_FAINTLY_GLOWING_GEM, 200.0f);
+
+                for (Creature* gem : nearbyGems)
+                    gem->AI()->DoAction(ACTION_DEACTIVATE_BUTTON);
+
+                clickedGemGUID = ObjectGuid::Empty;
+                gemClickTimer = 0;
+                mechanismReady = false;
+                gemAttemptFailed = attemptFailed;
+                secondGemActivated = false;
+            }
+
+            void ActivateGem(uint8 index)
+            {
+                if (!IsHeroic() || index > 1 || !activationGemGUIDs[index])
                     return;
 
-                if (Creature* gem = Trinity::Containers::SelectRandomContainerElement(gems))
+                if (Creature* gem = ObjectAccessor::GetCreature(*me, activationGemGUIDs[index]))
                 {
                     gem->AI()->DoAction(ACTION_ACTIVATE_BUTTON);
-                    gems.erase(std::find(gems.begin(), gems.end(), gem));
+                    TC_LOG_INFO("server",
+                        "Xin gem activated index=%u gem=%u boss-health=%.1f instance=%u",
+                        uint32(index), gem->GetGUID().GetCounter(),
+                        me->GetHealthPct(), me->GetInstanceId());
                 }
+            }
+
+            void HandleGemClick(ObjectGuid gemGUID)
+            {
+                if (!IsHeroic() || !me->IsInCombat() || !gemGUID)
+                    return;
+
+                if (mechanismReady && gemGUID == mechanismGemGUID)
+                {
+                    // Achievement 6736 uses spell 124527 as its DBC criterion.
+                    if (instance)
+                        instance->DoUpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET,
+                            SPELL_SECRET_DEFENSE_MECHANISM, 0, me);
+
+                    me->CastSpell(me, SPELL_SECRET_DEFENSE_MECHANISM, true);
+                    DeactivateGems();
+                    return;
+                }
+
+                uint8 gemIndex = 2;
+                if (gemGUID == activationGemGUIDs[0])
+                    gemIndex = 0;
+                else if (gemGUID == activationGemGUIDs[1])
+                    gemIndex = 1;
+
+                if (gemIndex > 1)
+                    return;
+
+                if (Creature* gem = ObjectAccessor::GetCreature(*me, gemGUID))
+                    gem->CastSpell(gem, aBladeSpells[gemIndex], true);
+
+                if (!clickedGemGUID)
+                {
+                    clickedGemGUID = gemGUID;
+                    gemClickTimer = GEM_CLICK_WINDOW;
+                    TC_LOG_INFO("server",
+                        "Xin first activation gem clicked index=%u gem=%u instance=%u",
+                        uint32(gemIndex), gemGUID.GetCounter(), me->GetInstanceId());
+                    return;
+                }
+
+                if (clickedGemGUID == gemGUID || !gemClickTimer)
+                    return;
+
+                mechanismReady = true;
+                // The six-second check applies only between the two corner
+                // gems. Once both were pressed in time, the revealed firing
+                // control remains available until it is used or combat ends.
+                gemClickTimer = 0;
+                TC_LOG_INFO("server",
+                    "Xin activation pair completed second-index=%u gem=%u instance=%u",
+                    uint32(gemIndex), gemGUID.GetCounter(), me->GetInstanceId());
+
+                if (Creature* mechanismGem = ObjectAccessor::GetCreature(*me, mechanismGemGUID))
+                    mechanismGem->AI()->DoAction(ACTION_ACTIVATE_BUTTON);
             }
 
             void Reset() override
@@ -151,8 +277,6 @@ class boss_xin_the_weaponmaster : public CreatureScript
                 if (instance)
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
 
-                for (auto&& itr : gems)
-                    itr->AI()->DoAction(ACTION_DEACTIVATE_BUTTON);
             }
 
             void JustReachedHome() override
@@ -184,6 +308,7 @@ class boss_xin_the_weaponmaster : public CreatureScript
                 me->GetMotionMaster()->MoveTargetedHome();
 
                 DeactivateWeapons();
+                DeactivateGems();
                 Talk(TALK_RESET);
 
                 if (auto const script = me->GetInstanceScript())
@@ -230,7 +355,7 @@ class boss_xin_the_weaponmaster : public CreatureScript
                 if (me->GetHealthPct() > 66.5f)
                     return false;
 
-                ActivateGem();
+                ActivateGem(0);
 
                 std::list<Creature*>m_lLaunchersList;
 
@@ -270,7 +395,12 @@ class boss_xin_the_weaponmaster : public CreatureScript
                 if (me->GetHealthPct() > 35.5f)
                     return false;
 
-                ActivateGem();
+                // Expose the encounter transition directly to playerbots.  A
+                // crossbow aura is a visual side effect and is not a reliable
+                // state signal when the spell fails to attach or the grid is
+                // not yet loaded for a particular bot.
+                secondGemActivated = true;
+                ActivateGem(1);
 
                 std::list<Creature*>m_lCrossbowList;
 
@@ -334,14 +464,26 @@ class boss_xin_the_weaponmaster : public CreatureScript
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
 
                 DeactivateWeapons();
+                DeactivateGems();
 
                 if (auto const script = me->GetInstanceScript())
                     script->HandleGameObject(ObjectGuid::Empty, true, ObjectAccessor::GetGameObject(*me, script->GetGuidData(GO_DOOR_BEFORE_KING)));
             }
 
-            void DoAction(int32 actionId) override
+            void SetGUID(ObjectGuid guid, int32 type) override
             {
-                DeactivateCrossbows();
+                if (type == GUID_GEM_CLICKED)
+                    HandleGemClick(guid);
+            }
+
+            uint32 GetData(uint32 type) const override
+            {
+                if (type == DATA_GEM_ATTEMPT_FAILED)
+                    return gemAttemptFailed ? 1 : 0;
+                if (type == DATA_SECOND_GEM_ACTIVATED)
+                    return secondGemActivated ? 1 : 0;
+
+                return 0;
             }
 
             void UpdateAI(uint32 diff) override
@@ -350,6 +492,19 @@ class boss_xin_the_weaponmaster : public CreatureScript
                     return;
 
                 events.Update(diff);
+
+                if (gemClickTimer)
+                {
+                    if (gemClickTimer <= diff)
+                    {
+                        TC_LOG_INFO("server",
+                            "Xin activation gem window expired instance=%u",
+                            me->GetInstanceId());
+                        DeactivateGems(true);
+                    }
+                    else
+                        gemClickTimer -= diff;
+                }
 
                 if (me->HasUnitState(UNIT_STATE_CASTING))
                     return;
@@ -734,24 +889,15 @@ class npc_faintly_glowing_gem : public CreatureScript
     public:
         npc_faintly_glowing_gem() : CreatureScript("npc_faintly_glowing_gem") { }
 
-        enum eSpells
-        {
-            SPELL_GLOWING_GEM  = 124524,
-        };
-
-        enum eEvents
-        {
-            EVENT_SPECIAL_BEAM = 1,
-        };
-
         struct npc_faintly_glowing_gemAI : public ScriptedAI
         {
             npc_faintly_glowing_gemAI(Creature* creature) : ScriptedAI(creature) {}
 
-            EventMap events;
+            bool active;
 
             void InitializeAI() override
             {
+                active = false;
                 me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->SetDisplayId(35408);
@@ -760,34 +906,20 @@ class npc_faintly_glowing_gem : public CreatureScript
                     me->RemoveAura(SPELL_GLOWING_GEM);
             }
 
-            void RemoveBladesAura() // template for achivment with red beam (What does this button do?)
-            {
-                std::list<Player*> PlayersInArea;
-                GetPlayerListInGrid(PlayersInArea, me, 200.0f);
-
-                if (!PlayersInArea.empty())
-                    return;
-
-                for (auto&& itr : PlayersInArea)
-                    if (itr->HasAura(SPELL_BLADES_1))
-                        itr->RemoveAura(SPELL_BLADES_1);
-            }
-
             void DoAction(int32 actionId) override 
             {
                 switch (actionId)
                 {
                 case ACTION_ACTIVATE_BUTTON:
+                    active = true;
                     if (!me->HasAura(SPELL_GLOWING_GEM))
                         me->AddAura(SPELL_GLOWING_GEM, me);
 
                     me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
                     me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                    //me->CastSpell(me, SPELL_BLADES_1, false);
-                    //RemoveBladesAura();
-                    events.ScheduleEvent(EVENT_SPECIAL_BEAM, 6 * IN_MILLISECONDS);
                     break;
                 case ACTION_DEACTIVATE_BUTTON:
+                    active = false;
                     if (me->HasAura(SPELL_GLOWING_GEM))
                         me->RemoveAura(SPELL_GLOWING_GEM);
 
@@ -801,19 +933,22 @@ class npc_faintly_glowing_gem : public CreatureScript
 
             void OnSpellClick(Unit* clicker, bool& result) override
             {
+                if (!result || !active || !clicker || clicker->GetTypeId() != TYPEID_PLAYER)
+                {
+                    result = false;
+                    return;
+                }
+
+                Creature* xin = GetClosestCreatureWithEntry(me, CREATURE_XIN_THE_WEAPONMASTER, 200.0f, true);
+                if (!xin || !xin->IsInCombat())
+                {
+                    result = false;
+                    me->AI()->DoAction(ACTION_DEACTIVATE_BUTTON);
+                    return;
+                }
+
                 me->AI()->DoAction(ACTION_DEACTIVATE_BUTTON);
-
-                if (Creature* Xin = GetClosestCreatureWithEntry(me, CREATURE_XIN_THE_WEAPONMASTER, 200.0f, true))
-                    Xin->AI()->DoAction(ACTION_ACTIVATE_BUTTON);
-            }
-
-            void UpdateAI(uint32 diff) override 
-            {
-                events.Update(diff);
-
-                while (uint32 eventId = events.ExecuteEvent())
-                    if (eventId == EVENT_SPECIAL_BEAM)
-                        me->RemoveAura(SPELL_BLADES_1);
+                xin->AI()->SetGUID(me->GetGUID(), GUID_GEM_CLICKED);
             }
         };
 
@@ -1258,6 +1393,39 @@ class spell_crossbow_xin : public SpellScriptLoader
         }
 };
 
+class spell_secret_defense_mechanism : public SpellScriptLoader
+{
+    public:
+        spell_secret_defense_mechanism() : SpellScriptLoader("spell_secret_defense_mechanism") { }
+
+        class spell_secret_defense_mechanism_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_secret_defense_mechanism_SpellScript);
+
+            void SelectXin(std::list<WorldObject*>& targets)
+            {
+                targets.remove_if([](WorldObject* target)
+                {
+                    Creature* creature = target->ToCreature();
+                    return !creature || creature->GetEntry() != CREATURE_XIN_THE_WEAPONMASTER;
+                });
+            }
+
+            void Register() override
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+                    spell_secret_defense_mechanism_SpellScript::SelectXin, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+                    spell_secret_defense_mechanism_SpellScript::SelectXin, EFFECT_1, TARGET_UNIT_SRC_AREA_ENTRY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_secret_defense_mechanism_SpellScript();
+        }
+};
+
 void AddSC_boss_xin_the_weaponmaster()
 {
     new boss_xin_the_weaponmaster();
@@ -1272,4 +1440,5 @@ void AddSC_boss_xin_the_weaponmaster()
     new spell_turn_off_blades();
     new spell_groundslam_xin();
     new spell_crossbow_xin();
+    new spell_secret_defense_mechanism();
 }

@@ -454,11 +454,20 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         bool botOnElevator = botTransport &&
             botTransport->GetEntry() == GateOfTheSettingSunElevator;
 
-        auto moveBesideMaster = [&](Transport* destinationTransport)
+        auto moveBesideMaster = [&](Transport* destinationTransport,
+                                    bool useExactMasterPosition)
         {
             float x, y, z;
-            gateFollowMaster->GetClosePoint(x, y, z, bot->GetObjectSize(),
-                2.0f, static_cast<float>(M_PI));
+            if (useExactMasterPosition)
+            {
+                x = gateFollowMaster->GetPositionX();
+                y = gateFollowMaster->GetPositionY();
+                z = gateFollowMaster->GetPositionZ();
+            }
+            else
+                gateFollowMaster->GetClosePoint(x, y, z,
+                    bot->GetObjectSize(), 2.0f,
+                    static_cast<float>(M_PI));
             z += 0.25f;
 
             bot->GetMotionMaster()->Clear();
@@ -484,9 +493,16 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             if (Pet* pet = bot->GetPet())
             {
                 float petX, petY, petZ;
-                gateFollowMaster->GetClosePoint(petX, petY, petZ,
-                    pet->GetObjectSize(), PET_FOLLOW_DIST,
-                    pet->GetFollowAngle());
+                if (useExactMasterPosition)
+                {
+                    petX = x;
+                    petY = y;
+                    petZ = z;
+                }
+                else
+                    gateFollowMaster->GetClosePoint(petX, petY, petZ,
+                        pet->GetObjectSize(), PET_FOLLOW_DIST,
+                        pet->GetFollowAngle());
                 petZ += 0.25f;
                 pet->GetMotionMaster()->Clear();
                 if (Transport* petTransport = pet->GetTransport())
@@ -515,14 +531,14 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         if (masterOnElevator && botTransport != masterTransport &&
             bot->GetExactDist2d(gateFollowMaster) < 50.0f)
         {
-            moveBesideMaster(masterTransport);
+            moveBesideMaster(masterTransport, false);
             TC_LOG_INFO("server",
                 "Playerbot boarded Gate elevator with master bot=%s guid=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter());
         }
         else if (!masterOnElevator && botOnElevator)
         {
-            moveBesideMaster(nullptr);
+            moveBesideMaster(nullptr, false);
             TC_LOG_INFO("server",
                 "Playerbot left Gate elevator with master bot=%s guid=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter());
@@ -537,9 +553,25 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         float followDistance = bot->GetDistance(gateFollowMaster);
         float verticalSeparation = std::fabs(bot->GetPositionZ() -
             gateFollowMaster->GetPositionZ());
+        bool gateGroupInCombat = bot->IsInCombat() ||
+            gateFollowMaster->IsInCombat();
+        // Do not reset the recovery timer merely because an unreachable
+        // ambient pack has put either group member in combat. At the broken
+        // wall this can hold a companion on the previous platform until the
+        // scripted defender fight finishes. Preserve normal ranged combat
+        // positioning, but recover a genuinely stranded combatant once it is
+        // more than 30 yards from the real player.
+        // The destructible wall near the Raigonn approach changes its collision
+        // at runtime. The navmesh still describes the intact upper corner, so a
+        // follower can keep moving around on the wall while the master has
+        // already descended roughly fifty yards. Treat a large level split as
+        // a blocked transition even when the bot is technically still moving.
+        bool gateLevelSeparated = verticalSeparation > 15.0f &&
+            followDistance > 12.0f;
+        float recoveryDistance = gateGroupInCombat ? 30.0f : 12.0f;
         bool brokenGateFollow = !bot->GetTransport() &&
-            !gateFollowMaster->GetTransport() && !bot->IsInCombat() &&
-            !gateFollowMaster->IsInCombat() && followDistance > 12.0f;
+            !gateFollowMaster->GetTransport() &&
+            (gateLevelSeparated || followDistance > recoveryDistance);
 
         if (brokenGateFollow)
         {
@@ -550,7 +582,9 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 _gateSettingSunFollowStartZ);
             bool madeProgress = followDistance + 5.0f <
                 _gateSettingSunBestFollowDistance ||
-                movedX * movedX + movedY * movedY > 9.0f || movedZ > 2.0f;
+                (!gateLevelSeparated &&
+                    (movedX * movedX + movedY * movedY > 9.0f ||
+                        movedZ > 2.0f));
 
             if (!_gateSettingSunFollowRecoverySince || madeProgress)
             {
@@ -560,14 +594,21 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 _gateSettingSunFollowStartY = bot->GetPositionY();
                 _gateSettingSunFollowStartZ = bot->GetPositionZ();
             }
-            else if (getMSTimeDiff(_gateSettingSunFollowRecoverySince, now) >= 5000)
+            uint32 recoveryDelay = gateLevelSeparated ? 1500 : 5000;
+            if (_gateSettingSunFollowRecoverySince && !madeProgress &&
+                getMSTimeDiff(_gateSettingSunFollowRecoverySince, now) >=
+                    recoveryDelay)
             {
                 float oldDistance = followDistance;
-                moveBesideMaster(nullptr);
+                // A generated close point can lie beyond the narrow parapet or
+                // destructible wall edge. Recover at the master's known-safe
+                // position and let normal follow movement spread the group out.
+                moveBesideMaster(nullptr, true);
                 TC_LOG_WARN("server",
-                    "Playerbot recovered from broken Gate follow path bot=%s guid=%u distance=%.2f vertical=%.2f",
+                    "Playerbot recovered from broken Gate follow path bot=%s guid=%u distance=%.2f vertical=%.2f level-split=%u",
                     bot->GetName().c_str(), bot->GetGUID().GetCounter(),
-                    oldDistance, verticalSeparation);
+                    oldDistance, verticalSeparation,
+                    gateLevelSeparated ? 1u : 0u);
                 _gateSettingSunFollowRecoverySince = 0;
                 _gateSettingSunBestFollowDistance = 0.0f;
                 _gateSettingSunFollowStartX = 0.0f;

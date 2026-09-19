@@ -88,7 +88,8 @@ enum eSpells
     SPELL_TELEPORT_VISUAL        = 52096,
 
     // Flak Cannon
-    SPELL_FLAK_FIRE              = 133711
+    SPELL_FLAK_FIRE              = 116553,
+    SPELL_FLAK_FIRE_IMPACT       = 133710
 };
 
 enum eEvents
@@ -174,6 +175,7 @@ class boss_striker_gadok : public CreatureScript
                 me->SetAnimTier(AnimTier::Hover);
                 me->SetDisableGravity(true);
                 me->SetReactState(REACT_AGGRESSIVE);
+                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
 
                 if (instance)
                     instance->SetData(DATA_GADOK, PHASE_MAIN);
@@ -279,12 +281,20 @@ class boss_striker_gadok : public CreatureScript
 
             void DamageTaken(Unit* /*attacker*/, uint32& damage) override
             {
-                if (isStrafing && damage >= me->GetHealth())
-                    damage = 0;
-
-                if (curPct > 0 && HealthBelowPct((uint32)curPct) && !isStrafing)
+                // Gadok is untargetable on retail while performing Strafing Run.
+                // Keep his health at the phase threshold instead of letting players
+                // reduce him to 1 HP and only preventing the lethal hit.
+                if (isStrafing)
                 {
-                    curPct -= 40;
+                    damage = 0;
+                    return;
+                }
+
+                if (curPct > 0 && me->HealthBelowPctDamaged(uint32(curPct), damage))
+                {
+                    uint32 thresholdHealth = me->CountPctFromMaxHealth(uint32(curPct));
+                    damage = me->GetHealth() > thresholdHealth ? me->GetHealth() - thresholdHealth : 0;
+                    curPct = curPct == 70 ? 30 : 0;
 
                     if (Unit* vict = me->GetVictim())
                     {
@@ -326,6 +336,8 @@ class boss_striker_gadok : public CreatureScript
                         isStrafing = true;
                         me->SetSpeed(MOVE_FLIGHT, 3.5f, true);
                         me->SetReactState(REACT_PASSIVE);
+                        me->AttackStop();
+                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
                         events.CancelEventGroup(PHASE_MAIN);
 
                         move = urand(MOV_NORTH_SOUTH, MOV_EAST_WEST);
@@ -435,6 +447,8 @@ class boss_striker_gadok : public CreatureScript
                 me->m_Events.Schedule(me->GetSplineDuration(), 4, [this]()
                 {
                     me->RemoveChanneledCast(targetGUID);
+                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                    me->SetReactState(REACT_AGGRESSIVE);
                     isStrafing = false;
                 });
             }
@@ -507,6 +521,34 @@ class boss_striker_gadok : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
+                // Creature::setDeathState starts MoveFall for flying creatures before
+                // this hook runs. Keep Gadok's corpse on the tower platform instead of
+                // letting it fall through the open lift shaft in the middle.
+                float corpseX = me->GetPositionX();
+                float corpseY = me->GetPositionY();
+                float offsetX = corpseX - ElevatorCenterPos.GetPositionX();
+                float offsetY = corpseY - ElevatorCenterPos.GetPositionY();
+                float distanceFromLift = std::sqrt(offsetX * offsetX + offsetY * offsetY);
+
+                if (distanceFromLift < 12.0f)
+                {
+                    if (distanceFromLift < 0.1f)
+                    {
+                        offsetX = 1.0f;
+                        offsetY = 0.0f;
+                        distanceFromLift = 1.0f;
+                    }
+
+                    corpseX = ElevatorCenterPos.GetPositionX() + offsetX / distanceFromLift * 12.0f;
+                    corpseY = ElevatorCenterPos.GetPositionY() + offsetY / distanceFromLift * 12.0f;
+                }
+
+                me->GetMotionMaster()->Clear(false);
+                me->StopMoving();
+                me->SetCanFly(false);
+                me->SetDisableGravity(true);
+                me->NearTeleportTo(corpseX, corpseY, 430.90f, me->GetOrientation());
+
                 _JustDied();
                 if (instance)
                 {
@@ -781,6 +823,7 @@ class npc_flak_cannon : public CreatureScript
                 if (instance->GetBossState(DATA_GADOK) != DONE)
                     return;
 
+                uint8 targetsFired = 0;
                 for (uint8 i = 0; i < 5; ++i)
                 {
                     ObjectGuid bombarderGuid = instance->GetGuidData(DATA_RANDOM_BOMBARDER);
@@ -793,12 +836,28 @@ class npc_flak_cannon : public CreatureScript
 
                     if (Creature* bombarder = instance->instance->GetCreature(bombarderGuid))
                     {
-                        // Cast the actual MoP Flak Fire missile. A bare spell-visual
-                        // packet is not rendered by this client, while this spell has
-                        // both a travelling projectile and an impact visual.
-                        me->CastSpell(bombarder, SPELL_FLAK_FIRE, true);
-
+                        constexpr uint32 FlakProjectileVisual = 23921;
+                        constexpr uint32 FlakFireSound = 33607;
                         constexpr float FlakProjectileSpeed = 20.0f;
+
+                        if (!targetsFired)
+                        {
+                            me->SetFacingToObject(bombarder);
+                            me->PlayDirectSound(FlakFireSound);
+                        }
+
+                        // 116553 is the Gate of the Setting Sun Fire Flak spell.
+                        // Send its projectile visual explicitly as well because
+                        // this client does not render the triggered dummy cast
+                        // reliably when the target is high above the walkway.
+                        me->CastSpell(bombarder, SPELL_FLAK_FIRE, true);
+                        me->SendPlaySpellVisual(FlakProjectileVisual,
+                            bombarder->GetPositionX(),
+                            bombarder->GetPositionY(),
+                            bombarder->GetPositionZ(),
+                            FlakProjectileSpeed);
+                        ++targetsFired;
+
                         uint32 travelTime = uint32(me->GetDistance(bombarder) / FlakProjectileSpeed * IN_MILLISECONDS);
                         if (travelTime < 500)
                             travelTime = 500;
@@ -807,11 +866,19 @@ class npc_flak_cannon : public CreatureScript
 
                         bombarder->m_Events.Schedule(travelTime, [bombarder]()
                         {
+                            // Cast the actual client spell instead of sending its
+                            // visual ID from the target to itself. The latter packet
+                            // has no visible impact on the 5.4.8 client.
+                            bombarder->CastSpell(bombarder, SPELL_FLAK_FIRE_IMPACT, true);
                             bombarder->GetMotionMaster()->MoveFall();
                             bombarder->DespawnOrUnsummon(2000);
                         });
                     }
                 }
+
+                TC_LOG_INFO("server",
+                    "Gate flak cannon fired cannon-guid=%u targets=%u",
+                    me->GetGUID().GetCounter(), targetsFired);
 
                 // Eighteen bombardiers are present and one shot removes at most
                 // five. Keep both cannons usable until the final target is gone;
