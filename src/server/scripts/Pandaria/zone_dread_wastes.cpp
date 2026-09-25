@@ -20,6 +20,8 @@
 #include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
 
+void AddSC_poisoned_mind();
+
 enum eSpells
 {
     SPELL_BANANARANG            = 125311,
@@ -3549,6 +3551,7 @@ public:
             }
 
             playerGUID = player->GetGUID();
+            me->SetFaction(player->GetFaction());
             me->SetReactState(REACT_PASSIVE);
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
@@ -3576,6 +3579,15 @@ public:
 
         void JustDied(Unit* /*killer*/) override { Finish(false); }
 
+        void EnterEvadeMode() override
+        {
+            // This stationary defense controller must keep updating between
+            // waves, not enter a home-movement state with movement disabled.
+            me->DeleteThreatList();
+            me->CombatStop(true);
+            me->ClearUnitState(UNIT_STATE_EVADE);
+        }
+
         void JustSummoned(Creature* summon) override
         {
             summons.Summon(summon);
@@ -3591,8 +3603,11 @@ public:
         void SummonedCreatureDespawn(Creature* summon) override
         {
             summons.Despawn(summon);
-            // A missing or timed-out attacker must not count as a kill.
-            if (attackers.count(summon->GetGUID()))
+            // Corpse removal can arrive without the separate death callback.
+            // Only a confirmed dead attacker may advance the wave.
+            if (!summon->IsAlive())
+                SummonedCreatureDies(summon, nullptr);
+            else if (attackers.count(summon->GetGUID()))
                 Finish(false);
         }
 
@@ -3609,6 +3624,29 @@ public:
                 return;
             }
             lifetime -= diff;
+
+            // Reconcile live summons as well as callbacks: a missed death
+            // notification must not leave a cleared wave waiting forever.
+            bool const hadAttackers = !attackers.empty();
+            for (auto itr = attackers.begin(); itr != attackers.end();)
+            {
+                Creature* attacker = ObjectAccessor::GetCreature(*me, *itr);
+                if (!attacker)
+                {
+                    // Disappearance alone is not proof of a kill.
+                    Finish(false);
+                    return;
+                }
+                if (!attacker->IsAlive())
+                    itr = attackers.erase(itr);
+                else
+                    ++itr;
+            }
+            if (hadAttackers && attackers.empty())
+            {
+                timer = 5000;
+                return;
+            }
 
             if (!attackers.empty())
                 return;
@@ -3627,7 +3665,7 @@ public:
             ++wave;
             for (uint8 i = 0; i < wave + 2; ++i)
             {
-                Position pos = me->GetNearPosition(18.0f, float(i) * 2.0f);
+                Position pos = me->GetFirstCollisionPosition(12.0f, float(i) * 2.0f);
                 Creature* attacker = me->SummonCreature(KypariZar::Towerguard, pos,
                     TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 120000, 0, playerGUID);
                 if (!attacker)
@@ -3663,7 +3701,8 @@ public:
                 if (summon->IsAlive() && summon->GetSummonerGUID() == player->GetGUID())
                     return true;
 
-        Position pos = go->GetNearPosition(3.0f, 0.0f);
+        // Keep the private defense NPC clear of the static Korven by the tower.
+        Position pos = go->GetFirstCollisionPosition(8.0f, float(M_PI));
         player->SummonCreature(KypariZar::Korven, pos, TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID());
         // Consume the click ourselves; the default goober path locks the shared tower
         // and casts the unimplemented dummy spell instead of starting the defense.
@@ -3671,8 +3710,96 @@ public:
     }
 };
 
+// Evie Stormstout (31077): listen to Chen at the Sunset Brewgarden.
+struct npc_chen_evie_eulogy : public ScriptedAI
+{
+    npc_chen_evie_eulogy(Creature* creature) : ScriptedAI(creature) { }
+
+    struct Listener
+    {
+        uint32 timer = 1000;
+        uint8 line = 0;
+    };
+    std::map<ObjectGuid, Listener> listeners;
+
+    void Reset() override { listeners.clear(); }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        Player* player = who->ToPlayer();
+        if (!player || !player->IsAlive() ||
+            player->GetQuestStatus(31077) != QUEST_STATUS_INCOMPLETE ||
+            !me->IsWithinDistInMap(player, 10.0f) || !me->IsWithinLOSInMap(player))
+            return;
+
+        if (listeners.emplace(player->GetGUID(), Listener()).second)
+            player->KilledMonsterCredit(65408);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        for (auto itr = listeners.begin(); itr != listeners.end();)
+        {
+            Player* player = ObjectAccessor::GetPlayer(*me, itr->first);
+            if (!player || !player->IsAlive() ||
+                player->GetQuestStatus(31077) != QUEST_STATUS_INCOMPLETE ||
+                !me->IsWithinDistInMap(player, 20.0f))
+            {
+                itr = listeners.erase(itr);
+                continue;
+            }
+
+            Listener& listener = itr->second;
+            if (listener.timer > diff)
+                listener.timer -= diff;
+            else if (listener.line < 5)
+            {
+                // Existing localized broadcast texts; keep each player's timing private.
+                me->Whisper(62392 + listener.line, player);
+                ++listener.line;
+                listener.timer = 5000;
+            }
+            else
+            {
+                player->KilledMonsterCredit(62964);
+                itr = listeners.erase(itr);
+                continue;
+            }
+            ++itr;
+        }
+    }
+};
+
+// Han Stormstout (31078): explicitly inspect Han to discover his fate.
+class npc_han_stormstout_quest : public CreatureScript
+{
+public:
+    npc_han_stormstout_quest() : CreatureScript("npc_han_stormstout_quest") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (player->IsAlive() && player->GetQuestStatus(31078) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Inspect Han Stormstout.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        player->CLOSE_GOSSIP_MENU();
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF &&
+            player->IsAlive() && player->GetQuestStatus(31078) == QUEST_STATUS_INCOMPLETE &&
+            creature->IsWithinDistInMap(player, INTERACTION_DISTANCE) && creature->IsWithinLOSInMap(player))
+            player->KilledMonsterCredit(62776);
+        return true;
+    }
+};
+
 void AddSC_dread_wastes()
 {
+    AddSC_poisoned_mind();
     // Rare Mobs
     new npc_ik_ik_the_nimble();
     new npc_ai_li_skymirror();
@@ -3709,6 +3836,8 @@ void AddSC_dread_wastes()
     new spell_zet_uk_sha_eruption_periodic_summon();
     // Quest scripts
     new npc_korven_kypari_zar();
+    new creature_script<npc_chen_evie_eulogy>("npc_chen_evie_eulogy");
+    new npc_han_stormstout_quest();
     new go_kypari_zar_sonar_tower();
     new npc_rikkal_dissector_quest();
     new AreaTrigger_at_q_wood_and_shade();

@@ -32,3 +32,29 @@ Apply `sql/updates/world/2026_09_22_02_world_kypari_zar.sql`, install the rebuil
 worldserver, and restart it. The migration is idempotent. In this workspace it
 was applied to the configured world database; previous values were saved to
 `/tmp/kypari_zar_before.tsv`. Installation and a live gameplay test remain pending.
+
+## Wave recovery and defense NPC
+
+The controller now checks tracked summons for confirmed deaths in addition to
+receiving death callbacks, and accepts a dead-corpse despawn as a death. A living
+attacker or an unconfirmed disappearance never awards progress. Its stationary
+AI clears combat/evade state without resetting the event or starting home movement.
+
+The event Korven takes the initiating player's faction and spawns eight yards
+from the tower, away from the static Korven (66774). The static world NPC remains
+in place. Attacker spawn positions use collision checks at twelve yards. Tests
+cover missing death callbacks, corpse-first cleanup, live attackers, faction and
+between-wave evade. Navigation and the full encounter still require a live test.
+
+## Crash when starting the event
+
+The tower's collision-position lookup calls `PathGenerator::CalculatePath` with
+a GameObject owner. With navigation loaded, it dereferenced `ToUnit()` when
+checking `VisualizePathfinding`, even though that pointer is null for GameObjects.
+The check now requires a Unit owner. This is independent of debug log levels.
+
+Run `python3 contrib/kypari_zar/run_path_test.py` for the production-method
+regression under UndefinedBehaviorSanitizer. It covers a GameObject with loaded
+navigation, missing navigation, invalid coordinates, and Unit owners with path
+visualization disabled and enabled. Navigation internals are stubbed; a live
+quest test still requires installing the rebuilt server and restarting it.

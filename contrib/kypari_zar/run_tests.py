@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 root = Path(__file__).resolve().parents[2]
 source = (root / 'src/server/scripts/Pandaria/zone_dread_wastes.cpp').read_text()
-code = source[source.index('namespace KypariZar'):source.index('void AddSC_dread_wastes()')]
+code = source[source.index('namespace KypariZar'):source.index('// Evie Stormstout (31077)')]
 harness = (Path(__file__).with_name('regression.cpp')).read_text()
 with tempfile.TemporaryDirectory(prefix='kypari-zar-') as directory:
     cpp = Path(directory) / 'test.cpp'

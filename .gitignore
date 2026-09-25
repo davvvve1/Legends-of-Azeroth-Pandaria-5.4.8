@@ -44,3 +44,13 @@ __pycache__/
 !sql/patches/world/2026_09_25_02_world_sethekk_cobalt_eye.sql
 !sql/patches/world/2026_09_25_03_world_steamrigger_irradiated_gear.sql
 !sql/patches/world/2026_09_25_04_world_vexallus_volatile_essence.sql
+!sql/patches/world/2026_09_25_05_world_survival_ring.sql
+!sql/patches/world/2026_09_25_06_world_coldbite_spawn.sql
+!sql/patches/world/2026_09_25_07_world_coldbite_damage.sql
+!sql/patches/world/2026_09_25_08_world_evie_stormstout.sql
+!sql/patches/world/2026_09_25_09_world_han_stormstout.sql
+!sql/patches/world/2026_09_25_10_world_han_chen_turnin.sql
+!sql/patches/world/2026_09_25_11_world_poisoned_mind.sql
+!sql/patches/world/2026_09_26_00_world_black_morass_access.sql
+!sql/patches/world/2026_09_26_01_world_black_morass_quest.sql
+!sql/patches/world/2026_09_26_02_world_xaril_start.sql
