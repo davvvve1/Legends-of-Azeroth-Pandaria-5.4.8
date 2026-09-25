@@ -2685,6 +2685,11 @@ void GameObject::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* t
                 int16 pathProgress = -1;
                 switch (GetGoType())
                 {
+                    case GAMEOBJECT_TYPE_DOOR:
+                        // Instance scripts may highlight an unlocked access panel.
+                        dynFlags |= GetUInt16Value(OBJECT_FIELD_DYNAMIC_FLAGS, 0) &
+                            (GO_DYNFLAG_LO_ACTIVATE | GO_DYNFLAG_LO_SPARKLE);
+                        break;
                     case GAMEOBJECT_TYPE_CHEST:
                     case GAMEOBJECT_TYPE_GOOBER:
                         if (ActivateToQuest(target))

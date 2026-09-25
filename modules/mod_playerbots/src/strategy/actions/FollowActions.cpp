@@ -2,14 +2,59 @@
 #include "FollowActions.h"
 
 #include <cstddef>
+#include <cmath>
 
 #include "Event.h"
 #include "Formations.h"
+#include "GroupFollowFormation.h"
+#include "PlayerbotSpec.h"
 #include "LastMovementValue.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 #include "SharedDefines.h"
+
+bool FollowAction::UseGroupFollowFormation()
+{
+    Player* master = GetMaster();
+    return master && master != bot && bot->GetGroup() &&
+        master->GetGroup() == bot->GetGroup() && master->IsInWorld() &&
+        master->GetMap() == bot->GetMap() && master->IsAlive() && bot->IsAlive() &&
+        !bot->InBattleground() && !master->IsInCombat() && !bot->IsInCombat() &&
+        botAI->GetState() == BOT_STATE_NON_COMBAT;
+}
+
+WorldLocation FollowAction::GetGroupFollowLocation()
+{
+    Player* master = GetMaster();
+    bool const tank = PlayerBotSpec::IsTank(bot, true);
+    std::size_t slot = 0;
+    for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (member && member != master && member->IsInWorld() && member->IsAlive() &&
+            member->GetMap() == bot->GetMap() &&
+            PlayerBotSpec::IsTank(member, true) == tank && member->GetGUID() < bot->GetGUID())
+            ++slot;
+    }
+
+    auto const offset = GroupFollowFormation::GetOffset(tank, slot);
+    float const orientation = master->GetOrientation();
+    // Narrow the formation if a wall blocks a slot; never use unchecked coordinates.
+    for (float scale : {1.0f, 0.5f, 0.25f})
+    {
+        float x = master->GetPositionX() + scale *
+            (std::cos(orientation) * offset.forward - std::sin(orientation) * offset.sideways);
+        float y = master->GetPositionY() + scale *
+            (std::sin(orientation) * offset.forward + std::cos(orientation) * offset.sideways);
+        float z = master->GetPositionZ();
+        if (master->GetMap()->CheckCollisionAndGetValidCoords(master,
+            master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), x, y, z))
+            return WorldLocation(master->GetMapId(), x, y, z);
+    }
+    return WorldLocation(master->GetMapId(), master->GetPositionX(),
+        master->GetPositionY(), master->GetPositionZ());
+}
 
 bool FollowAction::Execute(Event event)
 {
@@ -29,6 +74,20 @@ bool FollowAction::Execute(Event event)
         // This avoids the roster-wide angular formation and remains still
         // while the requester is standing and the raid is buffing.
         return Follow(master, 2.0f, static_cast<float>(M_PI));
+    }
+
+    if (UseGroupFollowFormation())
+    {
+        if (GetMaster()->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+            bot->IsNonMeleeSpellCasted(true, false, true) ||
+            botAI->HasStrategy("move from group", BOT_STATE_NON_COMBAT))
+            return false;
+
+        WorldLocation const loc = GetGroupFollowLocation();
+        if (bot->GetExactDist2d(loc.GetPositionX(), loc.GetPositionY()) <= 1.0f)
+            return false;
+        return MoveTo(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(),
+            loc.GetPositionZ(), false, false, true, false, MovementPriority::MOVEMENT_NORMAL, true);
     }
 
     if (botAI->IsLfgAutoQueueControlled() && botAI->IsGroupPveActivity())
@@ -90,6 +149,17 @@ bool FollowAction::isUseful()
             !master->HasUnitState(UNIT_STATE_IN_FLIGHT) &&
             !bot->IsNonMeleeSpellCasted(true, false, true) &&
             bot->GetDistance(master) > 4.0f;
+    }
+
+    if (UseGroupFollowFormation())
+    {
+        if (GetMaster()->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+            bot->IsNonMeleeSpellCasted(true, false, true) ||
+            botAI->HasStrategy("move from group", BOT_STATE_NON_COMBAT))
+            return false;
+
+        WorldLocation const loc = GetGroupFollowLocation();
+        return bot->GetExactDist2d(loc.GetPositionX(), loc.GetPositionY()) > 1.0f;
     }
 
     if (botAI->IsLfgAutoQueueControlled() && botAI->IsGroupPveActivity())

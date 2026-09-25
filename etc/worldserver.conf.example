@@ -3492,9 +3492,9 @@ AuctionHouseBot.Buyer.Recheck.Interval = 20
 #
 
 Appender.Console=1,3,0,13 11 9 5 3 1
-Appender.Server=2,2,0,Server.log,w
-Appender.GM=2,2,15,gm/gm_%s.log
-Appender.DBErrors=2,2,0,DBErrors.log
+Appender.Server=2,3,0,Server.log,w
+Appender.GM=2,3,15,gm/gm_%s.log
+Appender.DBErrors=2,3,0,DBErrors.log
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -3518,7 +3518,7 @@ Logger.root=5,Console Server
 Logger.server=3,Console Server
 Logger.commands.gm=3,Console GM
 Logger.sql.sql=5,Console DBErrors
-Logger.playerbots=3,Console Server
+Logger.playerbots=4,Console Server
 
 #Logger.achievement=3,Console Server
 #Logger.auctionHouse=3,Console Server

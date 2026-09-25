@@ -37,3 +37,10 @@ __pycache__/
 *.pyc
 *.bak-*
 *.before-*
+
+# Reviewed public migrations for existing installations
+!sql/patches/world/2026_09_25_00_world_durnholde_barrel_quest_glitter.sql
+!sql/patches/world/2026_09_25_01_world_sethekk_lakka_quest.sql
+!sql/patches/world/2026_09_25_02_world_sethekk_cobalt_eye.sql
+!sql/patches/world/2026_09_25_03_world_steamrigger_irradiated_gear.sql
+!sql/patches/world/2026_09_25_04_world_vexallus_volatile_essence.sql

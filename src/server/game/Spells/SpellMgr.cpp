@@ -3076,6 +3076,12 @@ void SpellMgr::LoadSpellInfoCorrections()
 
             switch (spellInfo->Id)
             {
+                case 46841: // Escape to the Isle of Quel'Danas (Magisters' Terrace)
+                    // Explicit self targeting also bypasses destination LOS checks
+                    // for this cross-map teleport. Keep the database destination.
+                    spellInfo->Effects[EFFECT_0].TargetA = TARGET_UNIT_CASTER;
+                    spellInfo->Effects[EFFECT_0].TargetB = TARGET_DEST_DB;
+                    break;
                 case 42730: // Woe Strike
                     spellInfo->Effects[EFFECT_1].TriggerSpell = 42739;
                     break;
