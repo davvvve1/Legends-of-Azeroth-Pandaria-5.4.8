@@ -28,3 +28,12 @@ vmap4extractor.exe
 *.bak
 *.7z
 /.private-backups/
+
+# Old installation trees remain private on upgraded working copies
+/sql/archive/
+/sql/old/
+/sql/updates/
+__pycache__/
+*.pyc
+*.bak-*
+*.before-*
