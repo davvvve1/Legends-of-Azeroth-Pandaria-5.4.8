@@ -1,0 +1,31 @@
+/*
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
+ * and/or modify it under version 2 of the License, or (at your option), any later version.
+ */
+
+#ifndef _PLAYERBOT_SHAMANTRIGGERS_H
+#define _PLAYERBOT_SHAMANTRIGGERS_H
+
+#include "GenericTriggers.h"
+#include "SharedDefines.h"
+#include "ShamanTotemSupport.h"
+
+class PlayerbotAI;
+
+class MissingWaterTotemTrigger : public Trigger
+{
+public:
+    MissingWaterTotemTrigger(PlayerbotAI* ai) : Trigger(ai, "no water totem", 1) { }
+    bool IsActive() override { return ShamanTotemSupport::NeedsWaterTotem(botAI, bot); }
+};
+
+class GroupLowManaForManaTideTrigger : public Trigger
+{
+public:
+    GroupLowManaForManaTideTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "group low mana for mana tide") {}
+
+    bool IsActive() override;
+};
+
+#endif

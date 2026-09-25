@@ -1,0 +1,305 @@
+/*
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
+ * and/or modify it under version 2 of the License, or (at your option), any later version.
+ */
+
+#include "ReleaseSpiritAction.h"
+
+#include "DatabaseEnvFwd.h"
+#include "Battleground.h"
+#include "Event.h"
+#include "ObjectDefines.h"
+#include "ObjectGuid.h"
+#include "NearestUnitsValue.h"
+#include "Playerbots.h"
+#include "ServerFacade.h"
+#include "Corpse.h"
+#include "WorldPosition.h"
+
+namespace
+{
+bool IsActivePandariaWorldBossFight(Player* bot)
+{
+    if (!bot || !bot->GetGroup() || !bot->IsInWorld())
+        return false;
+
+    uint32 const entries[] =
+    {
+        62346, 60491, 56439, 69099, 69161,
+        71952, 71953, 71954, 71955, 72057
+    };
+    for (uint32 entry : entries)
+        if (Creature* boss = bot->FindNearestCreature(entry, 500.0f, true))
+            if (boss->IsAlive() && boss->IsInCombat())
+                return true;
+    return false;
+}
+}
+
+bool ReleaseSpiritAction::Execute(Event event)
+{
+    if (bot->IsAlive())
+    {
+        botAI->TellMasterNoFacing("I am not dead, will wait here");
+        botAI->ChangeStrategy("-follow,+stay", BOT_STATE_NON_COMBAT);
+        return false;
+    }
+
+    if (bot->GetCorpse() && bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    {
+        botAI->TellMasterNoFacing("I am already a spirit");
+        return false;
+    }
+
+    WorldPacket& p = event.getPacket();
+    if (!p.empty() && p.GetOpcode() == CMSG_REPOP_REQUEST)
+        botAI->TellMasterNoFacing("Releasing...");
+    else
+        botAI->TellMasterNoFacing("Meet me at the graveyard");
+
+    // Death Count to prevent skeleton piles
+    Player* master = GetMaster();
+    if (!master || (master && GET_PLAYERBOT_AI(master)))
+    {
+        uint32 dCount = AI_VALUE(uint32, "death count");
+        context->GetValue<uint32>("death count")->Set(dCount + 1);
+    }
+
+    TC_LOG_INFO("playerbots", "Bot %s %s:%u <%s> released", bot->GetGUID().ToString().c_str(),
+             bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str());
+
+    WorldPacket packet(CMSG_REPOP_REQUEST);
+    packet << uint8(0);
+    bot->GetSession()->HandleRepopRequestOpcode(packet);
+
+    // // add waiting for ress aura
+    // if (bot->InBattleground() && !botAI->HasAura(SPELL_WAITING_FOR_RESURRECT, bot) && !bot->IsAlive())
+    // {
+    //     // cast Waiting for Resurrect
+    //     GuidVector npcs = AI_VALUE(GuidVector, "nearest npcs");
+    //     ObjectGuid guid;
+    //     Unit* unit;
+    //     for (GuidVector::iterator i = npcs.begin(); i != npcs.end(); i++)
+    //     {
+    //         unit = botAI->GetUnit(*i);
+    //         if (unit && unit->IsSpiritService())
+    //         {
+    //             guid = unit->GetGUID();
+    //             break;
+    //         }
+    //     }
+    //     if (!guid) {
+    //         return true;
+    //     }
+    //     if (bot->GetDistance(unit) >= INTERACTION_DISTANCE) {
+    //         bot->GetMotionMaster()->MoveChase(unit);
+    //     } else {
+    //         WorldPacket packet(CMSG_GOSSIP_HELLO);
+    //         packet << guid;
+    //         bot->GetSession()->HandleGossipHelloOpcode(packet);
+    //     }
+    // }
+
+    return true;
+}
+
+bool AutoReleaseSpiritAction::Execute(Event event)
+{
+    // Resurrection spells and engineering items create the same normal core
+    // request a client player accepts through CMSG_RESURRECT_RESPONSE. A
+    // headless playerbot has no client to send that packet, so accept an
+    // already-created request here before considering a spirit release. This
+    // does not invent a resurrection or bypass spell/item validation.
+    if (!bot->IsAlive() && bot->IsRessurectRequested())
+    {
+        bool const wasGhost = bot->HasPlayerFlag(PLAYER_FLAGS_GHOST);
+        bot->ResurrectUsingRequestData();
+        TC_LOG_INFO("playerbots", "Bot %s %s:%u <%s> accepted resurrection request ghost=%u",
+            bot->GetGUID().ToString().c_str(),
+            bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+            bot->GetName().c_str(), wasGhost ? 1u : 0u);
+        botAI->SetNextCheckDelay(1000);
+        return true;
+    }
+
+    // Release only once. Re-sending CMSG_REPOP_REQUEST every dead-engine tick while
+    // already a ghost can reset movement/state while the bot is waiting at a BG
+    // spirit guide.
+    if (!bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+    {
+        // Count the death once, at the living-to-ghost transition, rather than on
+        // every dead-engine update while waiting for a resurrection wave.
+        Player* master = GetMaster();
+        if (!master || GET_PLAYERBOT_AI(master))
+        {
+            uint32 dCount = AI_VALUE(uint32, "death count");
+            context->GetValue<uint32>("death count")->Set(dCount + 1);
+        }
+
+        TC_LOG_DEBUG("playerbots", "Bot %s %s:%u <%s> auto released", bot->GetGUID().ToString().c_str(),
+                  bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str());
+
+        WorldPacket packet(CMSG_REPOP_REQUEST);
+        packet << uint8(0);
+        bot->GetSession()->HandleRepopRequestOpcode(packet);
+
+        TC_LOG_DEBUG("playerbots", "Bot %s %s:%u <%s> releases spirit", bot->GetGUID().ToString().c_str(),
+                  bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str());
+    }
+
+    if (bot->InBattleground())
+    {
+        // SPELL_WAITING_FOR_RESURRECT means Battleground::AddPlayerToResurrectQueue
+        // accepted this ghost. Keep it idle inside the spirit-guide resurrection
+        // area until the normal 30-second BG resurrection wave makes it alive.
+        if (bot->HasAura(SPELL_WAITING_FOR_RESURRECT))
+        {
+            bot->StopMoving();
+            bot->GetMotionMaster()->Clear();
+            bot->GetMotionMaster()->MoveIdle();
+            botAI->SetNextCheckDelay(1000);
+            return true;
+        }
+
+        // A few large battleground graveyards place their guide beyond the normal
+        // AI sight radius. This lookup runs only until the bot joins a resurrection
+        // queue; the waiting aura then keeps subsequent updates idle and cheap.
+        GuidVector npcs = NearestNpcsValue(botAI, 2000.0f).Calculate();
+        Unit* spiritGuide = nullptr;
+        for (GuidVector::iterator i = npcs.begin(); i != npcs.end(); i++)
+        {
+            Unit* unit = botAI->GetUnit(*i);
+            if (!unit || !unit->IsSpiritGuide() || !unit->IsFriendlyTo(bot))
+                continue;
+
+            if (!spiritGuide || bot->GetDistance(unit) < bot->GetDistance(spiritGuide))
+                spiritGuide = unit;
+        }
+
+        if (!spiritGuide)
+        {
+            bot->StopMoving();
+            bot->GetMotionMaster()->Clear();
+            bot->GetMotionMaster()->MoveIdle();
+            botAI->SetNextCheckDelay(1000);
+            return true;
+        }
+
+        if (!botAI->IsRealPlayer())
+        {
+            // Server-controlled bots do not send the client gossip/area packet
+            // which normally enrols a ghost. The core has already placed the
+            // ghost at its graveyard when CMSG_REPOP_REQUEST was handled, so join
+            // the closest friendly guide immediately. Requiring a second movement
+            // to exact interaction distance left some ghosts outside every wave.
+            bot->StopMoving();
+            bot->GetMotionMaster()->Clear();
+            bot->GetMotionMaster()->MoveIdle();
+
+            if (Battleground* battleground = bot->GetBattleground())
+            {
+                battleground->AddPlayerToResurrectQueue(spiritGuide->GetGUID(), bot->GetGUID());
+                TC_LOG_DEBUG("playerbots", "Bot %s %s:%u <%s> waits at battleground spirit guide %s",
+                    bot->GetGUID().ToString().c_str(),
+                    bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(),
+                    bot->GetName().c_str(), spiritGuide->GetGUID().ToString().c_str());
+            }
+        }
+    }
+    botAI->SetNextCheckDelay(1000);
+    return true;
+}
+
+bool AutoReleaseSpiritAction::isUseful()
+{
+    if (!bot->isDead())
+        return false;
+
+    // Dungeon bots normally remain beside their corpse while a living real
+    // player can resurrect them. Ensure the dead engine runs this action when
+    // that real request arrives, even though it must not release their spirit.
+    if (bot->IsRessurectRequested())
+        return true;
+
+    if (bot->InArena())
+        return false;
+
+    if (bot->InBattleground())
+        return true;
+
+    if (bot->HasPlayerFlag(PLAYER_FLAGS_GHOST))
+        return false;
+
+    // Outdoor world-boss deaths differ from dungeon deaths: there is no
+    // instance-wide wipe barrier and normal players release, run back and
+    // reclaim while the surviving raid keeps the boss engaged. Do not leave a
+    // staged bot lying dead beside its living real-player master indefinitely
+    // while it waits for a combat resurrection that may be unavailable.
+    if (IsActivePandariaWorldBossFight(bot))
+        return true;
+
+    if (!bot->GetGroup())
+        return true;
+
+    if (!botAI->GetGroupMaster())
+        return true;
+
+    if (botAI->GetGroupMaster() == bot)
+        return true;
+
+    if (!botAI->HasActivePlayerMaster())
+        return true;
+
+    // Dead dungeon/raid bots should release and run back to their corpse
+    // instead of waiting indefinitely for a combat resurrection.
+
+    if (botAI->GetGroupMaster()->isDead())
+        return true;
+
+    if (sServerFacade->IsDistanceGreaterThan(AI_VALUE2(float, "distance", "master target"),
+                                             sPlayerbotAIConfig->sightDistance))
+        return true;
+
+    return false;
+}
+
+bool RepopAction::Execute(Event event)
+{
+    TC_LOG_DEBUG("playerbots", "Bot %s %s:%u <%s> repops at graveyard", bot->GetGUID().ToString().c_str(),
+              bot->GetTeamId() == TEAM_ALLIANCE ? "A" : "H", bot->GetLevel(), bot->GetName().c_str());
+
+    int64 deadTime;
+
+    Corpse* corpse = bot->GetCorpse();
+    if (corpse)
+        deadTime = time(nullptr) - corpse->GetGhostTime();
+    else if (bot->isDead())
+        deadTime = 0;
+    else
+        deadTime = 60 * MINUTE;
+
+    uint32 dCount = AI_VALUE(uint32, "death count");
+
+    WorldSafeLocsEntry const* ClosestGrave = GetGrave(dCount > 10 || deadTime > 30 * MINUTE);
+    if (!ClosestGrave)
+        return false;
+
+    auto ClosestGraveyard = sObjectMgr->GetClosestGraveYard(bot->GetWorldLocation(), bot->GetTeam(), bot);
+    if (!ClosestGraveyard)
+        return false;
+
+    bot->TeleportTo(ClosestGrave->map_id, ClosestGrave->x, ClosestGrave->y, ClosestGrave->z, 0.f);
+
+    RESET_AI_VALUE(bool, "combat::self target");
+    RESET_AI_VALUE(WorldPosition, "current position");
+
+    return true;
+}
+
+bool RepopAction::isUseful()
+{
+    if (bot->InBattleground())
+        return false;
+
+    return true;
+}

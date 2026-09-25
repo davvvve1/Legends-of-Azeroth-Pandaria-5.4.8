@@ -1,0 +1,332 @@
+#pragma once
+
+#include "Action.h"
+#include "PlayerbotAIConfig.h"
+
+class Player;
+class PlayerbotAI;
+class Unit;
+class WorldObject;
+class Position;
+
+#define ANGLE_45_DEG (static_cast<float>(M_PI) / 4.f)
+#define ANGLE_90_DEG M_PI_2
+#define ANGLE_120_DEG (2.f * static_cast<float>(M_PI) / 3.f)
+
+enum class MovementPriority
+{
+    MOVEMENT_IDLE,
+    MOVEMENT_NORMAL,
+    MOVEMENT_COMBAT,
+    MOVEMENT_FORCED
+};
+
+class MovementAction : public Action
+{
+public:
+    MovementAction(PlayerbotAI* botAI, std::string const name);
+
+    bool IsMovingAllowed();
+    bool IsMovingAllowed(WorldObject* target);
+
+    // -- combat movement
+    bool ChaseTo(WorldObject* obj, float distance = 0.0f, float angle = 0.0f);
+    bool ReachCombatTo(Unit* target, float distance = 0.0f);
+
+protected:
+    bool WaitForTankPull(WorldObject* target);
+    void UpdateMovementState();
+    void ClearIdleState();
+
+    // -- Generic movement
+    void WaitForReach(float distance);
+    float MoveDelay(float distance, bool backwards = false);
+    bool MoveTo(uint32 mapId, float x, float y, float z, bool idle = false, bool react = false, bool normal_only = false, bool exact_waypoint = false, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL, bool lessDelay = false, bool backwards = false);
+    bool MoveTo(WorldObject* target, float distance = 0.0f, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
+    bool MoveNear(uint32 mapId, float x, float y, float z, float distance = sPlayerbotAIConfig->contactDistance, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
+    bool MoveNear(WorldObject* target, float distance = sPlayerbotAIConfig->contactDistance, MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
+    bool MoveAway(Unit* target, float distance = sPlayerbotAIConfig->fleeDistance, bool backwards = false);
+    bool MoveFromGroup(float distance,
+        MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
+    bool Move(float angle, float distance);
+    bool Flee(Unit* target);
+    bool FleePosition(Position pos, float radius, uint32 minInterval = 1000);
+    bool CheckLastFlee(float curAngle, std::list<FleeInfo>& infoList);
+    Position BestPositionForMeleeToFlee(Position pos, float radius);
+    Position BestPositionForRangedToFlee(Position pos, float radius);
+
+    bool IsWaitingForLastMove(MovementPriority priority);
+    bool IsMovingAllowed(uint32 mapId, float x, float y, float z);
+    bool IsDuplicateMove(uint32 mapId, float x, float y, float z);
+
+    // -- Follow movement
+    bool Follow(Unit* target, float distance = sPlayerbotAIConfig->followDistance);
+    bool Follow(Unit* target, float distance, float angle);
+    float GetFollowAngle();
+
+protected:
+    struct CheckAngle
+    {
+        float angle;
+        bool strict;
+    };
+
+private:
+    const Movement::PointsArray SearchForBestPath(float x, float y, float z, float& modified_z, int maxSearchCount = 5, bool normal_only = false, float step = 8.0f);
+};
+
+class MoveRandomAction : public MovementAction
+{
+public:
+    MoveRandomAction(PlayerbotAI* botAI) : MovementAction(botAI, "move random") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+    bool isPossible() override;
+};
+
+class CombatFormationMoveAction : public MovementAction
+{
+public:
+    CombatFormationMoveAction(PlayerbotAI* botAI, std::string name = "combat formation move", int moveInterval = 1000)
+        : MovementAction(botAI, name), moveInterval(moveInterval)
+    {
+    }
+
+    bool isUseful() override;
+    bool Execute(Event event) override;
+
+protected:
+    bool GetWorldBossFormationPosition(Unit* target, float& x, float& y,
+        float& z, float& tolerance);
+    Position AverageGroupPos(float dis = sPlayerbotAIConfig->sightDistance, bool ranged = false, bool self = false);
+    Player* NearestGroupMember(float dis = sPlayerbotAIConfig->sightDistance);
+    float AverageGroupAngle(Unit* from, bool ranged = false, bool self = false);
+    Position GetNearestPosition(const std::vector<Position>& positions);
+    int lastMoveTimer = 0;
+    uint32 lastLoggedWorldBossContact = 0;
+    uint32 worldBossFormationContact = 0;
+    uint32 worldBossFormationTarget = 0;
+    float worldBossFormationAnchor = 0.0f;
+    bool hasWorldBossFormationAnchor = false;
+    bool worldBossFormationEstablished = false;
+    uint32 worldBossHazardWaypointLockUntil = 0;
+    uint32 worldBossHazardWaypointTarget = 0;
+    uint32 worldBossHazardWaypointEntry = 0;
+    float worldBossHazardWaypointX = 0.0f;
+    float worldBossHazardWaypointY = 0.0f;
+    float worldBossHazardWaypointZ = 0.0f;
+    int moveInterval;
+};
+
+class TankFaceAction : public CombatFormationMoveAction
+{
+public:
+    TankFaceAction(PlayerbotAI* botAI) : CombatFormationMoveAction(botAI, "tank face") {}
+
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
+class SetFacingTargetAction : public Action
+{
+public:
+    SetFacingTargetAction(PlayerbotAI* botAI) : Action(botAI, "set facing") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+    bool isPossible() override;
+};
+
+class MoveFromGroupAction : public MovementAction
+{
+public:
+    MoveFromGroupAction(PlayerbotAI* botAI, std::string const name = "move from group") : MovementAction(botAI, name) {}
+
+    bool Execute(Event event) override;
+};
+
+class MoveToManaTideAction : public MovementAction
+{
+public:
+    explicit MoveToManaTideAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "move to mana tide") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
+// Leaves hostile persistent spell areas (dynamic objects and area triggers).
+// The generic "avoid aoe" strategy has existed in this module for years, but
+// it did not have a matching ActionContext action and therefore never moved.
+class AvoidAoeAction : public MovementAction
+{
+public:
+    explicit AvoidAoeAction(PlayerbotAI* botAI) : MovementAction(botAI, "avoid aoe") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+
+private:
+    bool FindNearestHazard(Position& position, float& radius) const;
+};
+
+class AhnQirajEncounterAction : public MovementAction
+{
+public:
+    explicit AhnQirajEncounterAction(PlayerbotAI* ai) : MovementAction(ai, "aq40 encounter") {}
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
+// Source-backed encounter reactions which cannot be inferred from a generic
+// floor object. Keep this list deliberately small: every entry must match the
+// local 5.4.8 boss script and spell data.
+class BossMechanicsAction : public MovementAction
+{
+public:
+    explicit BossMechanicsAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "boss mechanics") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+
+private:
+    enum class Reaction : uint8
+    {
+        None,
+        ApproachNalak,
+        FocusGalleonWarmonger,
+        PositionGalleonOffTank,
+        SpreadShaDominateWarning,
+        FleeNalakArcNova,
+        SpreadStormCloud,
+        SpreadOondastaBeam,
+        MaintainOondastaOffTank,
+        AvoidOondastaFrillBlast,
+        TakeOverOrdosTank,
+        MaintainOrdosStandbyTank,
+        EvadeOrdosPoolCast,
+        RelocateOrdosStack,
+        StackOrdosMagmaCrush,
+        SpreadOrdosBurningSoul,
+        MoveChiJiBeacon,
+        AvoidChiJiFirestorm,
+        AvoidChiJiBlazingNova,
+        SpreadXuenLightning,
+        DodgeXuenChiBarrage,
+        AvoidNiuzaoCharge,
+        AvoidYuLonJadefireBlaze,
+        AvoidYuLonJadefireBreath,
+        MoveYuLonJadefireWallGap,
+        StopYuLonRunSpeed,
+        PositionXinGem,
+        ActivateXinGem
+    };
+
+    Reaction GetReaction() const;
+    Player* GetOrdosDesignatedTank(Creature* ordos) const;
+    uint32 niuzaoDodgeLockUntil = 0;
+    float niuzaoDodgeX = 0.0f;
+    float niuzaoDodgeY = 0.0f;
+    float niuzaoDodgeZ = 0.0f;
+    uint32 chiJiDodgeLockUntil = 0;
+    float chiJiDodgeX = 0.0f;
+    float chiJiDodgeY = 0.0f;
+    float chiJiDodgeZ = 0.0f;
+    uint32 chiJiIgnoredChildGuid = 0;
+    uint32 chiJiIgnoredChildUntil = 0;
+    uint32 chiJiFirestormLockUntil = 0;
+    float chiJiFirestormX = 0.0f;
+    float chiJiFirestormY = 0.0f;
+    float chiJiFirestormZ = 0.0f;
+    uint32 ordosStackWaypointLockUntil = 0;
+    float ordosStackWaypointX = 0.0f;
+    float ordosStackWaypointY = 0.0f;
+    float ordosStackWaypointZ = 0.0f;
+    uint32 ordosAncientFlameRetryAt = 0;
+    uint32 ordosRaidTransitLockUntil = 0;
+    float ordosRaidTransitX = 0.0f;
+    float ordosRaidTransitY = 0.0f;
+    float ordosRaidTransitZ = 0.0f;
+    uint32 ordosRaidTransitRetryAt = 0;
+    uint32 ordosPoolEscapeWaypointLockUntil = 0;
+    float ordosPoolEscapeWaypointX = 0.0f;
+    float ordosPoolEscapeWaypointY = 0.0f;
+    float ordosPoolEscapeWaypointZ = 0.0f;
+    mutable ObjectGuid ordosEncounterGuid = ObjectGuid::Empty;
+    mutable ObjectGuid ordosDesignatedTankGuid = ObjectGuid::Empty;
+    uint32 chiJiBeaconWaypointLockUntil = 0;
+    float chiJiBeaconWaypointX = 0.0f;
+    float chiJiBeaconWaypointY = 0.0f;
+    float chiJiBeaconWaypointZ = 0.0f;
+    uint32 ordosBurningSoulWaypointLockUntil = 0;
+    float ordosBurningSoulWaypointX = 0.0f;
+    float ordosBurningSoulWaypointY = 0.0f;
+    float ordosBurningSoulWaypointZ = 0.0f;
+    uint32 ordosBurningSoulSequenceUntil = 0;
+    uint32 ordosBurningSoulProgressCheckAt = 0;
+    float ordosBurningSoulProgressX = 0.0f;
+    float ordosBurningSoulProgressY = 0.0f;
+    float ordosBurningSoulProgressTargetX = 0.0f;
+    float ordosBurningSoulProgressTargetY = 0.0f;
+    float ordosBurningSoulProgressDistance = 0.0f;
+    uint8 ordosBurningSoulWaypointRetry = 0;
+    uint8 ordosBurningSoulAssignedArm = 4;
+    bool ordosBurningSoulGateReached = false;
+    uint32 xuenSpreadLockUntil = 0;
+    uint32 xuenSpreadMechanic = 0;
+    float xuenSpreadX = 0.0f;
+    float xuenSpreadY = 0.0f;
+    float xuenSpreadZ = 0.0f;
+    uint32 yuLonDodgeLockUntil = 0;
+    float yuLonDodgeX = 0.0f;
+    float yuLonDodgeY = 0.0f;
+    float yuLonDodgeZ = 0.0f;
+    uint32 yuLonWallWaypointLockUntil = 0;
+    float yuLonWallWaypointX = 0.0f;
+    float yuLonWallWaypointY = 0.0f;
+    float yuLonWallWaypointZ = 0.0f;
+};
+
+class RunAwayAction : public MovementAction
+{
+public:
+    RunAwayAction(PlayerbotAI* botAI) : MovementAction(botAI, "runaway") {}
+
+    bool Execute(Event event) override;
+};
+
+class FleeAction : public MovementAction
+{
+public:
+    FleeAction(PlayerbotAI* botAI, float distance = sPlayerbotAIConfig->spellDistance)
+        : MovementAction(botAI, "flee"), distance(distance)
+    {
+    }
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+
+private:
+    float distance;
+};
+
+// Objective controller used only by automated playerbots inside a running
+// battleground.  It keeps combat as the first priority and otherwise moves
+// toward a mode-specific objective (flags, bases, orbs, carts, or enemy line).
+class BattlegroundObjectiveAction : public MovementAction
+{
+public:
+    explicit BattlegroundObjectiveAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "battleground objective") { }
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+
+private:
+    bool EngageEnemy(Player* enemy);
+    bool MoveToOrUse(GameObject* object, float interactDistance = 5.0f);
+    bool TryBattlegroundMount();
+    time_t nextMountAttempt = 0;
+};

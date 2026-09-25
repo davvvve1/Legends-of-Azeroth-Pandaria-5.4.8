@@ -1,0 +1,63 @@
+/*
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
+ * and/or modify it under version 2 of the License, or (at your option), any later version.
+ */
+
+#ifndef _PLAYERBOT_H
+#define _PLAYERBOT_H
+
+#include "AiObjectContext.h"
+#include "Group.h"
+#include "Pet.h"
+#include "PlayerbotAI.h"
+#include "PlayerbotAIConfig.h"
+#include "PlayerbotMgr.h"
+#include "RandomPlayerbotMgr.h"
+#include "SharedValueContext.h"
+#include "Spell.h"
+#include "SpellMgr.h"
+
+#define CAST_ANGLE_IN_FRONT (2.f * static_cast<float>(M_PI) / 3.f)
+#define EMOTE_ANGLE_IN_FRONT (2.f * static_cast<float>(M_PI) / 6.f)
+
+#define GET_PLAYERBOT_AI(object) sPlayerbotsMgr->GetPlayerbotAI(object)
+#define GET_PLAYERBOT_MGR(object) sPlayerbotsMgr->GetPlayerbotMgr(object)
+
+#define AI_VALUE(type, name) context->GetValue<type>(name)->Get()
+#define AI_VALUE2(type, name, param) context->GetValue<type>(name, param)->Get()
+
+#define AI_VALUE_LAZY(type, name) context->GetValue<type>(name)->LazyGet()
+#define AI_VALUE2_LAZY(type, name, param) context->GetValue<type>(name, param)->LazyGet()
+
+#define AI_VALUE_REF(type, name) context->GetValue<type>(name)->RefGet()
+
+#define SET_AI_VALUE(type, name, value) context->GetValue<type>(name)->Set(value)
+#define SET_AI_VALUE2(type, name, param, value) context->GetValue<type>(name, param)->Set(value)
+#define RESET_AI_VALUE(type, name) context->GetValue<type>(name)->Reset()
+#define RESET_AI_VALUE2(type, name, param) context->GetValue<type>(name, param)->Reset()
+
+#define PAI_VALUE(type, name) sPlayerbotsMgr->GetPlayerbotAI(player)->GetAiObjectContext()->GetValue<type>(name)->Get()
+#define PAI_VALUE2(type, name, param) \
+    sPlayerbotsMgr->GetPlayerbotAI(player)->GetAiObjectContext()->GetValue<type>(name, param)->Get()
+#define GAI_VALUE(type, name) sSharedValueContext->getGlobalValue<type>(name)->Get()
+#define GAI_VALUE2(type, name, param) sSharedValueContext->getGlobalValue<type>(name, param)->Get()
+
+// Shared guards used by the independent PvP automation paths.  Battleground
+// filling must never claim a bot while Solo Arena owns its login, group,
+// queue, equipment backup or cleanup lifecycle.
+bool IsSoloArenaManagedPlayer(uint32 guidLow);
+bool IsSoloArenaAutomationBusy();
+uint8 GetAutomatedBotSpecializationPriority(
+    Specializations specialization, bool pvp);
+bool HasAutomatedPvpBotLoadout(Specializations specialization);
+bool ApplyAutomatedPvpBotLoadout(Player* bot, uint32 requesterGuid,
+    uint32& changedSlots, std::string& error);
+bool RestoreAutomatedPvpBotLoadout(Player* bot, char const* reason,
+    uint32& restoredSlots, uint32& remainingSlots, std::string& error);
+bool CastAutomatedRoleMode(Player* bot);
+bool CastAutomatedPvpPreparationBuff(Player* bot);
+void UpdateAutomatedPvpLoadoutRecovery(uint32 diff);
+void UpdateWorldBossStagedRaid(uint32 diff);
+void UpdateLegacyRaidStagedRaid(uint32 diff);
+
+#endif
