@@ -10,16 +10,24 @@ automation, solo test systems and administrator tooling. Features marked
 **experimental** below have passed build and clean-start checks, but still require
 more in-game encounter testing before they should be treated as production-ready.
 
+## Installation
+
+- [Fresh Linux installation](#fresh-linux-installation)
+- [Windows build](#configure-and-build-on-windows)
+- [Clean database snapshots](contrib/clean_install/README.md)
+- [Updating an existing Linux installation](#updating-an-existing-linux-installation)
+
 ## Project Features and Current Status
 
-Status recorded for the current local project configuration on 2026-09-03:
+Installation defaults below refer to the published configuration examples as of
+2026-09-25. Experimental features can be enabled separately.
 
 | Component | Included | Current local status | Notes |
 | --- | --- | --- | --- |
 | MoP 5.4.8 core | Yes | Enabled | Client build `18414`; `authserver`, `worldserver`, scripts and extraction tools. |
 | In-game Battle Pay shop | Yes | Enabled, catalog only | The client SHOP button is available after login and the catalog is loaded from the world database. It includes class-filtered VIP1/T14, VIP2/T15 and VIP3/T16 armor categories, discounted eight-piece bundles, individual armor pieces and separately purchased VIP weapons. This standalone repository does not include a website, donation checkout or vote-reward system, so normal players currently have no public way to earn the shop points required for purchases. |
 | Playerbots | Yes | Enabled | `AiPlayerbot.Enabled = 1`; automatic random-bot login remains disabled. |
-| Solo Arena bot fill | Yes | Enabled, experimental | Arena Battlemaster choices for 2v2, 3v3 and 5v5; role/faction-aware bot selection, temporary PvP loadouts, preparation buffs, rewards, exit/health recovery and cleanup. |
+| Solo Arena bot fill | Yes | Disabled by default, experimental | Arena Battlemaster choices for 2v2, 3v3 and 5v5; role/faction-aware bot selection, temporary PvP loadouts, preparation buffs, rewards, exit/health recovery and cleanup. |
 | Battleground bot fill and objectives | Yes | Enabled, experimental | Fills a real player's queue, builds both factions, applies temporary PvP loadouts and includes CTF, node, orb, cart, vehicle, resurrection, escort, mount and basic path/LoS handling. |
 | LFG/LFR bot fill | Yes | Enabled, experimental | Stages missing tank/healer/damage roles for a real player, including the native 25-player Raid Finder 2/6/17 composition, and uses the normal 5.4.8 proposal flow. Filler dungeon locks are refreshed after equipment preparation; temporary LFR fillers inherit the real requester's progression access while retaining level, faction, season and item-level checks. Each filler gets one pre-combat class-buff attempt; there is no Arena-style waiting/retry stage once combat begins. Requester leave/logout pauses managed bot AI, removes the fillers from the instance group, returns them outside and logs them out. Dungeon-specific mechanics still require gameplay coverage. |
 | World-boss raid bots | Yes | Available, experimental | Neutral Boss Bot Caller NPCs support 10/25-player preview/call, PvE role selection and gear, legendary cloaks, raid marks, summon, buffs/rebuff, wipe recovery, status and dismiss/cleanup. Encounter-specific AI is still being tuned. |
@@ -151,31 +159,338 @@ SkyFire migration/source comparison notes are in
 - Windows SDK 10.0.22621 or newer
 - CMake 3.27 or newer
 - Boost 1.85 x64 for MSVC 14.3/14.4
-- Wampserver 3.4.2 with MySQL 5.7.44 (verified project database runtime)
+- MariaDB server/client and Python 3.9+ for the current clean database snapshots
+- MySQL-compatible client development libraries for the CMake build
 - OpenSSL 1.1.1 or OpenSSL 3.x
 
-Tested local Windows layout:
+Historical Windows build layout (adjust the preset paths to your installation;
+use MariaDB for the current database snapshots):
 
 ```txt
 Wampserver: 3.4.2 64-bit
 Apache:     2.4.67
 PHP:        7.4.33
-MySQL:      5.7.44 (active project DBMS)
-MariaDB:    11.4.9 (installed with Wampserver, not the active project DBMS)
+MySQL:      5.7.44 (client development library paths used by the preset)
+MariaDB:    use the server/client installed for your clean database import
 Boost:      C:/local/boost_1_85_0
 OpenSSL:    C:/Program Files/OpenSSL-Win64
 ```
 
 ### Linux
 
-- GCC 13+ or Clang 12+
-- CMake 3.27+
-- Boost 1.81+
-- MySQL 5.7-compatible server; other database engines/major versions are not part
-  of the currently verified project runtime
-- OpenSSL 1.1.1 or 3.x
+- GCC 13+ with C++20 support (or a compatible Clang toolchain)
+- CMake 3.16+ for command-line Linux builds; the Windows preset requires 3.27+
+- Boost, OpenSSL, MariaDB client development libraries, Readline, BZip2 and zlib
+- MariaDB server/client and Python 3.9+ for the installation importer
+- A complete WoW 5.4.8.18414 client for extracting server data
+
+## Fresh Linux Installation
+
+This walkthrough uses Debian 13, MariaDB and the standard `/usr/local` install
+prefix. The bundled snapshots were successfully imported into MariaDB 11.8.
+Use a fresh checkout: the old repository history and SQL migrations were replaced
+by the clean installation baseline on 2026-09-25.
+
+### 1. Install dependencies and clone the repository
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake git python3 pkg-config \
+  mariadb-server mariadb-client libmariadb-dev libmariadb-dev-compat \
+  libboost-all-dev libssl-dev libreadline-dev libbz2-dev zlib1g-dev libncurses-dev
+sudo systemctl enable --now mariadb
+
+cd ~
+git clone https://github.com/davvvve1/Legends-of-Azeroth-Pandaria-5.4.8.git
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8
+```
+
+### 2. Build and install with 16 jobs
+
+```bash
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DTOOLS=ON -DPLAYERBOTS=ON -DELUNA=OFF
+make -j16 && sudo make install
+```
+
+The server executables are installed in `/usr/local/bin`; configuration templates
+are installed in `/usr/local/etc`. Reduce `-j16` if the build runs out of memory.
+`ELUNA=OFF` matches this installation's Lua-disabled setup.
+
+### 3. Import the four clean databases
+
+The snapshots contain current world data and bot templates. Accounts, characters,
+mail, auctions and private bot state start empty. No old SQL update files need to
+be imported on top of this baseline.
+
+Create a **private** client configuration for the importer:
+
+```bash
+touch ~/.loa-install.cnf
+chmod 600 ~/.loa-install.cnf
+nano ~/.loa-install.cnf
+```
+
+For Debian's local MariaDB root socket authentication, enter:
+
+```ini
+[client]
+user=root
+socket=/run/mysqld/mysqld.sock
+```
+
+Run the importer as root so socket authentication succeeds:
+
+```bash
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8
+sudo python3 contrib/clean_install/import.py --client-config "$HOME/.loa-install.cnf"
+```
+
+This creates `world`, `auth`, `characters` and `playerbots`. It verifies checksums
+and joins the numbered world snapshot parts automatically. **It refuses to run
+if any destination database already exists.** Do not delete a live database to
+make the command pass. For a separate installation, add `--prefix fresh_` and
+use the resulting names in the grants and server configuration below.
+
+See the [snapshot guide](contrib/clean_install/README.md) for other authentication
+methods, included tables and refreshing the exports.
+
+### 4. Create a private runtime database user
+
+Open MariaDB:
+
+```bash
+sudo mariadb
+```
+
+Replace the password placeholder before running this SQL. This creates a new
+server login; it does not create any game account:
+
+```sql
+CREATE USER 'loa'@'127.0.0.1' IDENTIFIED BY 'REPLACE_WITH_A_NEW_DATABASE_PASSWORD';
+GRANT ALL PRIVILEGES ON auth.* TO 'loa'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON world.* TO 'loa'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON characters.* TO 'loa'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON playerbots.* TO 'loa'@'127.0.0.1';
+EXIT;
+```
+
+### 5. Install and edit the configuration files
+
+Use the reviewed `.example` files to retain this server's gameplay and bot
+settings. The following commands are for a **new installation**; do not overwrite
+an existing server's private configuration when updating its binaries.
+
+```bash
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8
+sudo install -d /usr/local/etc
+sudo install -m 600 -o "$(id -un)" etc/authserver.conf.example /usr/local/etc/authserver.conf
+sudo install -m 600 -o "$(id -un)" etc/worldserver.conf.example /usr/local/etc/worldserver.conf
+sudo install -m 600 -o "$(id -un)" etc/playerbots.conf.example /usr/local/etc/playerbots.conf
+sudo install -d -m 750 -o "$(id -un)" -g "$(id -gn)" \
+  /usr/local/var/loa /usr/local/var/loa/data /usr/local/var/loa/Logs
+ln -s /usr/local/etc/playerbots.conf /usr/local/var/loa/playerbots.conf
+nano /usr/local/etc/authserver.conf
+nano /usr/local/etc/worldserver.conf
+nano /usr/local/etc/playerbots.conf
+```
+
+Replace **every** `CHANGE_ME` with the runtime database password from step 4.
+The connection format is `host;port;user;password;database`:
+
+```ini
+LoginDatabaseInfo = "127.0.0.1;3306;loa;CHANGE_ME;auth"
+WorldDatabaseInfo = "127.0.0.1;3306;loa;CHANGE_ME;world"
+CharacterDatabaseInfo = "127.0.0.1;3306;loa;CHANGE_ME;characters"
+PlayerbotsDatabaseInfo = "127.0.0.1;3306;loa;CHANGE_ME;playerbots"
+```
+
+`LoginDatabaseInfo` also appears in `authserver.conf`, and
+`PlayerbotsDatabaseInfo` also appears in `playerbots.conf`; keep them consistent.
+In `worldserver.conf`, set:
+
+```ini
+RealmID = 1
+DataDir = "/usr/local/var/loa/data"
+LogsDir = "/usr/local/var/loa/Logs"
+Console.Enable = 1
+```
+
+Set `LogsDir = "/usr/local/var/loa/Logs"` in `authserver.conf` as well.
+Playerbots loads `playerbots.conf` from the **working directory**, which is why
+this guide creates the symlink and runs both servers from `/usr/local/var/loa`.
+Do not publish your real `.conf` or `.cnf` files.
+
+### 6. Extract client data
+
+Use your own complete WoW `5.4.8.18414` client. The data files are not included in
+this repository. On Linux, run the installed tools from the client directory:
+
+```bash
+cd /path/to/your/WoW-client
+/usr/local/bin/mapextractor -b 18273
+/usr/local/bin/vmap4extractor
+mkdir -p vmaps mmaps
+/usr/local/bin/vmap4assembler Buildings vmaps
+/usr/local/bin/mmaps_generator --threads 16
+cp -a dbc maps vmaps mmaps cameras /usr/local/var/loa/data/
+```
+
+Wait for each extraction step to complete successfully. The extractor's target
+build `18273` is intentional for this client's MPQ layout. For Windows extraction,
+see [Extracting Client Data](#extracting-client-data) below.
+
+### 7. Set the realm address and start the server
+
+The imported realm defaults to `127.0.0.1`, port `8085`, build `18414`. Leave it
+unchanged when the client runs on the same machine. For remote clients, use
+`sudo mariadb auth` and set an address those clients can reach:
+
+```sql
+UPDATE realmlist SET address = 'YOUR_REACHABLE_SERVER_ADDRESS' WHERE id = 1;
+```
+
+Allow TCP ports `3724` and `8085` through your firewall/router when needed.
+MariaDB can stay local to the server.
+
+Start authserver in one terminal:
+
+```bash
+cd /usr/local/var/loa
+/usr/local/bin/authserver -c /usr/local/etc/authserver.conf
+```
+
+Start worldserver in another terminal, using the same Linux user who owns the
+configuration and runtime directories:
+
+```bash
+cd /usr/local/var/loa
+/usr/local/bin/worldserver -c /usr/local/etc/worldserver.conf
+```
+
+The first startup can take longer while new bot accounts and characters are
+created. Watch the console and `/usr/local/var/loa/Logs` for startup errors.
+Create your own game account in the **worldserver console**, replacing the names
+and password placeholders:
+
+```text
+account create YOUR_ACCOUNT YOUR_GAME_PASSWORD
+account set addon YOUR_ACCOUNT 4
+account set gmlevel YOUR_ACCOUNT 3 -1
+```
+
+Only grant GM level to an account that should administer the server. In the
+client's `WTF/Config.wtf`, set the realm and portal to the address you configured:
+
+```text
+SET realmlist "YOUR_REACHABLE_SERVER_ADDRESS"
+SET portal "YOUR_REACHABLE_SERVER_ADDRESS"
+```
+
+### 8. Verify bots and the Auction House
+
+The examples enable playerbots and automatic LFG filling. Background random-bot
+login, automatic BG/Arena filling and Combat Assistant are disabled by default
+in these examples. Existing bot characters are not imported; the server builds a
+new pool using `AiPlayerbot.RandomBotAccountCount` and the supplied name/templates.
+
+Auction House Bot selling is enabled with `AuctionHouseBot.Account = 0`. This
+uses the core's account-free auction ownership and does not depend on an old
+account or character. Auction tables start empty and fill over update cycles
+after worldserver starts. Buying players' auctions remains disabled.
+
+```ini
+AuctionHouseBot.Account = 0
+AuctionHouseBot.Seller.Enabled = 1
+AuctionHouseBot.Buyer.Enabled = 0
+```
+
+After logging in, check an auctioneer and test an LFG queue. Database import has
+been tested; individual encounters and bot behavior still require in-game checks.
+
+### Optional: run with systemd
+
+After the foreground startup succeeds, stop both foreground servers and set
+`Console.Enable = 0` in `worldserver.conf`. Create these two service files with
+`sudoedit`, replacing `YOUR_LINUX_USER` with the user used in step 5.
+
+`/etc/systemd/system/mop-auth.service`:
+
+```ini
+[Unit]
+Description=Legends of Azeroth Authserver
+After=mariadb.service network-online.target
+Requires=mariadb.service
+
+[Service]
+User=YOUR_LINUX_USER
+WorkingDirectory=/usr/local/var/loa
+ExecStart=/usr/local/bin/authserver -c /usr/local/etc/authserver.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/mop-world.service`:
+
+```ini
+[Unit]
+Description=Legends of Azeroth Worldserver
+After=mariadb.service mop-auth.service
+Requires=mariadb.service mop-auth.service
+
+[Service]
+User=YOUR_LINUX_USER
+WorkingDirectory=/usr/local/var/loa
+ExecStart=/usr/local/bin/worldserver -c /usr/local/etc/worldserver.conf
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and inspect the services:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now mop-auth.service mop-world.service
+sudo systemctl status mop-auth.service mop-world.service
+journalctl -u mop-world.service -n 100 --no-pager
+```
+
+### Updating an existing Linux installation
+
+Keep your current databases and private configuration. Do not reimport the clean
+snapshots over a running installation. Follow any future release-specific database
+migration instructions separately.
+
+Update the source, then always build from the project's `build` directory:
+
+```bash
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8
+git pull --ff-only
+cd ~/Legends-of-Azeroth-Pandaria-5.4.8/build
+make -j16 && sudo make install && sudo systemctl restart mop-world.service
+```
+
+Restart `mop-auth.service` too when authserver changes. A restart disconnects
+players. If your checkout still has the pre-cleanup history, preserve local work
+and obtain a fresh clone instead of trying to merge the removed history.
 
 ## Configure and Build on Windows
+
+The Linux walkthrough above is the complete fresh-install path. On Windows,
+build using the following instructions, then use the same clean snapshots and
+reviewed `.example` configurations. Put Python 3 and the MariaDB command-line
+client on `PATH` for the importer. The older Wampserver paths below are build
+examples; the current snapshots were validated with MariaDB, not MySQL 5.7.
 
 The repository includes a CMake preset for a Wampserver-style Windows setup:
 
@@ -214,6 +529,11 @@ mmaps_generator.exe
 ```
 
 ## OpenSSL 3 Legacy Provider
+
+The core loads OpenSSL's legacy and default providers during startup. On Linux,
+keep the OpenSSL runtime/provider packages installed alongside the development
+libraries. The DLL instructions below apply to Windows.
+
 
 For OpenSSL 3, the server needs the OpenSSL legacy provider because MoP authentication still uses RC4 through `AuthCrypt`.
 
@@ -304,9 +624,10 @@ set "TARGET_BUILD=18273"
 
 This is expected for this extractor and client data layout.
 
-## Running the Server
+## Running the Server on Windows
 
-Start MySQL first, then run:
+Start MariaDB first, copy and edit the three `.example` configurations beside
+the executables, set your extracted data path, then run:
 
 ```txt
 Build/bin/RelWithDebInfo/authserver.exe
@@ -323,9 +644,9 @@ worldserver: 8085
 Create an account from the `worldserver` console:
 
 ```txt
-account create Admin password
-account set gmlevel Admin 3 -1
-account set addon Admin 4
+account create YOUR_ACCOUNT YOUR_GAME_PASSWORD
+account set gmlevel YOUR_ACCOUNT 3 -1
+account set addon YOUR_ACCOUNT 4
 ```
 
 For a local client, set `WTF/Config.wtf`:
@@ -341,11 +662,9 @@ Playerbots are included and enabled in the current local test setup, but remain
 experimental. They may still expose class-, map- or encounter-specific gameplay
 issues depending on database state and configuration.
 
-Required file:
-
-```txt
-Build/bin/RelWithDebInfo/playerbots.conf
-```
+Required file: `playerbots.conf` in the server working directory. The Linux
+walkthrough links it from `/usr/local/etc`; on Windows place it beside the
+executables and launch from that directory.
 
 Basic enable/disable options:
 
@@ -389,27 +708,27 @@ initialization and later autocast maintenance, and a pet attack command is
 refused until its target has already entered combat (or the owner is directly
 attacking that target), preventing the pet from pulling for the raid.
 
-The active local test configuration currently enables the request-driven queue
-features and Combat Assistant:
+The published configuration examples enable automatic LFG filling. BG/Arena
+automation and Combat Assistant are available but disabled:
 
 ```ini
 AiPlayerbot.AutoQueue.Enabled = 1
 AiPlayerbot.AutoQueue.DryRun = 1
 AiPlayerbot.AutoQueue.LFG = 1
 AiPlayerbot.AutoQueue.LFG.Automatic = 1
-AiPlayerbot.AutoQueue.Battleground = 1
-AiPlayerbot.AutoQueue.Battleground.Automatic = 1
-AiPlayerbot.AutoQueue.Arena = 1
-AiPlayerbot.AutoQueue.Arena.Automatic = 1
-AiPlayerbot.AutoQueue.Arena.AutomaticBattlemasterSolo = 1
-AiPlayerbot.CombatAssistant.Enabled = 1
+AiPlayerbot.AutoQueue.Battleground = 0
+AiPlayerbot.AutoQueue.Battleground.Automatic = 0
+AiPlayerbot.AutoQueue.Arena = 0
+AiPlayerbot.AutoQueue.Arena.Automatic = 0
+AiPlayerbot.AutoQueue.Arena.AutomaticBattlemasterSolo = 0
+AiPlayerbot.CombatAssistant.Enabled = 0
 LFGSolo.Enabled = 0
 ```
 
 `DryRun = 1` keeps the older generic observer protected. The newer explicitly
 enabled request-driven Arena/BG/LFG paths have their own gates and are not disabled
-by that observer setting. Distributed `.dist` configurations retain safer defaults;
-do not assume a newly copied config matches the local test configuration.
+by that observer setting. Use `etc/*.conf.example` for the installation defaults documented here;
+the generic `.dist` templates can differ.
 
 The legacy `LFGSolo` shortcut must remain disabled while playerbot LFG filling is
 enabled. When `LFGSolo.Enabled = 1`, every dungeon queue is reduced to one damage
@@ -429,6 +748,28 @@ AiPlayerbot.RandomBotAutologin = 0
 The first playerbots startup can take longer because random bot accounts and characters are prepared.
 
 ## Troubleshooting
+
+For Linux installations:
+
+- **Database already exists during import:** the importer is protecting existing
+  data. Use a separate database prefix for a second installation.
+- **Access denied for the database user:** check the four connection strings and
+  the matching MariaDB user/password/grants, including `playerbots.conf`.
+- **Cannot load playerbots.conf:** start from `/usr/local/var/loa` and check its
+  symlink to `/usr/local/etc/playerbots.conf` and file permissions.
+- **Missing maps/DBC/vmaps/mmaps/cameras:** check `DataDir` and complete extraction
+  from the correct client build before starting worldserver.
+- **Empty Auction House immediately after startup:** allow seller update cycles
+  to run, then verify the seller and house-ratio settings in the active config.
+- **Build stops with a killed compiler process:** reduce `make -j16` to fewer jobs.
+
+```bash
+sudo systemctl status mariadb mop-auth.service mop-world.service
+journalctl -u mop-world.service -n 100 --no-pager
+ss -ltn | grep -E ':(3724|8085) '
+```
+
+For Windows installations:
 
 If the client reaches realm selection but disconnects when selecting the realm:
 
