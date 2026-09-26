@@ -80,3 +80,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_00_world_doren_den_of_defiance_spawn.sql
 !sql/patches/world/2026_09_27_01_world_doren_verified_cave_floor.sql
 !sql/patches/world/2026_09_27_02_world_strongarm_horde_takeover.sql
+!sql/patches/world/2026_09_27_03_world_forensic_science_blossom_click.sql
