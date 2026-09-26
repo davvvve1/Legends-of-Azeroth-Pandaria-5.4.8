@@ -1224,6 +1224,31 @@ void Creature::SelectLevel(const CreatureTemplate* cinfo)
             expansion = EXPANSION_WRATH_OF_THE_LICH_KING;
     }
 
+    // Local Pandaria mob balance: reduce ordinary attackable NPC health by 30%.
+    // Keep bosses, friendly NPCs, critters and player-controlled creatures unchanged.
+    Unit* summoner = IsSummon() ? ToTempSummon()->GetSummoner() : nullptr;
+    bool playerSummon = IsSummon() &&
+        (ToTempSummon()->GetSummonerGUID().IsPlayer() ||
+         (summoner && summoner->GetCharmerOrOwnerPlayerOrPlayerItself()));
+    if (GetMap()->GetEntry()->Expansion() == EXPANSION_MISTS_OF_PANDARIA &&
+        !IsPet() && !IsControlledByPlayer() && !playerSummon &&
+        cinfo->type != CREATURE_TYPE_CRITTER && cinfo->type != CREATURE_TYPE_NON_COMBAT_PET &&
+        cinfo->rank != CREATURE_ELITE_WORLDBOSS &&
+        !(cinfo->type_flags & CREATURE_TYPEFLAGS_BOSS) &&
+        !(cinfo->type_flags & CREATURE_TYPEFLAGS_PARTY_MEMBER) &&
+        !(cinfo->flags_extra & CREATURE_FLAG_EXTRA_DUNGEON_BOSS) &&
+        !(cinfo->unit_flags & (UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_ATTACKABLE_1 |
+                                UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_IMMUNE_TO_PC |
+                                UNIT_FLAG_NOT_SELECTABLE)))
+    {
+        FactionTemplateEntry const* faction = sFactionTemplateStore.LookupEntry(cinfo->faction);
+        FactionTemplateEntry const* alliance = sFactionTemplateStore.LookupEntry(1);
+        FactionTemplateEntry const* horde = sFactionTemplateStore.LookupEntry(2);
+        if (faction && alliance && horde &&
+            !faction->IsFriendlyTo(*alliance) && !faction->IsFriendlyTo(*horde))
+            hpmod *= 0.7f;
+    }
+
     // health
     uint32 health = uint32(std::ceil(stats->BaseHealth[expansion] * hpmod * _GetHealthMod(rank)));
 

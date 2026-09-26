@@ -4899,8 +4899,25 @@ public:
     }
 };
 
+class player_paint_it_red : public PlayerScript
+{
+public:
+    player_paint_it_red() : PlayerScript("player_paint_it_red") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() != 31765 || player->GetQuestStatus(31765) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        // The gunship turret sequence is unavailable; fill both displayed objectives on acceptance.
+        player->KilledMonsterCredit(66200, ObjectGuid::Empty, 80);
+        player->KilledMonsterCredit(66203, ObjectGuid::Empty, 9);
+    }
+};
+
 void AddSC_jade_forest()
 {
+    new player_paint_it_red();
     // Rare mobs
     new npc_kor_nas_nightsavage();
     new npc_mister_ferocious();

@@ -1,8 +1,8 @@
 # World database patches
 
-These reviewed patches update existing installations. The current `sql/install`
-world archive already includes the listed fixes. Do not reimport that archive over
-an existing database.
+These reviewed patches update existing installations. The `sql/install` world
+archive is a snapshot and may not include newer patches. Do not reimport that
+archive over an existing database.
 
 Apply the files in `world/` in filename order to your world database using your
 local database credentials. Back up first. These patches are safe to repeat and
@@ -32,3 +32,10 @@ already-generated loot.
 Steamvault panel interaction/sparkle, the Magisters' Terrace exit teleport, bot
 formation and bot wipe recovery are code fixes and require rebuilding and
 installing worldserver. Build with `make -j16` from the `build` directory.
+
+- `2026_09_26_03_world_dark_skies_daily.sql`: unlock Dark Skies after The Poisoned Mind, remove the incorrect reputation ceiling, and preserve the daily rotation. Requires matching flight script and restart.
+- `2026_09_26_04_world_thunder_pvp_dailies.sql`: Captive Audience and Tactical Mana Bombs for both factions; bind prison/bomb interactions and remove their four NYI blockers. Requires matching code and restart.
+- `2026_09_26_06_world_thunder_hold_cannons.sql`: make Paint it Red! cannons passive and pacified. They remain attackable for quest credit. Restart worldserver to reload their template.
+- `2026_09_26_07_world_dalaran_portals.sql`: restore the eight missing Dalaran portals to the other capitals and Shattrath. Stormwind, Orgrimmar, and Caverns of Time remain as they are. Restart worldserver to load the spawns.
+- `2026_09_26_08_world_nordrassil_summit.sql`: give The Nordrassil Summit from Thrall, complete its ceremony objective through his gossip, and turn it in to Aggra. Requires matching code and a worldserver restart.
+- `2026_09_26_09_world_elemental_bonds_doubt.sql`: add Cyclonas's ride to Thrall and make the air encounter completable by defeating 20 Essences of Doubt. Requires matching code and a worldserver restart.

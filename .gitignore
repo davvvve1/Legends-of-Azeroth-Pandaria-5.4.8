@@ -54,3 +54,10 @@ __pycache__/
 !sql/patches/world/2026_09_26_00_world_black_morass_access.sql
 !sql/patches/world/2026_09_26_01_world_black_morass_quest.sql
 !sql/patches/world/2026_09_26_02_world_xaril_start.sql
+
+!sql/patches/world/2026_09_26_03_world_dark_skies_daily.sql
+!sql/patches/world/2026_09_26_04_world_thunder_pvp_dailies.sql
+!sql/patches/world/2026_09_26_06_world_thunder_hold_cannons.sql
+!sql/patches/world/2026_09_26_07_world_dalaran_portals.sql
+!sql/patches/world/2026_09_26_08_world_nordrassil_summit.sql
+!sql/patches/world/2026_09_26_09_world_elemental_bonds_doubt.sql

@@ -17,6 +17,36 @@
 
 #include "ScriptPCH.h"
 
+class npc_elemental_bonds_cyclonas : public CreatureScript
+{
+    public:
+        npc_elemental_bonds_cyclonas() : CreatureScript("npc_elemental_bonds_cyclonas") { }
+
+        bool OnGossipHello(Player* player, Creature* creature) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            if (creature->IsQuestGiver())
+                player->PrepareQuestMenu(creature->GetGUID());
+
+            if (player->GetQuestStatus(29327) == QUEST_STATUS_INCOMPLETE)
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I am ready, elemental. Take me to Thrall.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+            player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+
+        bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 sender, uint32 action) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+                player->GetQuestStatus(29327) == QUEST_STATUS_INCOMPLETE)
+                player->TeleportTo(1, -11223.0f, 318.5f, 630.35f, 3.44f);
+
+            player->CLOSE_GOSSIP_MENU();
+            return true;
+        }
+};
+
 enum Spells
 {
     // Akma'hat
@@ -1020,6 +1050,7 @@ class spell_uldum_orbs_of_the_stars : public SpellScript
 
 void AddSC_uldum()
 {
+    new npc_elemental_bonds_cyclonas();
     new boss_akmahat();
     new npc_akmahat_fury_of_the_sands();
     new npc_addarah();

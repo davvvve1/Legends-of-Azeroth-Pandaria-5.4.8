@@ -6,7 +6,16 @@
 
 namespace PoisonedMind
 {
-    enum : uint32 { Quest = 31211, Flyer = 63675, Mantid = 63613, Kunchong = 63625 };
+    enum : uint32 { Quest = 31211, Daily = 31216, Flyer = 63675, Mantid = 63613, Kunchong = 63625 };
+
+    uint32 ActiveQuest(Player* player)
+    {
+        if (player->GetQuestStatus(Quest) == QUEST_STATUS_INCOMPLETE)
+            return Quest;
+        if (player->GetQuestStatus(Daily) == QUEST_STATUS_INCOMPLETE)
+            return Daily;
+        return 0;
+    }
 
     // Outdoor approach west of the Amber Womb; checked against installed terrain/vmaps.
     Position const Start = { -89.346f, 4603.535f, 80.673f, 1.570796f };
@@ -26,6 +35,7 @@ struct npc_poisoned_mind_flyer : public ScriptedAI
     uint32 lifetime = 20 * MINUTE * IN_MILLISECONDS;
     uint32 boardingTime = 10000;
     uint32 pause = 0;
+    uint32 quest = 0, mantidObjective = 0, kunchongObjective = 0;
     uint32 initialMantid = 0, initialKunchong = 0;
     uint32 killedMantid = 0, killedKunchong = 0;
     std::set<ObjectGuid> credited;
@@ -44,15 +54,18 @@ struct npc_poisoned_mind_flyer : public ScriptedAI
     void IsSummonedBy(Unit* summoner) override
     {
         Player* player = summoner->ToPlayer();
-        if (!player || player->GetQuestStatus(PoisonedMind::Quest) != QUEST_STATUS_INCOMPLETE)
+        if (!player || !PoisonedMind::ActiveQuest(player))
         {
             me->DespawnOrUnsummon();
             return;
         }
+        quest = PoisonedMind::ActiveQuest(player);
+        mantidObjective = quest == PoisonedMind::Daily ? 268422 : 268421;
+        kunchongObjective = quest == PoisonedMind::Daily ? 268882 : 268881;
         owner = player->GetGUID();
         home = player->GetPosition();
-        initialMantid = player->GetQuestObjectiveCounter(268421);
-        initialKunchong = player->GetQuestObjectiveCounter(268881);
+        initialMantid = player->GetQuestObjectiveCounter(mantidObjective);
+        initialKunchong = player->GetQuestObjectiveCounter(kunchongObjective);
         std::copy(std::begin(PoisonedMind::Circuit), std::end(PoisonedMind::Circuit), circuit);
         me->SetFaction(player->GetFaction());
         me->SetReactState(REACT_PASSIVE);
@@ -114,19 +127,19 @@ struct npc_poisoned_mind_flyer : public ScriptedAI
         Player* player = ObjectAccessor::GetPlayer(*me, owner);
         if (finished || !player || player->GetVehicleBase() != me || !killer ||
             (killer != me && killer->GetCharmerOrOwnerPlayerOrPlayerItself() != player) ||
-            player->GetQuestStatus(PoisonedMind::Quest) != QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE ||
             !credited.insert(target->GetGUID()).second)
             return;
 
         uint32 objective, expected, entry;
         if (target->GetEntry() == PoisonedMind::Mantid)
         {
-            objective = 268421; entry = PoisonedMind::Mantid;
+            objective = mantidObjective; entry = PoisonedMind::Mantid;
             expected = std::min(200u, initialMantid + ++killedMantid);
         }
         else if (target->GetEntry() == PoisonedMind::Kunchong)
         {
-            objective = 268881; entry = PoisonedMind::Kunchong;
+            objective = kunchongObjective; entry = PoisonedMind::Kunchong;
             expected = std::min(3u, initialKunchong + ++killedKunchong);
         }
         else
@@ -207,7 +220,7 @@ struct npc_poisoned_mind_flyer : public ScriptedAI
             return;
         Player* player = ObjectAccessor::GetPlayer(*me, owner);
         if (!player || !player->IsAlive() ||
-            player->GetQuestStatus(PoisonedMind::Quest) != QUEST_STATUS_INCOMPLETE || lifetime <= diff)
+            player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE || lifetime <= diff)
         {
             Finish();
             return;
@@ -275,7 +288,7 @@ public:
         player->PlayerTalkClass->ClearMenus();
         player->PrepareQuestMenu(creature->GetGUID());
         if (player->IsAlive() && !player->IsInCombat() && !player->GetVehicle() &&
-            player->GetQuestStatus(PoisonedMind::Quest) == QUEST_STATUS_INCOMPLETE)
+            PoisonedMind::ActiveQuest(player))
         {
             if (creature->GetDistance(PoisonedMind::Start) < 25.0f)
                 player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I am ready to fly.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
@@ -293,7 +306,7 @@ public:
             (action != GOSSIP_ACTION_INFO_DEF && action != GOSSIP_ACTION_INFO_DEF + 1) ||
             !player->IsAlive() || player->IsInCombat() || player->GetVehicle() ||
             !creature->IsWithinDistInMap(player, INTERACTION_DISTANCE) ||
-            player->GetQuestStatus(PoisonedMind::Quest) != QUEST_STATUS_INCOMPLETE)
+            !PoisonedMind::ActiveQuest(player))
             return true;
         if (player->GetMapId() != 870)
             return true;

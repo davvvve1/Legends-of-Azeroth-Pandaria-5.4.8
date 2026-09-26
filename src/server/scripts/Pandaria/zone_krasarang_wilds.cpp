@@ -3104,8 +3104,11 @@ struct npc_lorekeeper_vaeldrin : public ScriptedAI
     }
 };
 
+void AddSC_daily_quest_repairs();
+
 void AddSC_krasarang_wilds()
 {
+    AddSC_daily_quest_repairs();
     new npc_arness_the_scale();
     new npc_torik_ethis();
     new npc_go_kan();

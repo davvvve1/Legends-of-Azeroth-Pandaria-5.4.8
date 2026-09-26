@@ -3820,6 +3820,25 @@ bool HandlePlayerbotLfrCommand(ChatHandler* handler, char const* args)
     if (!player)
         return false;
 
+    auto expansionName = [](uint8 expansion) -> char const*
+    {
+        switch (expansion)
+        {
+            case EXPANSION_CLASSIC:
+                return "Vanilla";
+            case EXPANSION_THE_BURNING_CRUSADE:
+                return "The Burning Crusade";
+            case EXPANSION_WRATH_OF_THE_LICH_KING:
+                return "Wrath of the Lich King";
+            case EXPANSION_CATACLYSM:
+                return "Cataclysm";
+            case EXPANSION_MISTS_OF_PANDARIA:
+                return "Mists of Pandaria";
+            default:
+                return "Unknown";
+        }
+    };
+
     auto requiredLevel = [](lfg::LFGDungeonData const* dungeon) -> uint8
     {
         if (!dungeon)
@@ -3868,26 +3887,32 @@ bool HandlePlayerbotLfrCommand(ChatHandler* handler, char const* args)
     {
         handler->PSendSysMessage("Available raids for level %u:", player->GetLevel());
 
-        bool found = false;
+        std::map<uint8, std::vector<lfg::LFGDungeonData const*>> raidsByExpansion;
         for (uint32 id = 0; id < sLFGDungeonStore.GetNumRows(); ++id)
         {
             lfg::LFGDungeonData const* dungeon = sLFGMgr->GetLFGDungeon(id);
-            if (!validRaid(dungeon))
-                continue;
-
-            uint32 maxPlayers = 0;
-            if (MapDifficulty const* mapDiff =
-                    GetMapDifficultyData(dungeon->map, dungeon->difficulty))
-                maxPlayers = mapDiff->maxPlayers;
-
-            handler->PSendSysMessage(
-                "%u - %s [%u-player, difficulty %u]",
-                dungeon->id, dungeon->name.c_str(),
-                maxPlayers, uint32(dungeon->difficulty));
-            found = true;
+            if (validRaid(dungeon))
+                raidsByExpansion[dungeon->expansion].push_back(dungeon);
         }
 
-        if (!found)
+        for (auto const& expansionRaids : raidsByExpansion)
+        {
+            handler->PSendSysMessage("%s:", expansionName(expansionRaids.first));
+            for (lfg::LFGDungeonData const* dungeon : expansionRaids.second)
+            {
+                uint32 maxPlayers = 0;
+                if (MapDifficulty const* mapDiff =
+                        GetMapDifficultyData(dungeon->map, dungeon->difficulty))
+                    maxPlayers = mapDiff->maxPlayers;
+
+                handler->PSendSysMessage(
+                    "  %u - %s [%u-player, difficulty %u]",
+                    dungeon->id, dungeon->name.c_str(),
+                    maxPlayers, uint32(dungeon->difficulty));
+            }
+        }
+
+        if (raidsByExpansion.empty())
             handler->SendSysMessage("No raids are available at your level.");
         else
             handler->SendSysMessage("Queue with: .lfr <ID>");

@@ -39,6 +39,42 @@ enum Spells
 enum eQuests
 {
     QUEST_THROUGH_THE_DREAM = 25325,
+    QUEST_THE_NORDRASSIL_SUMMIT = 29326,
+};
+
+enum NordrassilSummit
+{
+    NPC_NORDRASSIL_CEREMONY_CREDIT = 54306,
+};
+
+class npc_nordrassil_summit_thrall : public CreatureScript
+{
+    public:
+        npc_nordrassil_summit_thrall() : CreatureScript("npc_nordrassil_summit_thrall") { }
+
+        bool OnGossipHello(Player* player, Creature* creature) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            if (creature->IsQuestGiver())
+                player->PrepareQuestMenu(creature->GetGUID());
+
+            if (player->GetQuestStatus(QUEST_THE_NORDRASSIL_SUMMIT) == QUEST_STATUS_INCOMPLETE)
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I am ready.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+            player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+
+        bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 sender, uint32 action) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+                player->GetQuestStatus(QUEST_THE_NORDRASSIL_SUMMIT) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_NORDRASSIL_CEREMONY_CREDIT);
+
+            player->CLOSE_GOSSIP_MENU();
+            return true;
+        }
 };
 
 enum Events
@@ -1083,6 +1119,7 @@ class AreaTrigger_at_hyjal_alysra : public AreaTriggerScript
 
 void AddSC_mount_hyjal()
 {
+    new npc_nordrassil_summit_thrall();
     new npc_garr();
     new npc_garr_firesworn();
     // new npc_lycanthoth();

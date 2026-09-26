@@ -26,12 +26,12 @@ struct Player; struct Creature;
 struct Unit { virtual Player* ToPlayer(){return nullptr;} virtual int GetGUID(){return 1;} virtual Player* GetCharmerOrOwnerPlayerOrPlayerItself(){return nullptr;} };
 struct Player:Unit {
  Creature* vehicle=nullptr; int status=1, talk=0, teleports=0; bool alive=true, online=true;
- unsigned mantid=0,kunchong=0;
- unsigned GetQuestObjectiveCounter(unsigned id){return id==268421?mantid:kunchong;}
+ unsigned mantid=0,kunchong=0; int activeQuest=31211;
+ unsigned GetQuestObjectiveCounter(unsigned id){assert(id==unsigned(activeQuest==31216?268422:268421)||id==unsigned(activeQuest==31216?268882:268881));return (id==268421||id==268422)?mantid:kunchong;}
  void KilledMonsterCredit(unsigned entry,int,unsigned count){if(entry==63613)mantid+=count;else kunchong+=count;}
  Position pos{10,20,30,0};
  Player* ToPlayer(){return this;} bool IsAlive(){return alive;}
- int GetQuestStatus(int){return status;} int GetFaction(){return 1;}
+ int GetQuestStatus(int id){return id==activeQuest?status:0;} int GetFaction(){return 1;}
  Position GetPosition(){return pos;} Creature* GetVehicleBase(){return vehicle;}
  void ExitVehicle(){vehicle=nullptr;}
  void NearTeleportTo(float x,float y,float z,float o){pos={x,y,z,o};++teleports;}
@@ -80,7 +80,8 @@ void arrive(npc_poisoned_mind_flyer& ai) {
  ai.MovementInform(POINT_MOTION_TYPE,11);ai.UpdateAI(1);
 }
 int main(){
- Creature c; Player p; ObjectAccessor::player=&p;
+ for(int questId : {31211,31216}){
+ Creature c; Player p; p.activeQuest=questId; ObjectAccessor::player=&p;
  npc_poisoned_mind_flyer ai(&c); ai.IsSummonedBy(&p); p.vehicle=&c;
  ai.PassengerBoarded(&p,0,true); assert(p.talk==1&&c.motion.moves==0);
  arrive(ai); assert(c.mantids==240&&c.kunchong==3);
@@ -103,7 +104,7 @@ int main(){
  p.status=2;ai.UpdateAI(1);assert(ai.finished&&p.teleports==1&&p.vehicle==nullptr);
  ai.Finish();assert(p.teleports==1&&ai.summons.cleanups==1);
  for(int failure=0;failure<7;++failure){
-  Creature vehicle;Player rider;ObjectAccessor::player=&rider;
+  Creature vehicle;Player rider;rider.activeQuest=questId;ObjectAccessor::player=&rider;
   npc_poisoned_mind_flyer ride(&vehicle);ride.IsSummonedBy(&rider);
   if(failure==0){ride.UpdateAI(10001);}
   else{
@@ -116,6 +117,7 @@ int main(){
    if(failure==6){SpellInfo s{124206};ride.SpellHit(&rider,&s);}
   }
   assert(ride.finished&&ride.summons.cleanups==1&&rider.status!=2);
+ }
  }
 }
 

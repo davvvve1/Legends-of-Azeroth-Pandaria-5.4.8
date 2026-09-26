@@ -74,3 +74,10 @@ update it alongside route changes. It validates static geometry, not the client
 vehicle camera/UI or live missile behavior. Apply the additional migration
 `sql/patches/world/2026_09_26_02_world_xaril_start.sql` before installing and
 restarting the rebuilt server. The flight remains a reconstructed encounter.
+
+Dark Skies (31216) uses the same tested route and vehicle as the introductory quest.
+The vehicle keeps the selected quest and its own objective IDs for kill-credit
+fallback and completion cleanup. SQL patch 2026_09_26_03 requires rewarded 31211
+and removes the incorrect upper reputation cap. Pool 608 still rotates this daily
+with Rampage Against the Machine; unlocking does not guarantee today's selection.
+The regression fixture runs both quests, including cleanup and credit isolation.

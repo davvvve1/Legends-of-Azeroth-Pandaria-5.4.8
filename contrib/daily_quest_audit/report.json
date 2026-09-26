@@ -1,0 +1,5426 @@
+{
+  "summary": {
+    "daily_total": 1589,
+    "deprecated_excluded": 72,
+    "non_deprecated": 1517,
+    "unique_flagged": 362,
+    "confirmed": 0,
+    "recorded_disabled_or_broken": 0,
+    "suspected": 362,
+    "reputation_ceilings_for_review": 44,
+    "automatic_lfg_dailies": 24,
+    "placeholder_dailies": 15,
+    "missing_ender": 325,
+    "missing_starter": 350
+  },
+  "findings": [
+    {
+      "quest": 10999,
+      "title": "One Shot, One Kill",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11335,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11336,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11337,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11338,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11339,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11340,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11341,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11342,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11401,
+      "title": "Call the Headless Horseman",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11402,
+      "title": "Clayton's Quest: Extreme!!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11404,
+      "title": "Call the Headless Horseman",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11405,
+      "title": "Call the Headless Horseman",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11496,
+      "title": "The Sanctum Wards",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11513,
+      "title": "Intercepting the Mana Cells",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11520,
+      "title": "Discovering Your Roots",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11524,
+      "title": "Erratic Behavior",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11532,
+      "title": "Distraction at the Dead Scar",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11535,
+      "title": "Making Ready",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11539,
+      "title": "Taking the Harbor",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11542,
+      "title": "Intercept the Reinforcements",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11545,
+      "title": "A Charitable Donation",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11691,
+      "title": "Summon Ahune",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 12062,
+      "title": "Insult Coren Direbrew",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13405,
+      "title": "Call to Arms: Strand of the Ancients",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13407,
+      "title": "Call to Arms: Strand of the Ancients",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13427,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13428,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13627,
+      "title": "Jack Me Some Lumber",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13681,
+      "title": "A Chip Off the Ulduar Block",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13692,
+      "title": "The Sword and the Sea",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14163,
+      "title": "Call to Arms: Isle of Conquest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14164,
+      "title": "Call to Arms: Isle of Conquest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14178,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14179,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14180,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14181,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14182,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14183,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14488,
+      "title": "You've Been Served",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24216,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24217,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24218,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24219,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24220,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24221,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24223,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24224,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24225,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24226,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24426,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24427,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24661,
+      "title": "REUSE ME",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 26178,
+      "title": "Planning for the Future",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29140,
+      "title": "Under the Skylord's Gaze",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29258,
+      "title": "Meteorite Hunt",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29271,
+      "title": "Bound for Warmer Weather",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29294,
+      "title": "Animate Embers",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30153,
+      "title": "Full Speed Ahead",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30190,
+      "title": "Sprite Plight",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30191,
+      "title": "Steer Clear of the Beer Here",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30192,
+      "title": "My Town, It's on Fire",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30193,
+      "title": "Meating Expectations",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30194,
+      "title": "Encroaching Storm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30195,
+      "title": "Blooming Blossoms",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30196,
+      "title": "Lushroom Rush",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30197,
+      "title": "Cart Ride",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30200,
+      "title": "In Ashen Webs",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30204,
+      "title": "That's Not a Rock!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30205,
+      "title": "Runelocked",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30206,
+      "title": "Runes in the Ruins",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30225,
+      "title": "The Ashweb Matriarch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30226,
+      "title": "Blood on the Rise",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30227,
+      "title": "Wulon, the Granite Sentinel",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30228,
+      "title": "Troubling the Troublemakers",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30231,
+      "title": "Pomfruit Pickup",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30232,
+      "title": "Ruffling Some Feathers",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30233,
+      "title": "Cracklefang",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30234,
+      "title": "Vicejaw",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30235,
+      "title": "Quid Pro Quo",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30236,
+      "title": "Aetha",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30237,
+      "title": "The Pandaren Uprising Relived",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30238,
+      "title": "Return to Rest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30239,
+      "title": "Lao-Fe the Slavebinder",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30244,
+      "title": "Along the Serpent's Spine",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30245,
+      "title": "Lost Scouts",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30246,
+      "title": "Upon the Ramparts",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30247,
+      "title": "Roll Club: Vale of Eternal Blossoms",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30248,
+      "title": "The Butcher",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30249,
+      "title": "Under the Setting Sun",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30250,
+      "title": "Survival Ring: Thunder",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30251,
+      "title": "Vyraxxis, the Krik'thik Swarm-Lord",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30263,
+      "title": "Clearing in the Forest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30264,
+      "title": "Enemy at the Gates",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30265,
+      "title": "Sparkle in the Eye",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30281,
+      "title": "The Silent Approach",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30282,
+      "title": "Burning Away the Filth",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30283,
+      "title": "A Smashing Impression",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30284,
+      "title": "A Thousand Pointy Teeth",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30285,
+      "title": "Wu Kao Scouting Reports",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30286,
+      "title": "Backed Into a Corner",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30287,
+      "title": "Mogu Make Poor House Guests",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30288,
+      "title": "My Town, It's On Fire Again",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30289,
+      "title": "Freeing Mind and Body",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30290,
+      "title": "Stonebound Killers",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30291,
+      "title": "Stunning Display",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30292,
+      "title": "Rude Awakenings",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30293,
+      "title": "In Enemy Hands",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30294,
+      "title": "Small Comforts",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30296,
+      "title": "Gaohun the Soul-Severer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30297,
+      "title": "Baolai the Immolator",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30298,
+      "title": "Painting the Ruins Red",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30299,
+      "title": "No Stone Unturned",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30300,
+      "title": "The Key to Success",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30301,
+      "title": "Offering a Warm Welcome",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30302,
+      "title": "The Imperion Threat",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30304,
+      "title": "Hard as a Rock",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30305,
+      "title": "He Knows What He's Doing",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30307,
+      "title": "The Eternal Vigil",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30308,
+      "title": "Stone Hard Quilen",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30309,
+      "title": "Set in Stone",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30310,
+      "title": "Thundering Skies",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30311,
+      "title": "High Standards",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30312,
+      "title": "Given a Second Chance",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30313,
+      "title": "The Moving Mists",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30314,
+      "title": "The Displaced Paleblade",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30316,
+      "title": "Longshot",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30320,
+      "title": "Free Spirits",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30338,
+      "title": "A Weighty Task",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30339,
+      "title": "Getting your Hands Dirty",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30340,
+      "title": "Stick in the Mud",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30341,
+      "title": "Under Watchful Eyes",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30342,
+      "title": "Fiery Tongue, Fragile Feet",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30385,
+      "title": "Setting Sun Garrison",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30442,
+      "title": "Blanche's Boomer Brew",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30444,
+      "title": "No Reprieve",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30481,
+      "title": "Carved in Stone",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30482,
+      "title": "The Soul-Gatherer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30677,
+      "title": "Shuttle Service",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30965,
+      "title": "Herding Cats",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31131,
+      "title": "Whitepetal Lake",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31136,
+      "title": "Behind Our Lines",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31218,
+      "title": "FLAG - Unlocked Tenwu",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31219,
+      "title": "FLAG - Unlocked Nurong",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31240,
+      "title": "Guo-Lai Infestation",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31242,
+      "title": "Mistfall Village",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31243,
+      "title": "Attack on Mistfall Village",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31244,
+      "title": "Guo-Lai Encampment",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31245,
+      "title": "Mistfall Village",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31246,
+      "title": "Attack on Mistfall Village",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31247,
+      "title": "Setting Sun Garrison",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31248,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31249,
+      "title": "Mistfall Village",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31250,
+      "title": "Setting Sun Garrison",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31273,
+      "title": "Relics of the Swarm",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31289,
+      "title": "Research Project: The Pandaren Empire",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31293,
+      "title": "Mogu Make Poor House Guests",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31294,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31295,
+      "title": "Mogu within the Ruins of Guo-Lai",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31296,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31297,
+      "title": "Setting Sun Garrison",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31376,
+      "title": "Attack At The Temple of the Jade Serpent",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31377,
+      "title": "Attack At The Temple of the Jade Serpent",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31378,
+      "title": "Challenge At The Temple of the Red Crane",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31379,
+      "title": "Challenge At The Temple of the Red Crane",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31380,
+      "title": "Trial At The Temple of the White Tiger",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31381,
+      "title": "Trial At The Temple of the White Tiger",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31382,
+      "title": "Defense At Niuzao Temple",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31383,
+      "title": "Defense At Niuzao Temple",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31466,
+      "title": "FLAG - Took Loot",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31491,
+      "title": "The Ten Foot Pole",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31492,
+      "title": "The Torch of Strength",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31545,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31557,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31558,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31559,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31560,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31561,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31562,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31563,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31564,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31565,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31566,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31567,
+      "title": "The Finer Things",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31665,
+      "title": "FLAG - Vegetron 4000 Converted",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31754,
+      "title": "Cannonfire",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31755,
+      "title": "Acts of Cruelty",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31756,
+      "title": "High Chance of Rain",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31757,
+      "title": "Unleashed Spirits",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31758,
+      "title": "Laosy Scouting",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31759,
+      "title": "[RESCUE GOLDEN LOTUS SQUAD] [GET RID OF THIS?]",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31760,
+      "title": "Striking First",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31761,
+      "title": "Breaking Their Spirits (Not Yet Implemented)",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31762,
+      "title": "Crumbling Behemoth",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31763,
+      "title": "[KILL GIANT SERPENT] [GET RID OF THIS?]",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31781,
+      "title": "Lindsay",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31819,
+      "title": "Dagra the Fierce",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31850,
+      "title": "Eric Davidson",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31851,
+      "title": "Bill Buckler",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31852,
+      "title": "Steven Lisbane",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31854,
+      "title": "Analynn",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31862,
+      "title": "Zonya the Sadist",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31871,
+      "title": "Traitor Gluk",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31872,
+      "title": "Merda Stronghoof",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31888,
+      "title": "Pet Battle Trainers: Kalimdor",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31890,
+      "title": "Pet Battle Trainers: Kalimdor",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31904,
+      "title": "Cassandra Kaboom",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31905,
+      "title": "Grazzle the Great",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31906,
+      "title": "Kela Grimtotem",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31907,
+      "title": "Zoltan",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31908,
+      "title": "Elena Flutterfly",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31910,
+      "title": "David Kosse",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31911,
+      "title": "Deiza Plaguehorn",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31912,
+      "title": "Kortas Darkhammer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31913,
+      "title": "Everessa",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31914,
+      "title": "Durin Darkhammer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31916,
+      "title": "Grand Master Lydia Accoste",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31922,
+      "title": "Nicki Tinytech",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31923,
+      "title": "Ras'an",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31924,
+      "title": "Narrok",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31925,
+      "title": "Morulu The Elder",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31926,
+      "title": "Grand Master Antari",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31931,
+      "title": "Beegle Blastfuse",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31932,
+      "title": "Nearly Headless Jacob",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31933,
+      "title": "Okrut Dragonwaste",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31934,
+      "title": "Gutretch",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31935,
+      "title": "Grand Master Payne",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31954,
+      "title": "Grand Master Mo'ruk",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31971,
+      "title": "Grand Master Obalis",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31972,
+      "title": "Brok",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31973,
+      "title": "Bordin Steadyfist",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31974,
+      "title": "Goz Banefury",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32107,
+      "title": "Flying Tiger Gourami",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32116,
+      "title": "Priorities, People!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32123,
+      "title": "Death on Two Legs",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32129,
+      "title": "Defense Daily 06",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32130,
+      "title": "Good Luck, Have Fun",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32131,
+      "title": "We Require More Minerals!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32132,
+      "title": "Worker Harassment",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32133,
+      "title": "Sentry Wards",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32134,
+      "title": "Hard Counter",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32135,
+      "title": "Hero Killer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32142,
+      "title": "We Will Rock You",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32143,
+      "title": "A Kind of Magic",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32144,
+      "title": "Under Pressure",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32146,
+      "title": "Hammer to Fall",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32147,
+      "title": "Attack Daily 06",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32148,
+      "title": "Attack! Move!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32149,
+      "title": "Resource Gathering",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32150,
+      "title": "Supply Block",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32151,
+      "title": "Tower Defense",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32152,
+      "title": "Siege Damage",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32153,
+      "title": "Hero Killer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32154,
+      "title": "Burn Out!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32155,
+      "title": "Necessary Breaks",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32156,
+      "title": "It's Only Right",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32157,
+      "title": "The Only Good Goblin...",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32158,
+      "title": "Two Step Program",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32159,
+      "title": "Circle of Life",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32173,
+      "title": "Build Portal 01",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32174,
+      "title": "Build Portal 01",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32181,
+      "title": "Beastmaster's Quarry: The Crane",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32182,
+      "title": "Beastmaster's Quarry: The Tiger",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32183,
+      "title": "Beastmaster's Quarry: The Crab",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32184,
+      "title": "Beastmaster's Quarry: The Crane",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32185,
+      "title": "Beastmaster's Quarry: The Tiger",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32186,
+      "title": "Beastmaster's Quarry: The Crab",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32205,
+      "title": "Gather Scout Reports",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32210,
+      "title": "Kill mogu boss for key, use object behind jumping puzzle",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32214,
+      "title": "Bilgewater Infiltrators",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32221,
+      "title": "Storming the Beach",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32229,
+      "title": "Kill Roaming Troll War Party",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32275,
+      "title": "Surgical Death",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32286,
+      "title": "Kill Mogu Blood-seekers (Roaming pairs, actively fighting scouts, and performing rituals on corpses)",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32294,
+      "title": "Raining Bones",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32306,
+      "title": "Lumber Collection Tracking",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32433,
+      "title": "Undermining the Under Miner",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32440,
+      "title": "Whispering Pandaren Spirit",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32446,
+      "title": "Dis-Assembly Required",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32492,
+      "title": "Destroy Cauldrons",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32521,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32522,
+      "title": "Imposing Threat",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32523,
+      "title": "The Beast Pens",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32524,
+      "title": "The Beating of Troll Drums",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32561,
+      "title": "Competing Magic",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32563,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32564,
+      "title": "Zandalari on the Rise",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32565,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32567,
+      "title": "The Beast Pens",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32568,
+      "title": "No Time To Rest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32570,
+      "title": "Gather Scout Reports",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32579,
+      "title": "Competing Magic",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32580,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32581,
+      "title": "Imposing Threat",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32582,
+      "title": "Raining Bones",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32583,
+      "title": "Zandalari on the Rise",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32584,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32585,
+      "title": "Encroaching Force",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32604,
+      "title": "Beasts of Fable Book I",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32722,
+      "title": "Forge Ahead!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32723,
+      "title": "reuse me",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32724,
+      "title": "Forge Ahead!",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32730,
+      "title": "Ihgaluk Crag",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32826,
+      "title": "Re-Use Me",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32827,
+      "title": "Re-Use Me",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32868,
+      "title": "Beasts of Fable Book II",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32869,
+      "title": "Beasts of Fable Book III",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32910,
+      "title": "reuse me",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32949,
+      "title": "Tracking Quest: Guru Kukuru",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32959,
+      "title": "Tracking Quest - Daily - Zhu-Gon the Sour/Skunky Beer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32961,
+      "title": "Scary Ghosts and Nice Sprites - Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32962,
+      "title": "\"Tom\" Bone Apart - Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32964,
+      "title": "Tracking Quest: Ghost Pirate Battle - Completed",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32965,
+      "title": "Tracking Quest: Ghost Pirate Battle - Looted Treasure",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32966,
+      "title": "Tracking Quest - Daily - Chelon",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32972,
+      "title": "Avatar of Flame Transform Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32973,
+      "title": "Avatar of Flame Kill Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33124,
+      "title": "Fishing with Fin - Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33146,
+      "title": "Noodle Time",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33292,
+      "title": "Tracking Quest - Daily - Karkanos",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33293,
+      "title": "Tracking Quest - Daily - Spirit of Jadefire",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33294,
+      "title": "Tracking Quest - Daily - Gu'chi the Swarmbringer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33295,
+      "title": "Tracking Quest - Daily - Emerald Gander",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33296,
+      "title": "Tracking Quest - Daily - Ironfur Steelhorn",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33297,
+      "title": "Tracking Quest - Daily - Great Turtle Furyshell",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33298,
+      "title": "Tracking Quest - Daily - Leafmender",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33299,
+      "title": "Tracking Quest - Daily - Champion of the Black Flame",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33300,
+      "title": "Tracking Quest - Daily - Garnia",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33301,
+      "title": "Tracking Quest - Daily - Bufo",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33302,
+      "title": "Tracking Quest - Daily - Monstrous Spineclaw",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33303,
+      "title": "Tracking Quest - Daily - Imperial Python",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33304,
+      "title": "Tracking Quest - Daily - Tsavo'ka",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33305,
+      "title": "Tracking Quest - Daily - Stinkbraid",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33306,
+      "title": "Tracking Quest - Daily - Jakur of Ordon",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33307,
+      "title": "Tracking Quest - Daily - Rock Moss",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33308,
+      "title": "Tracking Quest - Daily - Urdur the Cauterizer",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33309,
+      "title": "Tracking Quest - Daily - Flintlord Gairan",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33310,
+      "title": "Tracking Quest - Daily - Cinderfall",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33311,
+      "title": "Tracking Quest - Daily - Huolon",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33312,
+      "title": "Tracking Quest - Daily - Archiereus of Flame",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33313,
+      "title": "Tracking Quest - Daily - Evermaw",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33314,
+      "title": "Tracking Quest - Daily - Dread Ship Vazuvius",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33315,
+      "title": "Tracking Quest - Daily - Golganarr",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33316,
+      "title": "Tracking Quest - Daily - Zesqua",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33322,
+      "title": "Tracking Quest - Daily - Watcher Osu",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33348,
+      "title": "\"Tom\" Bone Apart - Intro Tracking Quest",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33358,
+      "title": "Noodle Time: Bonus",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34060,
+      "title": "Krasarang RRP - Daily Vignette - Rogue Boss",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34061,
+      "title": "Krasarang RRP - Daily Vignette - Priest Boss",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34062,
+      "title": "Krasarang RRP - Daily Vignette - Warrior Boss",
+      "category": "missing_starter",
+      "confidence": "suspected",
+      "detail": "No static NPC/object/item relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 10999,
+      "title": "One Shot, One Kill",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11335,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11336,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11337,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11338,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11339,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11340,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11341,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11342,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11401,
+      "title": "Call the Headless Horseman",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11402,
+      "title": "Clayton's Quest: Extreme!!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11404,
+      "title": "Call the Headless Horseman",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11405,
+      "title": "Call the Headless Horseman",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11513,
+      "title": "Intercepting the Mana Cells",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 11691,
+      "title": "Summon Ahune",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 12001,
+      "title": "zzOLDHunting Tarot: Lesser Beasts",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 12062,
+      "title": "Insult Coren Direbrew",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13405,
+      "title": "Call to Arms: Strand of the Ancients",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13407,
+      "title": "Call to Arms: Strand of the Ancients",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13427,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13428,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13627,
+      "title": "Jack Me Some Lumber",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13681,
+      "title": "A Chip Off the Ulduar Block",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 13692,
+      "title": "The Sword and the Sea",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14163,
+      "title": "Call to Arms: Isle of Conquest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14164,
+      "title": "Call to Arms: Isle of Conquest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14178,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14179,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14180,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14181,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14182,
+      "title": "Call to Arms: Eye of the Storm",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14183,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 14488,
+      "title": "You've Been Served",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24216,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24217,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24218,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24219,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24220,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24221,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24223,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24224,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24225,
+      "title": "Call to Arms: Warsong Gulch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24226,
+      "title": "Call to Arms: Arathi Basin",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24426,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24427,
+      "title": "Call to Arms: Alterac Valley",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 24661,
+      "title": "REUSE ME",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 26178,
+      "title": "Planning for the Future",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29140,
+      "title": "Under the Skylord's Gaze",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29258,
+      "title": "Meteorite Hunt",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29271,
+      "title": "Bound for Warmer Weather",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29291,
+      "title": "Straight Chuting",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29292,
+      "title": "Hawk Fire",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 29294,
+      "title": "Animate Embers",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30153,
+      "title": "Full Speed Ahead",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30191,
+      "title": "Steer Clear of the Beer Here",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30192,
+      "title": "My Town, It's on Fire",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30193,
+      "title": "Meating Expectations",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30195,
+      "title": "Blooming Blossoms",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30196,
+      "title": "Lushroom Rush",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30197,
+      "title": "Cart Ride",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30204,
+      "title": "That's Not a Rock!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30205,
+      "title": "Runelocked",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30206,
+      "title": "Runes in the Ruins",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30225,
+      "title": "The Ashweb Matriarch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30226,
+      "title": "Blood on the Rise",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30227,
+      "title": "Wulon, the Granite Sentinel",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30228,
+      "title": "Troubling the Troublemakers",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30231,
+      "title": "Pomfruit Pickup",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30232,
+      "title": "Ruffling Some Feathers",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30235,
+      "title": "Quid Pro Quo",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30237,
+      "title": "The Pandaren Uprising Relived",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30238,
+      "title": "Return to Rest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30244,
+      "title": "Along the Serpent's Spine",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30245,
+      "title": "Lost Scouts",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30246,
+      "title": "Upon the Ramparts",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30247,
+      "title": "Roll Club: Vale of Eternal Blossoms",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30248,
+      "title": "The Butcher",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30249,
+      "title": "Under the Setting Sun",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30250,
+      "title": "Survival Ring: Thunder",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30251,
+      "title": "Vyraxxis, the Krik'thik Swarm-Lord",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30264,
+      "title": "Enemy at the Gates",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30281,
+      "title": "The Silent Approach",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30282,
+      "title": "Burning Away the Filth",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30283,
+      "title": "A Smashing Impression",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30284,
+      "title": "A Thousand Pointy Teeth",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30285,
+      "title": "Wu Kao Scouting Reports",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30286,
+      "title": "Backed Into a Corner",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30287,
+      "title": "Mogu Make Poor House Guests",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30288,
+      "title": "My Town, It's On Fire Again",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30289,
+      "title": "Freeing Mind and Body",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30290,
+      "title": "Stonebound Killers",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30291,
+      "title": "Stunning Display",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30292,
+      "title": "Rude Awakenings",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30293,
+      "title": "In Enemy Hands",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30294,
+      "title": "Small Comforts",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30297,
+      "title": "Baolai the Immolator",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30298,
+      "title": "Painting the Ruins Red",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30299,
+      "title": "No Stone Unturned",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30300,
+      "title": "The Key to Success",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30301,
+      "title": "Offering a Warm Welcome",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30304,
+      "title": "Hard as a Rock",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30305,
+      "title": "He Knows What He's Doing",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30307,
+      "title": "The Eternal Vigil",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30308,
+      "title": "Stone Hard Quilen",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30309,
+      "title": "Set in Stone",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30310,
+      "title": "Thundering Skies",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30311,
+      "title": "High Standards",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30312,
+      "title": "Given a Second Chance",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30313,
+      "title": "The Moving Mists",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30314,
+      "title": "The Displaced Paleblade",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30316,
+      "title": "Longshot",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30320,
+      "title": "Free Spirits",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30338,
+      "title": "A Weighty Task",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30339,
+      "title": "Getting your Hands Dirty",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30340,
+      "title": "Stick in the Mud",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30341,
+      "title": "Under Watchful Eyes",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30385,
+      "title": "Setting Sun Garrison",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30442,
+      "title": "Blanche's Boomer Brew",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30444,
+      "title": "No Reprieve",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30481,
+      "title": "Carved in Stone",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30482,
+      "title": "The Soul-Gatherer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30677,
+      "title": "Shuttle Service",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 30965,
+      "title": "Herding Cats",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31218,
+      "title": "FLAG - Unlocked Tenwu",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31219,
+      "title": "FLAG - Unlocked Nurong",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31240,
+      "title": "Guo-Lai Infestation",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31242,
+      "title": "Mistfall Village",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31243,
+      "title": "Attack on Mistfall Village",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31244,
+      "title": "Guo-Lai Encampment",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31245,
+      "title": "Mistfall Village",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31246,
+      "title": "Attack on Mistfall Village",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31247,
+      "title": "Setting Sun Garrison",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31248,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31249,
+      "title": "Mistfall Village",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31250,
+      "title": "Setting Sun Garrison",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31273,
+      "title": "Relics of the Swarm",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31289,
+      "title": "Research Project: The Pandaren Empire",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31293,
+      "title": "Mogu Make Poor House Guests",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31294,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31295,
+      "title": "Mogu within the Ruins of Guo-Lai",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31296,
+      "title": "The Ruins of Guo-Lai",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31297,
+      "title": "Setting Sun Garrison",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31378,
+      "title": "Challenge At The Temple of the Red Crane",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31379,
+      "title": "Challenge At The Temple of the Red Crane",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31380,
+      "title": "Trial At The Temple of the White Tiger",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31381,
+      "title": "Trial At The Temple of the White Tiger",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31466,
+      "title": "FLAG - Took Loot",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31491,
+      "title": "The Ten Foot Pole",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31492,
+      "title": "The Torch of Strength",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31545,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31557,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31558,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31559,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31560,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31561,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31562,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31563,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31564,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31565,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31566,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31567,
+      "title": "The Finer Things",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31665,
+      "title": "FLAG - Vegetron 4000 Converted",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31754,
+      "title": "Cannonfire",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31755,
+      "title": "Acts of Cruelty",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31756,
+      "title": "High Chance of Rain",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31757,
+      "title": "Unleashed Spirits",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31758,
+      "title": "Laosy Scouting",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31759,
+      "title": "[RESCUE GOLDEN LOTUS SQUAD] [GET RID OF THIS?]",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31760,
+      "title": "Striking First",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31761,
+      "title": "Breaking Their Spirits (Not Yet Implemented)",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31762,
+      "title": "Crumbling Behemoth",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31763,
+      "title": "[KILL GIANT SERPENT] [GET RID OF THIS?]",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31781,
+      "title": "Lindsay",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31819,
+      "title": "Dagra the Fierce",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31850,
+      "title": "Eric Davidson",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31851,
+      "title": "Bill Buckler",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31852,
+      "title": "Steven Lisbane",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31854,
+      "title": "Analynn",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31862,
+      "title": "Zonya the Sadist",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31871,
+      "title": "Traitor Gluk",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31872,
+      "title": "Merda Stronghoof",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31888,
+      "title": "Pet Battle Trainers: Kalimdor",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31890,
+      "title": "Pet Battle Trainers: Kalimdor",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31904,
+      "title": "Cassandra Kaboom",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31905,
+      "title": "Grazzle the Great",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31906,
+      "title": "Kela Grimtotem",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31907,
+      "title": "Zoltan",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31908,
+      "title": "Elena Flutterfly",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31910,
+      "title": "David Kosse",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31911,
+      "title": "Deiza Plaguehorn",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31912,
+      "title": "Kortas Darkhammer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31913,
+      "title": "Everessa",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31914,
+      "title": "Durin Darkhammer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31916,
+      "title": "Grand Master Lydia Accoste",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31922,
+      "title": "Nicki Tinytech",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31923,
+      "title": "Ras'an",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31924,
+      "title": "Narrok",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31925,
+      "title": "Morulu The Elder",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31926,
+      "title": "Grand Master Antari",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31931,
+      "title": "Beegle Blastfuse",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31932,
+      "title": "Nearly Headless Jacob",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31933,
+      "title": "Okrut Dragonwaste",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31934,
+      "title": "Gutretch",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31935,
+      "title": "Grand Master Payne",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31954,
+      "title": "Grand Master Mo'ruk",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31971,
+      "title": "Grand Master Obalis",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31972,
+      "title": "Brok",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31973,
+      "title": "Bordin Steadyfist",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 31974,
+      "title": "Goz Banefury",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32107,
+      "title": "Flying Tiger Gourami",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32123,
+      "title": "Death on Two Legs",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32129,
+      "title": "Defense Daily 06",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32130,
+      "title": "Good Luck, Have Fun",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32131,
+      "title": "We Require More Minerals!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32132,
+      "title": "Worker Harassment",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32134,
+      "title": "Hard Counter",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32135,
+      "title": "Hero Killer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32138,
+      "title": "Work Order: Lumber",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32142,
+      "title": "We Will Rock You",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32143,
+      "title": "A Kind of Magic",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32144,
+      "title": "Under Pressure",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32145,
+      "title": "Don't Lose Your Head",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32146,
+      "title": "Hammer to Fall",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32147,
+      "title": "Attack Daily 06",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32148,
+      "title": "Attack! Move!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32149,
+      "title": "Resource Gathering",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32150,
+      "title": "Supply Block",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32151,
+      "title": "Tower Defense",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32152,
+      "title": "Siege Damage",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32153,
+      "title": "Hero Killer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32156,
+      "title": "It's Only Right",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32157,
+      "title": "The Only Good Goblin...",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32158,
+      "title": "Two Step Program",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32159,
+      "title": "Circle of Life",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32173,
+      "title": "Build Portal 01",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32174,
+      "title": "Build Portal 01",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32197,
+      "title": "Mystery Meatloaf",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32199,
+      "title": "Krasarang Steampot",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32205,
+      "title": "Gather Scout Reports",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32210,
+      "title": "Kill mogu boss for key, use object behind jumping puzzle",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32214,
+      "title": "Bilgewater Infiltrators",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32221,
+      "title": "Storming the Beach",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32229,
+      "title": "Kill Roaming Troll War Party",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32275,
+      "title": "Surgical Death",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32286,
+      "title": "Kill Mogu Blood-seekers (Roaming pairs, actively fighting scouts, and performing rituals on corpses)",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32292,
+      "title": "Forge Ahead!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32294,
+      "title": "Raining Bones",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32306,
+      "title": "Lumber Collection Tracking",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32433,
+      "title": "Undermining the Under Miner",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32440,
+      "title": "Whispering Pandaren Spirit",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32446,
+      "title": "Dis-Assembly Required",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32450,
+      "title": "The Time Is Now!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32451,
+      "title": "Send A Message",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32452,
+      "title": "And Then There Were Goblins",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32492,
+      "title": "Destroy Cauldrons",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32521,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32522,
+      "title": "Imposing Threat",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32523,
+      "title": "The Beast Pens",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32524,
+      "title": "The Beating of Troll Drums",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32561,
+      "title": "Competing Magic",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32563,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32564,
+      "title": "Zandalari on the Rise",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32565,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32567,
+      "title": "The Beast Pens",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32568,
+      "title": "No Time To Rest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32570,
+      "title": "Gather Scout Reports",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32579,
+      "title": "Competing Magic",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32580,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32581,
+      "title": "Imposing Threat",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32582,
+      "title": "Raining Bones",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32583,
+      "title": "Zandalari on the Rise",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32584,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32585,
+      "title": "Encroaching Force",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32587,
+      "title": "Forge Ahead!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32604,
+      "title": "Beasts of Fable Book I",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32722,
+      "title": "Forge Ahead!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32723,
+      "title": "reuse me",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32724,
+      "title": "Forge Ahead!",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32826,
+      "title": "Re-Use Me",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32827,
+      "title": "Re-Use Me",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32868,
+      "title": "Beasts of Fable Book II",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32869,
+      "title": "Beasts of Fable Book III",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32910,
+      "title": "reuse me",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32949,
+      "title": "Tracking Quest: Guru Kukuru",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32959,
+      "title": "Tracking Quest - Daily - Zhu-Gon the Sour/Skunky Beer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32961,
+      "title": "Scary Ghosts and Nice Sprites - Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32962,
+      "title": "\"Tom\" Bone Apart - Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32964,
+      "title": "Tracking Quest: Ghost Pirate Battle - Completed",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32965,
+      "title": "Tracking Quest: Ghost Pirate Battle - Looted Treasure",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32966,
+      "title": "Tracking Quest - Daily - Chelon",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32972,
+      "title": "Avatar of Flame Transform Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 32973,
+      "title": "Avatar of Flame Kill Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33124,
+      "title": "Fishing with Fin - Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33146,
+      "title": "Noodle Time",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33292,
+      "title": "Tracking Quest - Daily - Karkanos",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33293,
+      "title": "Tracking Quest - Daily - Spirit of Jadefire",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33294,
+      "title": "Tracking Quest - Daily - Gu'chi the Swarmbringer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33295,
+      "title": "Tracking Quest - Daily - Emerald Gander",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33296,
+      "title": "Tracking Quest - Daily - Ironfur Steelhorn",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33297,
+      "title": "Tracking Quest - Daily - Great Turtle Furyshell",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33298,
+      "title": "Tracking Quest - Daily - Leafmender",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33299,
+      "title": "Tracking Quest - Daily - Champion of the Black Flame",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33300,
+      "title": "Tracking Quest - Daily - Garnia",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33301,
+      "title": "Tracking Quest - Daily - Bufo",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33302,
+      "title": "Tracking Quest - Daily - Monstrous Spineclaw",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33303,
+      "title": "Tracking Quest - Daily - Imperial Python",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33304,
+      "title": "Tracking Quest - Daily - Tsavo'ka",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33305,
+      "title": "Tracking Quest - Daily - Stinkbraid",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33306,
+      "title": "Tracking Quest - Daily - Jakur of Ordon",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33307,
+      "title": "Tracking Quest - Daily - Rock Moss",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33308,
+      "title": "Tracking Quest - Daily - Urdur the Cauterizer",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33309,
+      "title": "Tracking Quest - Daily - Flintlord Gairan",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33310,
+      "title": "Tracking Quest - Daily - Cinderfall",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33311,
+      "title": "Tracking Quest - Daily - Huolon",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33312,
+      "title": "Tracking Quest - Daily - Archiereus of Flame",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33313,
+      "title": "Tracking Quest - Daily - Evermaw",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33314,
+      "title": "Tracking Quest - Daily - Dread Ship Vazuvius",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33315,
+      "title": "Tracking Quest - Daily - Golganarr",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33316,
+      "title": "Tracking Quest - Daily - Zesqua",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33322,
+      "title": "Tracking Quest - Daily - Watcher Osu",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33348,
+      "title": "\"Tom\" Bone Apart - Intro Tracking Quest",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 33358,
+      "title": "Noodle Time: Bonus",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34060,
+      "title": "Krasarang RRP - Daily Vignette - Rogue Boss",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34061,
+      "title": "Krasarang RRP - Daily Vignette - Priest Boss",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    },
+    {
+      "quest": 34062,
+      "title": "Krasarang RRP - Daily Vignette - Warrior Boss",
+      "category": "missing_ender",
+      "confidence": "suspected",
+      "detail": "No static NPC/object relation; script/automatic handling must be checked"
+    }
+  ],
+  "reputation_ceilings": [
+    {
+      "ID": "10106",
+      "LogTitle": "Hellfire Fortifications",
+      "Flags": "4232",
+      "QuestSortID": "3483",
+      "MinLevel": "55",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "947",
+      "MinRep": "0",
+      "MaxRep": "41999"
+    },
+    {
+      "ID": "10110",
+      "LogTitle": "Hellfire Fortifications",
+      "Flags": "4232",
+      "QuestSortID": "3483",
+      "MinLevel": "55",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "947",
+      "MinRep": "0",
+      "MaxRep": "41999"
+    },
+    {
+      "ID": "11548",
+      "LogTitle": "Your Continued Support",
+      "Flags": "4232",
+      "QuestSortID": "4080",
+      "MinLevel": "70",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "1077",
+      "MinRep": "0",
+      "MaxRep": "41999"
+    },
+    {
+      "ID": "12582",
+      "LogTitle": "Frenzyheart Champion",
+      "Flags": "4224",
+      "QuestSortID": "3711",
+      "MinLevel": "76",
+      "QuestType": "0",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "1104",
+      "MinRep": "0",
+      "MaxRep": "9000"
+    },
+    {
+      "ID": "12689",
+      "LogTitle": "Hand of the Oracles",
+      "Flags": "4224",
+      "QuestSortID": "3711",
+      "MinLevel": "76",
+      "QuestType": "0",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "1105",
+      "MinRep": "0",
+      "MaxRep": "9000"
+    },
+    {
+      "ID": "13846",
+      "LogTitle": "Contributin' To The Cause",
+      "Flags": "4232",
+      "QuestSortID": "-241",
+      "MinLevel": "77",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "0",
+      "MinFaction": "0",
+      "MaxFaction": "1106",
+      "MinRep": "0",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "30146",
+      "LogTitle": "Snack Time",
+      "Flags": "4096",
+      "QuestSortID": "5931",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "30147",
+      "LogTitle": "Fragments of the Past",
+      "Flags": "4096",
+      "QuestSortID": "5931",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "30148",
+      "LogTitle": "Just a Flesh Wound",
+      "Flags": "4096",
+      "QuestSortID": "5931",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "30149",
+      "LogTitle": "A Feast for the Senses",
+      "Flags": "4096",
+      "QuestSortID": "5931",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "30150",
+      "LogTitle": "Sweet as Honey",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30151",
+      "LogTitle": "Catch!",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "79043",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30154",
+      "LogTitle": "The Easiest Way To A Serpent's Heart",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30155",
+      "LogTitle": "Restoring the Balance",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30156",
+      "LogTitle": "Feeding Time",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30157",
+      "LogTitle": "Emptier Nests",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "78947",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30158",
+      "LogTitle": "Disarming the Enemy",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "30159",
+      "LogTitle": "Preservation",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31194",
+      "LogTitle": "Slitherscale Suppression",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31332",
+      "LogTitle": "Lesson 1: Sliced Peaches",
+      "Flags": "4096",
+      "QuestSortID": "5981",
+      "MinLevel": "85",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31521",
+      "MinFaction": "0",
+      "MaxFaction": "1357",
+      "MinRep": "0",
+      "MaxRep": "8400"
+    },
+    {
+      "ID": "31333",
+      "LogTitle": "Lesson 2: Instant Noodles",
+      "Flags": "4096",
+      "QuestSortID": "5981",
+      "MinLevel": "85",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31521",
+      "MinFaction": "1357",
+      "MaxFaction": "1357",
+      "MinRep": "8400",
+      "MaxRep": "16800"
+    },
+    {
+      "ID": "31334",
+      "LogTitle": "Lesson 3: Toasted Fish Jerky",
+      "Flags": "4096",
+      "QuestSortID": "5981",
+      "MinLevel": "85",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31521",
+      "MinFaction": "1357",
+      "MaxFaction": "1357",
+      "MinRep": "16800",
+      "MaxRep": "25200"
+    },
+    {
+      "ID": "31335",
+      "LogTitle": "Lesson 4: Dried Needle Mushrooms",
+      "Flags": "4096",
+      "QuestSortID": "5981",
+      "MinLevel": "85",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31521",
+      "MinFaction": "1357",
+      "MaxFaction": "1357",
+      "MinRep": "25200",
+      "MaxRep": "33600"
+    },
+    {
+      "ID": "31336",
+      "LogTitle": "Lesson 5: Pounded Rice Cake",
+      "Flags": "4096",
+      "QuestSortID": "5981",
+      "MinLevel": "85",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31521",
+      "MinFaction": "1357",
+      "MaxFaction": "1357",
+      "MinRep": "33600",
+      "MaxRep": "42000"
+    },
+    {
+      "ID": "31698",
+      "LogTitle": "Thinning The Pack",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31699",
+      "LogTitle": "Sprite Fright",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31700",
+      "LogTitle": "The Shoe Is On The Other Foot",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31701",
+      "LogTitle": "Dark Huntress",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31702",
+      "LogTitle": "On The Prowl",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31703",
+      "LogTitle": "Madcap Mayhem",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31704",
+      "LogTitle": "Pooped",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31705",
+      "LogTitle": "Needle Me Not",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "89113",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31706",
+      "LogTitle": "Weeping Widows",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31707",
+      "LogTitle": "A Tangled Web",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31708",
+      "LogTitle": "Serpent's Scale",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31709",
+      "LogTitle": "Lingering Doubt",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "88966",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31710",
+      "LogTitle": "Tiny Treats",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31711",
+      "LogTitle": "The Seed of Doubt",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31712",
+      "LogTitle": "Monkey Mischief",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31713",
+      "LogTitle": "The Big Brew-haha",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31714",
+      "LogTitle": "Saving the Serpents",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31715",
+      "LogTitle": "The Big Kah-Oona",
+      "Flags": "4096",
+      "QuestSortID": "5785",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31716",
+      "LogTitle": "Pooped",
+      "Flags": "4096",
+      "QuestSortID": "5931",
+      "MinLevel": "90",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "30142",
+      "MinFaction": "0",
+      "MaxFaction": "1271",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    },
+    {
+      "ID": "31808",
+      "LogTitle": "Rampage Against the Machine",
+      "Flags": "4096",
+      "QuestSortID": "6138",
+      "MinLevel": "89",
+      "QuestType": "2",
+      "StartItem": "0",
+      "PrevQuestID": "31066",
+      "MinFaction": "0",
+      "MaxFaction": "1337",
+      "MinRep": "0",
+      "MaxRep": "21000"
+    }
+  ],
+  "ai_overlaps": [
+    {
+      "quest": "31709",
+      "entry": "58508",
+      "name": "Big Bao",
+      "ScriptName": "npc_big_bao",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31840",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31841",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31842",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31843",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31844",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31845",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "31846",
+      "entry": "66260",
+      "name": "Master Hight",
+      "ScriptName": "npc_master_hight",
+      "AIName": "SmartAI"
+    },
+    {
+      "quest": "24597",
+      "entry": "29611",
+      "name": "King Varian Wrynn",
+      "ScriptName": "npc_king_varian_wrynn",
+      "AIName": "SmartAI"
+    }
+  ]
+}

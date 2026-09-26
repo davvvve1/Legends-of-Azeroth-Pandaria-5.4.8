@@ -1,0 +1,3441 @@
+[
+  {
+    "id": 10999,
+    "url": "https://mop-shoot.tauri.hu/?quest=10999",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11335,
+    "url": "https://mop-shoot.tauri.hu/?quest=11335",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      11339,
+      14178,
+      14181,
+      24221,
+      24220,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 11336,
+    "url": "https://mop-shoot.tauri.hu/?quest=11336",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      11340,
+      13427,
+      13428,
+      24426,
+      24427
+    ]
+  },
+  {
+    "id": 11337,
+    "url": "https://mop-shoot.tauri.hu/?quest=11337",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      11341,
+      14179,
+      14182
+    ]
+  },
+  {
+    "id": 11338,
+    "url": "https://mop-shoot.tauri.hu/?quest=11338",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      11342,
+      14180,
+      14183,
+      24216,
+      24219,
+      24218,
+      24224,
+      24225,
+      24217
+    ]
+  },
+  {
+    "id": 11339,
+    "url": "https://mop-shoot.tauri.hu/?quest=11339",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      11335,
+      14178,
+      14181,
+      24221,
+      24220,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 11340,
+    "url": "https://mop-shoot.tauri.hu/?quest=11340",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      11336,
+      13427,
+      13428,
+      24426,
+      24427
+    ]
+  },
+  {
+    "id": 11341,
+    "url": "https://mop-shoot.tauri.hu/?quest=11341",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      11337,
+      14179,
+      14182
+    ]
+  },
+  {
+    "id": 11342,
+    "url": "https://mop-shoot.tauri.hu/?quest=11342",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      11338,
+      14180,
+      14183,
+      24216,
+      24219,
+      24218,
+      24224,
+      24225,
+      24217
+    ]
+  },
+  {
+    "id": 11401,
+    "url": "https://mop-shoot.tauri.hu/?quest=11401",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11404,
+      11405,
+      11392
+    ]
+  },
+  {
+    "id": 11402,
+    "url": "https://mop-shoot.tauri.hu/?quest=11402",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11404,
+    "url": "https://mop-shoot.tauri.hu/?quest=11404",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11401,
+      11405,
+      11392
+    ]
+  },
+  {
+    "id": 11405,
+    "url": "https://mop-shoot.tauri.hu/?quest=11405",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11404,
+      11401,
+      11392
+    ]
+  },
+  {
+    "id": 11496,
+    "url": "https://mop-shoot.tauri.hu/?quest=11496",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11513,
+    "url": "https://mop-shoot.tauri.hu/?quest=11513",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 24932
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 24932
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 11520,
+    "url": "https://mop-shoot.tauri.hu/?quest=11520",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11524,
+    "url": "https://mop-shoot.tauri.hu/?quest=11524",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11532,
+    "url": "https://mop-shoot.tauri.hu/?quest=11532",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11535,
+    "url": "https://mop-shoot.tauri.hu/?quest=11535",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11539,
+    "url": "https://mop-shoot.tauri.hu/?quest=11539",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11542,
+    "url": "https://mop-shoot.tauri.hu/?quest=11542",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11545,
+    "url": "https://mop-shoot.tauri.hu/?quest=11545",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 11691,
+    "url": "https://mop-shoot.tauri.hu/?quest=11691",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 12062,
+    "url": "https://mop-shoot.tauri.hu/?quest=12062",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 13405,
+    "url": "https://mop-shoot.tauri.hu/?quest=13405",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      13407
+    ]
+  },
+  {
+    "id": 13407,
+    "url": "https://mop-shoot.tauri.hu/?quest=13407",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      13405
+    ]
+  },
+  {
+    "id": 13427,
+    "url": "https://mop-shoot.tauri.hu/?quest=13427",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11336,
+      11340,
+      13428,
+      24426,
+      24427
+    ]
+  },
+  {
+    "id": 13428,
+    "url": "https://mop-shoot.tauri.hu/?quest=13428",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11336,
+      11340,
+      13427,
+      24426,
+      24427
+    ]
+  },
+  {
+    "id": 13627,
+    "url": "https://mop-shoot.tauri.hu/?quest=13627",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 33434
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 33434
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 13681,
+    "url": "https://mop-shoot.tauri.hu/?quest=13681",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 13692,
+    "url": "https://mop-shoot.tauri.hu/?quest=13692",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 14163,
+    "url": "https://mop-shoot.tauri.hu/?quest=14163",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15351
+      },
+      {
+        "type": "npc",
+        "id": 32626
+      }
+    ],
+    "seealso": [
+      14164
+    ]
+  },
+  {
+    "id": 14164,
+    "url": "https://mop-shoot.tauri.hu/?quest=14164",
+    "exists": true,
+    "start": [],
+    "end": [
+      {
+        "type": "npc",
+        "id": 15350
+      },
+      {
+        "type": "npc",
+        "id": 32615
+      }
+    ],
+    "seealso": [
+      14163
+    ]
+  },
+  {
+    "id": 14178,
+    "url": "https://mop-shoot.tauri.hu/?quest=14178",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14181,
+      24221,
+      24220,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 14179,
+    "url": "https://mop-shoot.tauri.hu/?quest=14179",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11337,
+      11341,
+      14182
+    ]
+  },
+  {
+    "id": 14180,
+    "url": "https://mop-shoot.tauri.hu/?quest=14180",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14183,
+      24216,
+      24217,
+      24218,
+      24219,
+      24224,
+      24225
+    ]
+  },
+  {
+    "id": 14181,
+    "url": "https://mop-shoot.tauri.hu/?quest=14181",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14178,
+      24221,
+      24220,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 14182,
+    "url": "https://mop-shoot.tauri.hu/?quest=14182",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11337,
+      11341,
+      14179
+    ]
+  },
+  {
+    "id": 14183,
+    "url": "https://mop-shoot.tauri.hu/?quest=14183",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      24216,
+      24217,
+      24218,
+      24219,
+      24224,
+      24225
+    ]
+  },
+  {
+    "id": 14488,
+    "url": "https://mop-shoot.tauri.hu/?quest=14488",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 24216,
+    "url": "https://mop-shoot.tauri.hu/?quest=24216",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24219,
+      24218,
+      24224,
+      24225,
+      24217
+    ]
+  },
+  {
+    "id": 24217,
+    "url": "https://mop-shoot.tauri.hu/?quest=24217",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24216,
+      24218,
+      24219,
+      24224,
+      24225
+    ]
+  },
+  {
+    "id": 24218,
+    "url": "https://mop-shoot.tauri.hu/?quest=24218",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24216,
+      24219,
+      24224,
+      24225,
+      24217
+    ]
+  },
+  {
+    "id": 24219,
+    "url": "https://mop-shoot.tauri.hu/?quest=24219",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24216,
+      24217,
+      24218,
+      24224,
+      24225
+    ]
+  },
+  {
+    "id": 24220,
+    "url": "https://mop-shoot.tauri.hu/?quest=24220",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14178,
+      14181,
+      24221,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 24221,
+    "url": "https://mop-shoot.tauri.hu/?quest=24221",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14178,
+      14181,
+      24220,
+      24223,
+      24226
+    ]
+  },
+  {
+    "id": 24223,
+    "url": "https://mop-shoot.tauri.hu/?quest=24223",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14178,
+      14181,
+      24221,
+      24220,
+      24226
+    ]
+  },
+  {
+    "id": 24224,
+    "url": "https://mop-shoot.tauri.hu/?quest=24224",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24216,
+      24219,
+      24218,
+      24225,
+      24217
+    ]
+  },
+  {
+    "id": 24225,
+    "url": "https://mop-shoot.tauri.hu/?quest=24225",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11338,
+      11342,
+      14180,
+      14183,
+      24216,
+      24217,
+      24218,
+      24219,
+      24224
+    ]
+  },
+  {
+    "id": 24226,
+    "url": "https://mop-shoot.tauri.hu/?quest=24226",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11335,
+      11339,
+      14178,
+      14181,
+      24221,
+      24220,
+      24223
+    ]
+  },
+  {
+    "id": 24426,
+    "url": "https://mop-shoot.tauri.hu/?quest=24426",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11336,
+      11340,
+      13427,
+      13428,
+      24427
+    ]
+  },
+  {
+    "id": 24427,
+    "url": "https://mop-shoot.tauri.hu/?quest=24427",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11336,
+      11340,
+      13427,
+      13428,
+      24426
+    ]
+  },
+  {
+    "id": 26178,
+    "url": "https://mop-shoot.tauri.hu/?quest=26178",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      11960
+    ]
+  },
+  {
+    "id": 29140,
+    "url": "https://mop-shoot.tauri.hu/?quest=29140",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 29258,
+    "url": "https://mop-shoot.tauri.hu/?quest=29258",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 29271,
+    "url": "https://mop-shoot.tauri.hu/?quest=29271",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 29291,
+    "url": "https://mop-shoot.tauri.hu/?quest=29291",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 29292,
+    "url": "https://mop-shoot.tauri.hu/?quest=29292",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 29294,
+    "url": "https://mop-shoot.tauri.hu/?quest=29294",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30153,
+    "url": "https://mop-shoot.tauri.hu/?quest=30153",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30190,
+    "url": "https://mop-shoot.tauri.hu/?quest=30190",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30191,
+    "url": "https://mop-shoot.tauri.hu/?quest=30191",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30192,
+    "url": "https://mop-shoot.tauri.hu/?quest=30192",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30193,
+    "url": "https://mop-shoot.tauri.hu/?quest=30193",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30194,
+    "url": "https://mop-shoot.tauri.hu/?quest=30194",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30195,
+    "url": "https://mop-shoot.tauri.hu/?quest=30195",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30196,
+    "url": "https://mop-shoot.tauri.hu/?quest=30196",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30197,
+    "url": "https://mop-shoot.tauri.hu/?quest=30197",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30200,
+    "url": "https://mop-shoot.tauri.hu/?quest=30200",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30204,
+    "url": "https://mop-shoot.tauri.hu/?quest=30204",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30205,
+    "url": "https://mop-shoot.tauri.hu/?quest=30205",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30206,
+    "url": "https://mop-shoot.tauri.hu/?quest=30206",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30225,
+    "url": "https://mop-shoot.tauri.hu/?quest=30225",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30226,
+    "url": "https://mop-shoot.tauri.hu/?quest=30226",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30227,
+    "url": "https://mop-shoot.tauri.hu/?quest=30227",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30228,
+    "url": "https://mop-shoot.tauri.hu/?quest=30228",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30231,
+    "url": "https://mop-shoot.tauri.hu/?quest=30231",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30232,
+    "url": "https://mop-shoot.tauri.hu/?quest=30232",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30233,
+    "url": "https://mop-shoot.tauri.hu/?quest=30233",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30234,
+    "url": "https://mop-shoot.tauri.hu/?quest=30234",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30235,
+    "url": "https://mop-shoot.tauri.hu/?quest=30235",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30236,
+    "url": "https://mop-shoot.tauri.hu/?quest=30236",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30237,
+    "url": "https://mop-shoot.tauri.hu/?quest=30237",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30238,
+    "url": "https://mop-shoot.tauri.hu/?quest=30238",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30239,
+    "url": "https://mop-shoot.tauri.hu/?quest=30239",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30244,
+    "url": "https://mop-shoot.tauri.hu/?quest=30244",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30245,
+    "url": "https://mop-shoot.tauri.hu/?quest=30245",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30246,
+    "url": "https://mop-shoot.tauri.hu/?quest=30246",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30247,
+    "url": "https://mop-shoot.tauri.hu/?quest=30247",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30248,
+    "url": "https://mop-shoot.tauri.hu/?quest=30248",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30249,
+    "url": "https://mop-shoot.tauri.hu/?quest=30249",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30250,
+    "url": "https://mop-shoot.tauri.hu/?quest=30250",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30251,
+    "url": "https://mop-shoot.tauri.hu/?quest=30251",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30263,
+    "url": "https://mop-shoot.tauri.hu/?quest=30263",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30264,
+    "url": "https://mop-shoot.tauri.hu/?quest=30264",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30265,
+    "url": "https://mop-shoot.tauri.hu/?quest=30265",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30281,
+    "url": "https://mop-shoot.tauri.hu/?quest=30281",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30282,
+    "url": "https://mop-shoot.tauri.hu/?quest=30282",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30283,
+    "url": "https://mop-shoot.tauri.hu/?quest=30283",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30284,
+    "url": "https://mop-shoot.tauri.hu/?quest=30284",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30285,
+    "url": "https://mop-shoot.tauri.hu/?quest=30285",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30286,
+    "url": "https://mop-shoot.tauri.hu/?quest=30286",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30287,
+    "url": "https://mop-shoot.tauri.hu/?quest=30287",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30288,
+    "url": "https://mop-shoot.tauri.hu/?quest=30288",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30289,
+    "url": "https://mop-shoot.tauri.hu/?quest=30289",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30290,
+    "url": "https://mop-shoot.tauri.hu/?quest=30290",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30291,
+    "url": "https://mop-shoot.tauri.hu/?quest=30291",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30292,
+    "url": "https://mop-shoot.tauri.hu/?quest=30292",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30293,
+    "url": "https://mop-shoot.tauri.hu/?quest=30293",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30294,
+    "url": "https://mop-shoot.tauri.hu/?quest=30294",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30296,
+    "url": "https://mop-shoot.tauri.hu/?quest=30296",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30297,
+    "url": "https://mop-shoot.tauri.hu/?quest=30297",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30298,
+    "url": "https://mop-shoot.tauri.hu/?quest=30298",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30299,
+    "url": "https://mop-shoot.tauri.hu/?quest=30299",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30300,
+    "url": "https://mop-shoot.tauri.hu/?quest=30300",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30301,
+    "url": "https://mop-shoot.tauri.hu/?quest=30301",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30302,
+    "url": "https://mop-shoot.tauri.hu/?quest=30302",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30304,
+    "url": "https://mop-shoot.tauri.hu/?quest=30304",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30305,
+    "url": "https://mop-shoot.tauri.hu/?quest=30305",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30307,
+    "url": "https://mop-shoot.tauri.hu/?quest=30307",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30308,
+    "url": "https://mop-shoot.tauri.hu/?quest=30308",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30309,
+    "url": "https://mop-shoot.tauri.hu/?quest=30309",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30310,
+    "url": "https://mop-shoot.tauri.hu/?quest=30310",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30311,
+    "url": "https://mop-shoot.tauri.hu/?quest=30311",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30312,
+    "url": "https://mop-shoot.tauri.hu/?quest=30312",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30313,
+    "url": "https://mop-shoot.tauri.hu/?quest=30313",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30314,
+    "url": "https://mop-shoot.tauri.hu/?quest=30314",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30316,
+    "url": "https://mop-shoot.tauri.hu/?quest=30316",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30320,
+    "url": "https://mop-shoot.tauri.hu/?quest=30320",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30338,
+    "url": "https://mop-shoot.tauri.hu/?quest=30338",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30339,
+    "url": "https://mop-shoot.tauri.hu/?quest=30339",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30340,
+    "url": "https://mop-shoot.tauri.hu/?quest=30340",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30341,
+    "url": "https://mop-shoot.tauri.hu/?quest=30341",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30342,
+    "url": "https://mop-shoot.tauri.hu/?quest=30342",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30385,
+    "url": "https://mop-shoot.tauri.hu/?quest=30385",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30442,
+    "url": "https://mop-shoot.tauri.hu/?quest=30442",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30444,
+    "url": "https://mop-shoot.tauri.hu/?quest=30444",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30481,
+    "url": "https://mop-shoot.tauri.hu/?quest=30481",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30482,
+    "url": "https://mop-shoot.tauri.hu/?quest=30482",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30677,
+    "url": "https://mop-shoot.tauri.hu/?quest=30677",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 30965,
+    "url": "https://mop-shoot.tauri.hu/?quest=30965",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31131,
+    "url": "https://mop-shoot.tauri.hu/?quest=31131",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31136,
+    "url": "https://mop-shoot.tauri.hu/?quest=31136",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31240,
+    "url": "https://mop-shoot.tauri.hu/?quest=31240",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31242,
+    "url": "https://mop-shoot.tauri.hu/?quest=31242",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31243,
+    "url": "https://mop-shoot.tauri.hu/?quest=31243",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31244,
+    "url": "https://mop-shoot.tauri.hu/?quest=31244",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31245,
+    "url": "https://mop-shoot.tauri.hu/?quest=31245",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31246,
+    "url": "https://mop-shoot.tauri.hu/?quest=31246",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31247,
+    "url": "https://mop-shoot.tauri.hu/?quest=31247",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31248,
+    "url": "https://mop-shoot.tauri.hu/?quest=31248",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31249,
+    "url": "https://mop-shoot.tauri.hu/?quest=31249",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31250,
+    "url": "https://mop-shoot.tauri.hu/?quest=31250",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31273,
+    "url": "https://mop-shoot.tauri.hu/?quest=31273",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31289,
+    "url": "https://mop-shoot.tauri.hu/?quest=31289",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31293,
+    "url": "https://mop-shoot.tauri.hu/?quest=31293",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31294,
+    "url": "https://mop-shoot.tauri.hu/?quest=31294",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      30632
+    ]
+  },
+  {
+    "id": 31295,
+    "url": "https://mop-shoot.tauri.hu/?quest=31295",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31296,
+    "url": "https://mop-shoot.tauri.hu/?quest=31296",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31297,
+    "url": "https://mop-shoot.tauri.hu/?quest=31297",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31376,
+    "url": "https://mop-shoot.tauri.hu/?quest=31376",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64032
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 57324
+      }
+    ],
+    "seealso": [
+      31377
+    ]
+  },
+  {
+    "id": 31377,
+    "url": "https://mop-shoot.tauri.hu/?quest=31377",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64001
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 57324
+      }
+    ],
+    "seealso": [
+      31376
+    ]
+  },
+  {
+    "id": 31378,
+    "url": "https://mop-shoot.tauri.hu/?quest=31378",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64032
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 60506
+      }
+    ],
+    "seealso": [
+      31379
+    ]
+  },
+  {
+    "id": 31379,
+    "url": "https://mop-shoot.tauri.hu/?quest=31379",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64001
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 60506
+      }
+    ],
+    "seealso": [
+      31378
+    ]
+  },
+  {
+    "id": 31380,
+    "url": "https://mop-shoot.tauri.hu/?quest=31380",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64032
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 60968
+      }
+    ],
+    "seealso": [
+      31381
+    ]
+  },
+  {
+    "id": 31381,
+    "url": "https://mop-shoot.tauri.hu/?quest=31381",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64001
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 60968
+      }
+    ],
+    "seealso": [
+      31380
+    ]
+  },
+  {
+    "id": 31382,
+    "url": "https://mop-shoot.tauri.hu/?quest=31382",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64032
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 61580
+      }
+    ],
+    "seealso": [
+      31383
+    ]
+  },
+  {
+    "id": 31383,
+    "url": "https://mop-shoot.tauri.hu/?quest=31383",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64001
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 61580
+      }
+    ],
+    "seealso": [
+      31382
+    ]
+  },
+  {
+    "id": 31491,
+    "url": "https://mop-shoot.tauri.hu/?quest=31491",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31492,
+    "url": "https://mop-shoot.tauri.hu/?quest=31492",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 60981
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 60981
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 31545,
+    "url": "https://mop-shoot.tauri.hu/?quest=31545",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31557,
+    "url": "https://mop-shoot.tauri.hu/?quest=31557",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31558,
+    "url": "https://mop-shoot.tauri.hu/?quest=31558",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31559,
+    "url": "https://mop-shoot.tauri.hu/?quest=31559",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31560,
+    "url": "https://mop-shoot.tauri.hu/?quest=31560",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31561,
+    "url": "https://mop-shoot.tauri.hu/?quest=31561",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31562,
+    "url": "https://mop-shoot.tauri.hu/?quest=31562",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31563,
+    "url": "https://mop-shoot.tauri.hu/?quest=31563",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31564,
+    "url": "https://mop-shoot.tauri.hu/?quest=31564",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31565,
+    "url": "https://mop-shoot.tauri.hu/?quest=31565",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31566,
+    "url": "https://mop-shoot.tauri.hu/?quest=31566",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31567,
+    "url": "https://mop-shoot.tauri.hu/?quest=31567",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31754,
+    "url": "https://mop-shoot.tauri.hu/?quest=31754",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31755,
+    "url": "https://mop-shoot.tauri.hu/?quest=31755",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31756,
+    "url": "https://mop-shoot.tauri.hu/?quest=31756",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31757,
+    "url": "https://mop-shoot.tauri.hu/?quest=31757",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31758,
+    "url": "https://mop-shoot.tauri.hu/?quest=31758",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31760,
+    "url": "https://mop-shoot.tauri.hu/?quest=31760",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 31762,
+    "url": "https://mop-shoot.tauri.hu/?quest=31762",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32107,
+    "url": "https://mop-shoot.tauri.hu/?quest=32107",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      31443
+    ]
+  },
+  {
+    "id": 32116,
+    "url": "https://mop-shoot.tauri.hu/?quest=32116",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 68275
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32123,
+    "url": "https://mop-shoot.tauri.hu/?quest=32123",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67618
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67618
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32130,
+    "url": "https://mop-shoot.tauri.hu/?quest=32130",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32131,
+    "url": "https://mop-shoot.tauri.hu/?quest=32131",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32132,
+    "url": "https://mop-shoot.tauri.hu/?quest=32132",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32133,
+    "url": "https://mop-shoot.tauri.hu/?quest=32133",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32134,
+    "url": "https://mop-shoot.tauri.hu/?quest=32134",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67402
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32135,
+    "url": "https://mop-shoot.tauri.hu/?quest=32135",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "seealso": [
+      32153
+    ]
+  },
+  {
+    "id": 32138,
+    "url": "https://mop-shoot.tauri.hu/?quest=32138",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67535
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67534
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32142,
+    "url": "https://mop-shoot.tauri.hu/?quest=32142",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32143,
+    "url": "https://mop-shoot.tauri.hu/?quest=32143",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67976
+      }
+    ],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32144,
+    "url": "https://mop-shoot.tauri.hu/?quest=32144",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67444
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67444
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32145,
+    "url": "https://mop-shoot.tauri.hu/?quest=32145",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67528
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67976
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32146,
+    "url": "https://mop-shoot.tauri.hu/?quest=32146",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32148,
+    "url": "https://mop-shoot.tauri.hu/?quest=32148",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32149,
+    "url": "https://mop-shoot.tauri.hu/?quest=32149",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67630
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67630
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32150,
+    "url": "https://mop-shoot.tauri.hu/?quest=32150",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67630
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67630
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32151,
+    "url": "https://mop-shoot.tauri.hu/?quest=32151",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32152,
+    "url": "https://mop-shoot.tauri.hu/?quest=32152",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32153,
+    "url": "https://mop-shoot.tauri.hu/?quest=32153",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67631
+      }
+    ],
+    "seealso": [
+      32135
+    ]
+  },
+  {
+    "id": 32154,
+    "url": "https://mop-shoot.tauri.hu/?quest=32154",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 68166
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 68166
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32155,
+    "url": "https://mop-shoot.tauri.hu/?quest=32155",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32156,
+    "url": "https://mop-shoot.tauri.hu/?quest=32156",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67444
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67444
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32157,
+    "url": "https://mop-shoot.tauri.hu/?quest=32157",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32158,
+    "url": "https://mop-shoot.tauri.hu/?quest=32158",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 68182
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 68182
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32159,
+    "url": "https://mop-shoot.tauri.hu/?quest=32159",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32181,
+    "url": "https://mop-shoot.tauri.hu/?quest=32181",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67436
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67447
+      }
+    ],
+    "seealso": [
+      32184
+    ]
+  },
+  {
+    "id": 32182,
+    "url": "https://mop-shoot.tauri.hu/?quest=32182",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67498
+      },
+      {
+        "type": "npc",
+        "id": 67438
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67447
+      }
+    ],
+    "seealso": [
+      32185
+    ]
+  },
+  {
+    "id": 32183,
+    "url": "https://mop-shoot.tauri.hu/?quest=32183",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67508
+      },
+      {
+        "type": "npc",
+        "id": 67439
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67447
+      }
+    ],
+    "seealso": [
+      32186
+    ]
+  },
+  {
+    "id": 32184,
+    "url": "https://mop-shoot.tauri.hu/?quest=32184",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67436
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67558
+      }
+    ],
+    "seealso": [
+      32181
+    ]
+  },
+  {
+    "id": 32185,
+    "url": "https://mop-shoot.tauri.hu/?quest=32185",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67438
+      },
+      {
+        "type": "npc",
+        "id": 67498
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67558
+      }
+    ],
+    "seealso": [
+      32182
+    ]
+  },
+  {
+    "id": 32186,
+    "url": "https://mop-shoot.tauri.hu/?quest=32186",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67508
+      },
+      {
+        "type": "npc",
+        "id": 67439
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67558
+      }
+    ],
+    "seealso": [
+      32183
+    ]
+  },
+  {
+    "id": 32197,
+    "url": "https://mop-shoot.tauri.hu/?quest=32197",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67562
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67536
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32199,
+    "url": "https://mop-shoot.tauri.hu/?quest=32199",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67562
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67536
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32205,
+    "url": "https://mop-shoot.tauri.hu/?quest=32205",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      32570
+    ]
+  },
+  {
+    "id": 32214,
+    "url": "https://mop-shoot.tauri.hu/?quest=32214",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67608
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67608
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32221,
+    "url": "https://mop-shoot.tauri.hu/?quest=32221",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67608
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67608
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32229,
+    "url": "https://mop-shoot.tauri.hu/?quest=32229",
+    "exists": false,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32275,
+    "url": "https://mop-shoot.tauri.hu/?quest=32275",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 70520
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 70520
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32292,
+    "url": "https://mop-shoot.tauri.hu/?quest=32292",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 70551
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 70551
+      }
+    ],
+    "seealso": [
+      32587,
+      32722,
+      32724
+    ]
+  },
+  {
+    "id": 32294,
+    "url": "https://mop-shoot.tauri.hu/?quest=32294",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": [
+      32582
+    ]
+  },
+  {
+    "id": 32433,
+    "url": "https://mop-shoot.tauri.hu/?quest=32433",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32446,
+    "url": "https://mop-shoot.tauri.hu/?quest=32446",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 68166
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 68166
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32450,
+    "url": "https://mop-shoot.tauri.hu/?quest=32450",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67880
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67628
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32451,
+    "url": "https://mop-shoot.tauri.hu/?quest=32451",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 68908
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "seealso": [
+      24929
+    ]
+  },
+  {
+    "id": 32452,
+    "url": "https://mop-shoot.tauri.hu/?quest=32452",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 68908
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67386
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32492,
+    "url": "https://mop-shoot.tauri.hu/?quest=32492",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": []
+  },
+  {
+    "id": 32521,
+    "url": "https://mop-shoot.tauri.hu/?quest=32521",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67660
+      },
+      {
+        "type": "npc",
+        "id": 67989
+      },
+      {
+        "type": "npc",
+        "id": 67990
+      },
+      {
+        "type": "npc",
+        "id": 70520
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67990
+      }
+    ],
+    "seealso": [
+      32563,
+      32565,
+      32580,
+      32584,
+      32585
+    ]
+  },
+  {
+    "id": 32522,
+    "url": "https://mop-shoot.tauri.hu/?quest=32522",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67990
+      },
+      {
+        "type": "npc",
+        "id": 70520
+      },
+      {
+        "type": "npc",
+        "id": 67660
+      },
+      {
+        "type": "npc",
+        "id": 67989
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67990
+      }
+    ],
+    "seealso": [
+      32562,
+      32577,
+      32581
+    ]
+  },
+  {
+    "id": 32523,
+    "url": "https://mop-shoot.tauri.hu/?quest=32523",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67660
+      },
+      {
+        "type": "npc",
+        "id": 70520
+      },
+      {
+        "type": "npc",
+        "id": 67990
+      },
+      {
+        "type": "npc",
+        "id": 67989
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": [
+      32567
+    ]
+  },
+  {
+    "id": 32524,
+    "url": "https://mop-shoot.tauri.hu/?quest=32524",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67660
+      },
+      {
+        "type": "npc",
+        "id": 67990
+      },
+      {
+        "type": "npc",
+        "id": 70520
+      },
+      {
+        "type": "npc",
+        "id": 67989
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32561,
+    "url": "https://mop-shoot.tauri.hu/?quest=32561",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67990
+      },
+      {
+        "type": "npc",
+        "id": 70520
+      },
+      {
+        "type": "npc",
+        "id": 67989
+      },
+      {
+        "type": "npc",
+        "id": 67660
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67990
+      }
+    ],
+    "seealso": [
+      32520,
+      32576,
+      32579
+    ]
+  },
+  {
+    "id": 32563,
+    "url": "https://mop-shoot.tauri.hu/?quest=32563",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": [
+      32521,
+      32565,
+      32580,
+      32584,
+      32585
+    ]
+  },
+  {
+    "id": 32564,
+    "url": "https://mop-shoot.tauri.hu/?quest=32564",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": [
+      32583
+    ]
+  },
+  {
+    "id": 32565,
+    "url": "https://mop-shoot.tauri.hu/?quest=32565",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "seealso": [
+      32521,
+      32563,
+      32580,
+      32584,
+      32585
+    ]
+  },
+  {
+    "id": 32567,
+    "url": "https://mop-shoot.tauri.hu/?quest=32567",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67997
+      },
+      {
+        "type": "npc",
+        "id": 67992
+      },
+      {
+        "type": "npc",
+        "id": 70517
+      },
+      {
+        "type": "npc",
+        "id": 67996
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": [
+      32523
+    ]
+  },
+  {
+    "id": 32568,
+    "url": "https://mop-shoot.tauri.hu/?quest=32568",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67997
+      },
+      {
+        "type": "npc",
+        "id": 67992
+      },
+      {
+        "type": "npc",
+        "id": 70517
+      },
+      {
+        "type": "npc",
+        "id": 67996
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 32570,
+    "url": "https://mop-shoot.tauri.hu/?quest=32570",
+    "exists": true,
+    "start": [],
+    "end": [],
+    "seealso": [
+      32205
+    ]
+  },
+  {
+    "id": 32579,
+    "url": "https://mop-shoot.tauri.hu/?quest=32579",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67992
+      },
+      {
+        "type": "npc",
+        "id": 70517
+      },
+      {
+        "type": "npc",
+        "id": 67996
+      },
+      {
+        "type": "npc",
+        "id": 67997
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67992
+      }
+    ],
+    "seealso": [
+      32520,
+      32561,
+      32576
+    ]
+  },
+  {
+    "id": 32580,
+    "url": "https://mop-shoot.tauri.hu/?quest=32580",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67992
+      },
+      {
+        "type": "npc",
+        "id": 67996
+      },
+      {
+        "type": "npc",
+        "id": 67997
+      },
+      {
+        "type": "npc",
+        "id": 70517
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67992
+      }
+    ],
+    "seealso": [
+      32521,
+      32563,
+      32565,
+      32584,
+      32585
+    ]
+  },
+  {
+    "id": 32581,
+    "url": "https://mop-shoot.tauri.hu/?quest=32581",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67997
+      },
+      {
+        "type": "npc",
+        "id": 67992
+      },
+      {
+        "type": "npc",
+        "id": 70517
+      },
+      {
+        "type": "npc",
+        "id": 67996
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67992
+      }
+    ],
+    "seealso": [
+      32522,
+      32562,
+      32577
+    ]
+  },
+  {
+    "id": 32582,
+    "url": "https://mop-shoot.tauri.hu/?quest=32582",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": [
+      32294
+    ]
+  },
+  {
+    "id": 32583,
+    "url": "https://mop-shoot.tauri.hu/?quest=32583",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": [
+      32564
+    ]
+  },
+  {
+    "id": 32584,
+    "url": "https://mop-shoot.tauri.hu/?quest=32584",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": [
+      32521,
+      32563,
+      32565,
+      32580,
+      32585
+    ]
+  },
+  {
+    "id": 32585,
+    "url": "https://mop-shoot.tauri.hu/?quest=32585",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "seealso": [
+      32521,
+      32563,
+      32565,
+      32580,
+      32584
+    ]
+  },
+  {
+    "id": 32587,
+    "url": "https://mop-shoot.tauri.hu/?quest=32587",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 70552
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 70552
+      }
+    ],
+    "seealso": [
+      32292,
+      32722,
+      32724
+    ]
+  },
+  {
+    "id": 32722,
+    "url": "https://mop-shoot.tauri.hu/?quest=32722",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67985
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 70551
+      }
+    ],
+    "seealso": [
+      32292,
+      32587,
+      32724
+    ]
+  },
+  {
+    "id": 32724,
+    "url": "https://mop-shoot.tauri.hu/?quest=32724",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67998
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 70552
+      }
+    ],
+    "seealso": [
+      32292,
+      32587,
+      32722
+    ]
+  },
+  {
+    "id": 32730,
+    "url": "https://mop-shoot.tauri.hu/?quest=32730",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 67663
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 67660
+      }
+    ],
+    "seealso": [
+      32732
+    ]
+  },
+  {
+    "id": 33146,
+    "url": "https://mop-shoot.tauri.hu/?quest=33146",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64231
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 64231
+      }
+    ],
+    "seealso": []
+  },
+  {
+    "id": 33358,
+    "url": "https://mop-shoot.tauri.hu/?quest=33358",
+    "exists": true,
+    "start": [
+      {
+        "type": "npc",
+        "id": 64231
+      }
+    ],
+    "end": [
+      {
+        "type": "npc",
+        "id": 64231
+      }
+    ],
+    "seealso": []
+  }
+]

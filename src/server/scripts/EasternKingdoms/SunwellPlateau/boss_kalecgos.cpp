@@ -235,25 +235,6 @@ class boss_kalecgos : public CreatureScript
                                 Sath->AI()->DoAction(DO_ENRAGE);
                             DoAction(DO_ENRAGE);
                         }
-                        if (!isBanished && HealthBelowPct(1))
-                        {
-                            if (Creature* Sath = Unit::GetCreature(*me, instance->GetGuidData(DATA_SATHROVARR)))
-                            {
-                                if (Sath->HasAura(SPELL_BANISH))
-                                {
-                                    Sath->DealDamage(Sath, Sath->GetHealth());
-                                    return;
-                                }
-                                else
-                                    DoAction(DO_BANISH);
-                            }
-                            else
-                            {
-                                TC_LOG_ERROR("scripts", "TSCR: Didn't find Shathrowar, kalecgos event reseted.");
-                                EnterEvadeMode();
-                                return;
-                            }
-                        }
                         checkTimer = 1000;
                     } else checkTimer -= diff;
 
@@ -304,10 +285,30 @@ class boss_kalecgos : public CreatureScript
                 }
             }
 
-            void DamageTaken(Unit* attacker, uint32& damage) override
+            void JustDied(Unit* /*killer*/) override
             {
-                if (damage >= me->GetHealth() && attacker != me)
-                    damage = 0;
+                if (!instance)
+                    return;
+
+                instance->SetData(DATA_KALECGOS_EVENT, DONE);
+
+                if (Creature* sathrovarr = Unit::GetCreature(*me, instance->GetGuidData(DATA_SATHROVARR)))
+                    sathrovarr->AI()->EnterEvadeMode();
+
+                for (auto&& itr : me->GetMap()->GetPlayers())
+                {
+                    if (Player* player = itr.GetSource())
+                    {
+                        if (player->GetPositionZ() < DRAGON_REALM_Z - 5)
+                        {
+                            player->RemoveAura(AURA_SPECTRAL_REALM_FORCE_REACTION);
+                            player->RemoveAura(AURA_SPECTRAL_REALM);
+                            player->TeleportTo(me->GetMapId(), player->GetPositionX(), player->GetPositionY(), DRAGON_REALM_Z + 5, player->GetOrientation());
+                        }
+
+                        me->GetMap()->ToInstanceMap()->PermBindAllPlayers(player);
+                    }
+                }
             }
 
             void SpellHitTarget(Unit* target, SpellInfo const* spell) override
@@ -600,7 +601,7 @@ class boss_sathrovarr : public CreatureScript
             void DamageTaken(Unit* attacker, uint32& damage) override
             {
                 if (damage >= me->GetHealth() && attacker != me)
-                    damage = 0;
+                    damage = me->GetHealth() - 1;
             }
 
             void KilledUnit(Unit* victim) override
