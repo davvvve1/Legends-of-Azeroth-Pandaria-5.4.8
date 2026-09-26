@@ -61,3 +61,10 @@ __pycache__/
 !sql/patches/world/2026_09_26_07_world_dalaran_portals.sql
 !sql/patches/world/2026_09_26_08_world_nordrassil_summit.sql
 !sql/patches/world/2026_09_26_09_world_elemental_bonds_doubt.sql
+
+# Publish SQL migrations and custom setup scripts; backups remain private.
+!sql/updates/
+!sql/updates/**
+!sql/custom/
+!sql/custom/*.sql
+!sql/patches/world/2026_09_26_05_world_daily_relations.sql

@@ -39,3 +39,7 @@ installing worldserver. Build with `make -j16` from the `build` directory.
 - `2026_09_26_07_world_dalaran_portals.sql`: restore the eight missing Dalaran portals to the other capitals and Shattrath. Stormwind, Orgrimmar, and Caverns of Time remain as they are. Restart worldserver to load the spawns.
 - `2026_09_26_08_world_nordrassil_summit.sql`: give The Nordrassil Summit from Thrall, complete its ceremony objective through his gossip, and turn it in to Aggra. Requires matching code and a worldserver restart.
 - `2026_09_26_09_world_elemental_bonds_doubt.sql`: add Cyclonas's ride to Thrall and make the air encounter completable by defeating 20 Essences of Doubt. Requires matching code and a worldserver restart.
+
+- `2026_09_26_05_world_daily_relations.sql`: restore missing daily quest giver and turn-in relations and enable the corresponding quest menus.
+
+Historical migrations are available in `sql/updates/`. Select migrations for your installed database version; some older files are also mirrored in this patch directory.

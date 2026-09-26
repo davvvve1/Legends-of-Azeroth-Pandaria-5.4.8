@@ -4915,9 +4915,62 @@ public:
     }
 };
 
+class player_finish_them : public PlayerScript
+{
+public:
+    player_finish_them() : PlayerScript("player_finish_them") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == 31767)
+            CompleteObjective(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        CompleteObjective(player);
+    }
+
+private:
+    static void CompleteObjective(Player* player)
+    {
+        if (player->GetQuestStatus(31767) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(66285, ObjectGuid::Empty, 15);
+    }
+};
+
+class player_the_final_blow : public PlayerScript
+{
+public:
+    player_the_final_blow() : PlayerScript("player_the_final_blow") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == 31769)
+            CompleteObjectives(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        CompleteObjectives(player);
+    }
+
+private:
+    static void CompleteObjectives(Player* player)
+    {
+        if (player->GetQuestStatus(31769) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        for (uint32 credit : { 66554u, 66555u, 66556u, 66283u })
+            player->KilledMonsterCredit(credit);
+    }
+};
+
 void AddSC_jade_forest()
 {
     new player_paint_it_red();
+    new player_finish_them();
+    new player_the_final_blow();
     // Rare mobs
     new npc_kor_nas_nightsavage();
     new npc_mister_ferocious();
