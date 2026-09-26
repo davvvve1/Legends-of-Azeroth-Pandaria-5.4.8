@@ -74,3 +74,4 @@ __pycache__/
 !sql/patches/world/2026_09_26_12_world_wrath_dungeons_min_level_78.sql
 !sql/patches/world/2026_09_26_13_world_wrath_random_from_level_68.sql
 !sql/patches/world/2026_09_26_14_world_gorrok_regroup_credit.sql
+!sql/patches/world/2026_09_26_15_world_strongarm_alive_quest_mobs.sql
