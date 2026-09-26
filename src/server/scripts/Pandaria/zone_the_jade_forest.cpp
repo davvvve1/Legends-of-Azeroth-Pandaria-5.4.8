@@ -4619,7 +4619,7 @@ struct npc_jade_forest_alliance_barricade : public customCreatureAI
             for (auto&& itr : barricades)
             {
                 barricadeGUIDS.push_back(itr->GetGUID());
-                itr->SetPhaseMask(2, true);
+                itr->SetPhaseMask(0, true);
             }
 
             scheduler
@@ -4627,7 +4627,7 @@ struct npc_jade_forest_alliance_barricade : public customCreatureAI
             {
                 for (auto&& itr : barricadeGUIDS)
                     if (GameObject* go = ObjectAccessor::GetGameObject(*me, itr))
-                        go->SetPhaseMask(1, true);
+                        go->SetPhaseMask(go->GetGOData() ? go->GetGOData()->phaseMask : PHASEMASK_NORMAL, true);
 
                 isRestoring = false;
             });
