@@ -8075,6 +8075,22 @@ bool ApplyAutomatedPvpBotLoadout(Player* bot, uint32 requesterGuid,
         if (!botAI->IsRealPlayer())
         {
             BotFactory factory(bot, bot->GetLevel());
+            // Leveling battlegrounds need level-appropriate equipment. The
+            // Arena item-level floor and Prideful set are for level 90 only.
+            if (bot->GetLevel() < DEFAULT_MAX_LEVEL)
+            {
+                changedSlots = 0;
+                if (!factory.PrepareManagedLoadout(
+                        BotFactory::ManagedLoadoutMode::Pve, 0, &error))
+                    return false;
+                factory.InitManagedTalentsAndGlyphs(
+                    BotFactory::ManagedLoadoutMode::Pvp);
+                factory.InitManagedEnhancements(
+                    BotFactory::ManagedLoadoutMode::Pvp);
+                botAI->GetAiObjectContext()->Reset();
+                botAI->ResetStrategies();
+                return true;
+            }
             if (!factory.PrepareManagedLoadout(
                     BotFactory::ManagedLoadoutMode::Pvp,
                     sPlayerbotAIConfig->autoQueueArenaMinAverageItemLevel,
