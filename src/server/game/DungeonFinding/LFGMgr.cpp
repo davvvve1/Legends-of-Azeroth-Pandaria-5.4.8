@@ -208,6 +208,15 @@ void LFGMgr::LoadLFGDungeons(bool reload /* = false */)
             case LFG_TYPE_RAID:
             case LFG_TYPE_RANDOM:
                 LfgDungeonStore[dungeon->ID] = LFGDungeonData(dungeon);
+                // Local progression: Wrath normal dungeons open at level 78.
+                // Apply to both specific dungeons and the random queue so
+                // players and automated bot queues use the same metadata.
+                if (dungeon->expansion == EXPANSION_WRATH_OF_THE_LICH_KING &&
+                    (dungeon->type == LFG_TYPE_DUNGEON || dungeon->type == LFG_TYPE_RANDOM) &&
+                    (dungeon->difficulty == DUNGEON_DIFFICULTY_NORMAL ||
+                     dungeon->difficulty == REGULAR_DIFFICULTY))
+                    LfgDungeonStore[dungeon->ID].minlevel =
+                        std::max<uint8>(78, LfgDungeonStore[dungeon->ID].minlevel);
                 break;
         }
     }
