@@ -43,3 +43,5 @@ installing worldserver. Build with `make -j16` from the `build` directory.
 - `2026_09_26_05_world_daily_relations.sql`: restore missing daily quest giver and turn-in relations and enable the corresponding quest menus.
 
 Historical migrations are available in `sql/updates/`. Select migrations for your installed database version; some older files are also mirrored in this patch directory.
+
+- `2026_09_26_10_world_azjol_nerub_hadronox_duplicate_spawns.sql`: disable duplicate permanent Hadronox and initial pack spawns; the instance script creates them after Krik'thir. Requires matching code and restart to unload existing spawns.

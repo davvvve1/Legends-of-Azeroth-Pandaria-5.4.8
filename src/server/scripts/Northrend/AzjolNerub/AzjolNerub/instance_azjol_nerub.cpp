@@ -167,7 +167,8 @@ class instance_azjol_nerub : public InstanceMapScript
                 switch (creature->GetEntry())
                 {
                     case NPC_HADRONOX:
-                        uiHadronox = ObjectGuid::Empty;
+                        if (uiHadronox == creature->GetGUID())
+                            uiHadronox = ObjectGuid::Empty;
                         break;
                     case NPC_ANUBAR_CHAMPION:
                     case NPC_ANUBAR_CRYPT_FIEND:
@@ -226,6 +227,8 @@ class instance_azjol_nerub : public InstanceMapScript
                 switch (type)
                 {
                     case DATA_KRIKTHIR_THE_GATEWATCHER_EVENT:
+                        if (auiEncounter[0] == DONE)
+                            return;
                         auiEncounter[0] = data;
                         if (data == DONE)
                         {
@@ -270,7 +273,11 @@ class instance_azjol_nerub : public InstanceMapScript
                             events.RescheduleEvent(EVENT_SPAWN_HADRONOX_TRASH, 30000);
                         }
                         else if (data == DONE)
+                        {
+                            events.CancelEvent(EVENT_RESET_HADRONOX);
+                            events.CancelEvent(EVENT_SPAWN_HADRONOX_CRUSHERS);
                             events.CancelEvent(EVENT_SPAWN_HADRONOX_TRASH);
+                        }
 
                         auiEncounter[1] = data;
                         break;
@@ -356,12 +363,19 @@ class instance_azjol_nerub : public InstanceMapScript
                     switch (eventId)
                     {
                         case EVENT_RESET_HADRONOX:
+                            if (auiEncounter[1] == DONE)
+                                break;
+                            if (Creature* hadronox = instance->GetCreature(uiHadronox))
+                                if (hadronox->IsAlive())
+                                    break;
                             instance->SummonCreature(NPC_HADRONOX, hadronoxPos);
                             instance->SummonCreature(NPC_ANUBAR_CRUSHER, crusherPos);
                             instance->SummonCreature(NPC_ANUBAR_CHAMPION, crusherAddsPos[0]);
                             instance->SummonCreature(NPC_ANUBAR_CRYPT_FIEND, crusherAddsPos[1]);
                             break;
                         case EVENT_SPAWN_HADRONOX_CRUSHERS:
+                            if (auiEncounter[1] == DONE)
+                                break;
                             for (uint32 i = 0; i < 2; ++i)
                             {
                                 if (Creature* door = instance->GetCreature(hadronoxDoors[i]))
@@ -376,6 +390,8 @@ class instance_azjol_nerub : public InstanceMapScript
                             }
                             break;
                         case EVENT_SPAWN_HADRONOX_TRASH:
+                            if (auiEncounter[1] == DONE)
+                                break;
                             for (uint32 i = 0; i < sizeof(hadronoxDoors) / sizeof(hadronoxDoors[0]); ++i)
                                 if (Creature* door = instance->GetCreature(hadronoxDoors[i]))
                                     if (!door->HasAura(SPELL_WEB_FRONT_DOORS) && !door->HasAura(SPELL_WEB_SIDE_DOORS))

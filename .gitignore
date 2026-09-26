@@ -68,3 +68,5 @@ __pycache__/
 !sql/custom/
 !sql/custom/*.sql
 !sql/patches/world/2026_09_26_05_world_daily_relations.sql
+
+!sql/patches/world/2026_09_26_10_world_azjol_nerub_hadronox_duplicate_spawns.sql
