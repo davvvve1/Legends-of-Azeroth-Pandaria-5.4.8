@@ -3031,15 +3031,15 @@ bool StartLegacyRaidStage(Player* requester,
         "SELECT guid,name,race,class,talentTree,activespec,equipmentCache,"
         "map,position_x,position_y,position_z,orientation "
         "FROM characters WHERE account >= %u AND account <= %u "
-        "AND online = 0 "
+        "AND level = %u AND online = 0 "
         "AND guid NOT IN (SELECT memberGuid FROM group_member) "
         "AND guid NOT IN (SELECT guid FROM guild_member) "
         "ORDER BY guid",
-        minAccount, maxAccount);
+        minAccount, maxAccount, requester->GetLevel());
 
     if (!result)
     {
-        error = "no unused offline poolbots are available";
+        error = "no unused offline poolbots exist at the requester's level";
         return false;
     }
 
@@ -3337,14 +3337,6 @@ void UpdateLegacyRaidStagedRaid(uint32 diff)
             }
 
             PrepareLegacyRaidBotForSummon(bot);
-
-            // Older raids remain available to overleveled players. Poolbots
-            // follow the requester level before receiving their PvE loadout.
-            if (bot->GetLevel() != requester->GetLevel())
-            {
-                BotFactory levelFactory(bot, requester->GetLevel());
-                levelFactory.PrepareManagedLevel();
-            }
 
             // Apply the specialization selected during raid staging. A poolbot
             // may have been chosen for a role different from its saved active
