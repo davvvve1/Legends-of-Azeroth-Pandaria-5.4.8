@@ -78,3 +78,4 @@ __pycache__/
 !sql/patches/world/2026_09_26_16_world_strongarm_airstrip_quest_audit.sql
 !sql/patches/world/2026_09_26_17_world_konk_seein_red_phase.sql
 !sql/patches/world/2026_09_27_00_world_doren_den_of_defiance_spawn.sql
+!sql/patches/world/2026_09_27_01_world_doren_verified_cave_floor.sql
