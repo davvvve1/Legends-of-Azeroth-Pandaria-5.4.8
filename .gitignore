@@ -15,8 +15,8 @@ mmaps_generator.exe
 vmap4assembler.exe
 vmap4extractor.exe
 
-# Private runtime configuration and database backups
-/etc/*.conf
+# Sanitized distributable configurations live in etc; keep credentials out of Git.
+# Private database credentials and backups
 *.cnf
 *.sql
 *.sql.gz
