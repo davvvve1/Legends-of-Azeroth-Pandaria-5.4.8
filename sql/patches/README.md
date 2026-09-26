@@ -42,6 +42,24 @@ installing worldserver. Build with `make -j16` from the `build` directory.
 
 - `2026_09_26_05_world_daily_relations.sql`: restore missing daily quest giver and turn-in relations and enable the corresponding quest menus.
 
-Historical migrations are available in `sql/updates/`. Select migrations for your installed database version; some older files are also mirrored in this patch directory.
+Reviewed patches are mirrored with identical filenames and contents in
+`sql/updates/world/`, the standard world database updater directory. Apply each
+migration once, using either directory. Keep filename order: the level-78 Wrath
+policy in update 12 is superseded by random Wrath from level 68 in update 13.
+The published configuration has `Updates.EnableDatabases = 0`, so updates need
+manual application unless database updates are explicitly enabled.
+
+Historical migrations are available in `sql/updates/`. Select migrations for your installed database version.
 
 - `2026_09_26_10_world_azjol_nerub_hadronox_duplicate_spawns.sql`: disable duplicate permanent Hadronox and initial pack spawns; the instance script creates them after Krik'thir. Requires matching code and restart to unload existing spawns.
+
+- `2026_09_26_11_world_jade_forest_final_blow_barricades.sql`: hide stair barricades after The Final Blow is complete or rewarded. Requires matching code and restart.
+- `2026_09_26_12_world_wrath_dungeons_min_level_78.sql`: former normal Wrath entrance policy; superseded by update 13.
+- `2026_09_26_13_world_wrath_random_from_level_68.sql`: restore individual normal entrance limits with a level-68 floor. Matching code opens random normal Wrath from level 68 and retains individual dungeon brackets.
+- `2026_09_26_14_world_gorrok_regroup_credit.sql`: restore Gorrok rescue gossip credit without the area-restricted spell.
+- `2026_09_26_15_world_strongarm_alive_quest_mobs.sql`: remove permanent feign death from Strongarm Private and Medic and allow NPC allies to attack the Private.
+- `2026_09_26_16_world_strongarm_airstrip_quest_audit.sql`: award Doren kill credit after his transformation and require Unreliable Allies for volunteer rescue.
+- `2026_09_26_17_world_konk_seein_red_phase.sql`: hide Konk after Seein' Red is complete or rewarded.
+
+Updates 14–17 need a worldserver restart to load changed templates, scripts and
+phasing data. These SQL-only changes do not require recompilation.
