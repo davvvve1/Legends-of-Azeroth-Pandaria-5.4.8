@@ -81,3 +81,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_01_world_doren_verified_cave_floor.sql
 !sql/patches/world/2026_09_27_02_world_strongarm_horde_takeover.sql
 !sql/patches/world/2026_09_27_03_world_forensic_science_blossom_click.sql
+!sql/patches/world/2026_09_27_04_world_acid_rain_gyrocopter.sql

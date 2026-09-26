@@ -20,6 +20,10 @@
 #include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
 #include "CreatureTextMgr.h"
+#include "Vehicle.h"
+#include "Player.h"
+#include "ObjectAccessor.h"
+#include "MoveSpline.h"
 
 const Position MySerpentPath[2]
 {
@@ -4966,8 +4970,184 @@ private:
     }
 };
 
+namespace AcidRain
+{
+    uint32 const Quest = 29827;
+    Position const Landing = { 2510.05f, -485.792f, 341.653f, 0.0f };
+    Position const Route[] =
+    {
+        { 2470.0f, -490.0f, 380.0f, 0.0f },
+        { 2380.0f, -490.0f, 380.0f, 0.0f },
+        { 2315.0f, -510.0f, 385.0f, 0.0f },
+        { 2290.0f, -600.0f, 395.0f, 0.0f },
+        { 2350.0f, -650.0f, 395.0f, 0.0f },
+        { 2410.0f, -610.0f, 385.0f, 0.0f },
+        { 2400.0f, -550.0f, 380.0f, 0.0f }
+    };
+
+    Player* Pilot(Unit* caster)
+    {
+        if (!caster || caster->GetEntry() != 55676 || !caster->GetVehicleKit())
+            return nullptr;
+        Unit* passenger = caster->GetVehicleKit()->GetPassenger(0);
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        return player && player->GetQuestStatus(Quest) == QUEST_STATUS_INCOMPLETE ? player : nullptr;
+    }
+
+    bool IsTarget(Creature* target)
+    {
+        return target && target->IsAlive() &&
+            (target->GetEntry() == 55701 || target->GetEntry() == 55707 ||
+             target->GetEntry() == 58943 || target->GetEntry() == 58945);
+    }
+}
+
+class npc_jade_forest_acid_rain_boarding : public CreatureScript
+{
+public:
+    npc_jade_forest_acid_rain_boarding() : CreatureScript("npc_jade_forest_acid_rain_boarding") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (player->GetQuestStatus(AcidRain::Quest) != QUEST_STATUS_INCOMPLETE ||
+            player->GetVehicle() || player->IsInCombat())
+            return false;
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Start the Acid Rain air raid.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+        if (sender != GOSSIP_SENDER_MAIN || action != GOSSIP_ACTION_INFO_DEF + 1 ||
+            player->GetQuestStatus(AcidRain::Quest) != QUEST_STATUS_INCOMPLETE ||
+            player->GetVehicle() || player->IsInCombat() || !player->IsAlive() ||
+            !player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            return false;
+
+        if (TempSummon* flight = player->SummonCreature(55676, AcidRain::Landing, TEMPSUMMON_TIMED_DESPAWN, 10 * MINUTE * IN_MILLISECONDS))
+        {
+            if (!flight->GetVehicleKit())
+            {
+                flight->DespawnOrUnsummon();
+                return false;
+            }
+            flight->SetPhaseMask(player->GetPhaseMask(), false);
+            flight->SetExplicitSeerGuid(player->GetGUID());
+            player->Dismount();
+            player->EnterVehicle(flight, 0);
+        }
+        return true;
+    }
+};
+
+struct npc_jade_forest_acid_rain_flight : public ScriptedAI
+{
+    npc_jade_forest_acid_rain_flight(Creature* creature) : ScriptedAI(creature) { }
+    bool started = false;
+    uint32 point = 0;
+
+    void Reset() override
+    {
+        started = false;
+        point = 0;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetCanFly(true);
+        me->SetDisableGravity(true);
+        me->SetSpeed(MOVE_FLIGHT, 0.7f);
+    }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seat*/, bool apply) override
+    {
+        Player* player = passenger->ToPlayer();
+        if (!player)
+            return;
+        if (apply)
+        {
+            started = true;
+            return;
+        }
+        ObjectGuid guid = player->GetGUID();
+        player->m_Events.Schedule(100, [guid]()
+        {
+            if (Player* pilot = ObjectAccessor::FindPlayer(guid))
+                if (pilot->IsAlive() && !pilot->IsBeingTeleported() && pilot->GetMapId() == 870 && !pilot->GetVehicle())
+                    pilot->NearTeleportTo(AcidRain::Landing.GetPositionX(), AcidRain::Landing.GetPositionY(), AcidRain::Landing.GetPositionZ(), AcidRain::Landing.GetOrientation());
+        });
+        started = false;
+        me->DespawnOrUnsummon(500);
+    }
+
+    void UpdateAI(uint32 /*diff*/) override
+    {
+        if (!started)
+            return;
+        Unit* passenger = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(0) : nullptr;
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        if (!player)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+        if (player->GetQuestStatus(AcidRain::Quest) != QUEST_STATUS_INCOMPLETE || !player->IsAlive())
+        {
+            player->ExitVehicle();
+            return;
+        }
+        if (!me->movespline->Finalized())
+            return;
+        Position const& destination = AcidRain::Route[point];
+        me->GetMotionMaster()->MovePoint(point, destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(), false);
+        point = (point + 1) % (sizeof(AcidRain::Route) / sizeof(Position));
+    }
+};
+
+class spell_jade_forest_acid_rain_star : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_acid_rain_star);
+    void Hit(SpellEffIndex index)
+    {
+        PreventHitDefaultEffect(index);
+        Player* pilot = AcidRain::Pilot(GetCaster());
+        Creature* target = GetHitCreature();
+        if (pilot && AcidRain::IsTarget(target) && GetCaster()->IsWithinDistInMap(target, 100.0f))
+            pilot->DealDamage(target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NATURE, GetSpellInfo(), false);
+    }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_acid_rain_star::Hit, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+class spell_jade_forest_acid_rain_blossom : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_acid_rain_blossom);
+    void Hit(SpellEffIndex index)
+    {
+        PreventHitDefaultEffect(index);
+        Player* pilot = AcidRain::Pilot(GetCaster());
+        if (!pilot)
+            return;
+        std::list<Creature*> targets;
+        for (uint32 entry : { 55701u, 55707u, 58943u, 58945u })
+            GetCreatureListWithEntryInGrid(targets, GetCaster(), entry, 65.0f);
+        for (Creature* target : targets)
+            if (AcidRain::IsTarget(target) && GetCaster()->GetExactDist2d(target) <= 18.0f)
+                pilot->DealDamage(target, target->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NATURE, GetSpellInfo(), false);
+    }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_acid_rain_blossom::Hit, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
+    }
+};
+
 void AddSC_jade_forest()
 {
+    new npc_jade_forest_acid_rain_boarding();
+    new creature_script<npc_jade_forest_acid_rain_flight>("npc_jade_forest_acid_rain_flight");
+    new spell_script<spell_jade_forest_acid_rain_star>("spell_jade_forest_acid_rain_star");
+    new spell_script<spell_jade_forest_acid_rain_blossom>("spell_jade_forest_acid_rain_blossom");
     new player_paint_it_red();
     new player_finish_them();
     new player_the_final_blow();

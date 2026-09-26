@@ -63,3 +63,5 @@ Historical migrations are available in `sql/updates/`. Select migrations for you
 
 Updates 14–17 need a worldserver restart to load changed templates, scripts and
 phasing data. These SQL-only changes do not require recompilation.
+
+- `2026_09_27_04_world_acid_rain_gyrocopter.sql`: enable boarding from the Recovered Gyrocopter (or Recovered Supplies), summon a private flight vehicle, and enable Throw Star and Poison Blossom against Acid Rain's Hozen targets. Requires the matching rebuilt server, `sudo make install`, and restart. The patrol is reconstructed from the saved target positions; the original cinematic is not reproduced. Completion or early vehicle exit returns to the boarding position. Needs in-game flight and targeting verification.
