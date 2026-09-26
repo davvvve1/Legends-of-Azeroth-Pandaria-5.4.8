@@ -2043,7 +2043,7 @@ Rate.Auction.Cut     = 1
 #        Description: Honor gain rate.
 #        Default:     1
 
-Rate.Honor = 1
+Rate.Honor = 6
 
 #
 #    Rate.Talent

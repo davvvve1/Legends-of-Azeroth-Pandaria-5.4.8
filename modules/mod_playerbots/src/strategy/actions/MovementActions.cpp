@@ -2825,6 +2825,17 @@ bool MovementAction::MoveTo(WorldObject* target, float distance, MovementPriorit
     float tz = target->GetPositionZ();
 
     float distanceToTarget = bot->GetDistance(target);
+    // Capture objects can be on hills or tower floors. Interpolating their Z
+    // into a short straight step can put the requested point below the hill.
+    // Let the navigation mesh choose the intermediate position instead.
+    if (bot->InBattleground() && target->ToGameObject() && distance <= 4.0f &&
+        !bot->IsFlying() && !bot->IsInWater() && !bot->GetVehicle())
+    {
+        if (distanceToTarget <= distance)
+            return false;
+        return MoveTo(target->GetMapId(), tx, ty, tz, false, false,
+            false, false, priority);
+    }
     float angle = bot->GetAngle(target);
     float needToGo = distanceToTarget - distance;
 
@@ -2867,13 +2878,34 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool idle, 
     bool generatePath = !bot->IsFlying() && !bot->IsUnderWater() && !bot->IsInWater();
     bool disableMoveSplinePath = sPlayerbotAIConfig->disableMoveSplinePath >= 2 ||
         (sPlayerbotAIConfig->disableMoveSplinePath == 1 && bot->InBattleground());
+    if (bot->InBattleground() && generatePath &&
+        !bot->GetVehicle())
+    {
+        PathGenerator path(bot);
+        if (!path.CalculatePath(x, y, z, false))
+            return false;
+        PathType const type = path.GetPathType();
+        if (!(type & (PATHFIND_NORMAL | PATHFIND_INCOMPLETE)) ||
+            (type & (PATHFIND_NOPATH | PATHFIND_SHORTCUT |
+                PATHFIND_NOT_USING_PATH | PATHFIND_FARFROMPOLY_END)))
+            return false;
+        Movement::PointsArray const& points = path.GetPath();
+        if (points.size() < 2)
+            return false;
+        // Long routes may be partial; only advance to the last reachable
+        // mesh point and continue the objective route on the next update.
+        x = points.back().x;
+        y = points.back().y;
+        z = points.back().z;
+        exact_waypoint = true;
+    }
     if (Vehicle* vehicle = bot->GetVehicle())
     {
         VehicleSeatEntry const* seat = vehicle->GetSeatForPassenger(bot);
         Unit* vehicleBase = vehicle->GetBase();
-        generatePath = vehicleBase->CanFly();
         if (!vehicleBase || !seat || !seat->CanControl())  // is passenger and cant move anyway
             return false;
+        generatePath = !vehicleBase->CanFly();
 
         float distance = vehicleBase->GetExactDist(x, y, z);  // use vehicle distance, not bot
         if (distance > 0.01f)
@@ -7576,6 +7608,16 @@ bool BattlegroundObjectiveAction::Execute(Event /*event*/)
             TryBattlegroundMount())
             return true;
     }
+
+    // Finish ongoing node objective travel instead of restarting the spline
+    // whenever the AI's short movement wait expires. Combat still takes over.
+    if ((type == BATTLEGROUND_AV || type == BATTLEGROUND_AB ||
+        type == BATTLEGROUND_BFG) && !bot->IsInCombat() &&
+        bot->getAttackers().empty() &&
+        bot->GetMotionMaster()->GetCurrentMovementGeneratorType() == POINT_MOTION_TYPE &&
+        bot->movespline->Initialized() && !bot->movespline->Finalized() &&
+        AI_VALUE(LastMovement&, "last movement").priority == MovementPriority::MOVEMENT_FORCED)
+        return true;
 
     if (ctf)
     {
