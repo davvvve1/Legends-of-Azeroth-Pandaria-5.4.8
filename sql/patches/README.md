@@ -96,3 +96,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_19_world_horde_tank_zone_boundary.sql`: replace Horde Siege Tank passenger restriction to subarea 4027 with zone 3537 (Borean Tundra). Prevents automatic ejection at subarea boundaries. Restart required; no rebuild. Needs in-game crossing and dismount verification.
 
 - `2026_09_27_20_world_horde_tank_battlegrounds.sql`: allow Horde Siege Tank (25334) passengers on all battleground maps in the installed 5.4.8 Map.dbc, in addition to Borean Tundra. OR condition groups prevent region checks ejecting BG drivers. Restart required; no rebuild. Does not spawn tanks in battlegrounds. Needs in-game verification.
+
+- `2026_09_27_21_world_orabus_shorter_summon.sql`: shorten Orabus horn event 16889 to four waves at 2/8/14/20 seconds and Orabus at 30 seconds, preserving summon positions and lifetimes. Restart required; no rebuild. Needs in-game horn/event verification.

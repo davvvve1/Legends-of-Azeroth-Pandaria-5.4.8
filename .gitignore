@@ -98,3 +98,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_18_world_horde_siege_tank_boarding.sql
 !sql/patches/world/2026_09_27_19_world_horde_tank_zone_boundary.sql
 !sql/patches/world/2026_09_27_20_world_horde_tank_battlegrounds.sql
+!sql/patches/world/2026_09_27_21_world_orabus_shorter_summon.sql
