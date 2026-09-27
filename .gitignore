@@ -93,3 +93,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_13_world_bees_knees_tigerfly_loot.sql
 !sql/patches/world/2026_09_27_14_world_riko_report_giver_protection.sql
 !sql/patches/world/2026_09_27_15_world_hostile_natives_bot_group_credit.sql
+!sql/patches/world/2026_09_27_16_world_magic_carpet_ride_gorge_credit.sql

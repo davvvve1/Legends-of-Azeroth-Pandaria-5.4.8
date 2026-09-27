@@ -86,3 +86,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_14_world_riko_report_giver_protection.sql`: protect stationary Riko/Shokia report quest givers against all attacks. Matching code routes report acceptance through CreatureAI, as used by QuestHandler, including Kiryn. Build, sudo make install and restart required. Existing active reports can be resumed through gossip. Needs in-game verification.
 
 - `2026_09_27_15_world_hostile_natives_bot_group_credit.sql`: allow Hostile Natives inspection credit while grouped in a bot raid. Matching code orders sign/statue/widow proximity interactions, isolates the scene NPCs and returns to the giver after boarding failure. Build, sudo make install and restart required; needs in-game verification.
+
+- `2026_09_27_16_world_magic_carpet_ride_gorge_credit.sql`: give the missing Magic Carpet Ride arrival event when speaking to Gorge (25329), gated to active quest 11636. Enables gossip and preserves quest turn-in. Restart required; no rebuild. Needs in-game verification of completion and follow-up quest 11642.
