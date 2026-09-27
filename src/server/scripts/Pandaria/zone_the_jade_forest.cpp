@@ -5047,11 +5047,19 @@ struct npc_jade_forest_acid_rain_flight : public ScriptedAI
     npc_jade_forest_acid_rain_flight(Creature* creature) : ScriptedAI(creature) { }
     bool started = false;
     uint32 point = 0;
+    uint32 boardingDelay = 0;
+    bool takeoff = true;
+
+    // A control seat charms its base. Keep the scripted patrol AI instead
+    // of replacing it with PossessedAI and losing PassengerBoarded/UpdateAI.
+    void OnCharmed(bool /*apply*/) override { }
 
     void Reset() override
     {
         started = false;
         point = 0;
+        boardingDelay = 0;
+        takeoff = true;
         me->SetReactState(REACT_PASSIVE);
         me->SetCanFly(true);
         me->SetDisableGravity(true);
@@ -5065,6 +5073,8 @@ struct npc_jade_forest_acid_rain_flight : public ScriptedAI
             return;
         if (apply)
         {
+            player->SetClientControl(me, false);
+            boardingDelay = 500;
             started = true;
             return;
         }
@@ -5079,7 +5089,7 @@ struct npc_jade_forest_acid_rain_flight : public ScriptedAI
         me->DespawnOrUnsummon(500);
     }
 
-    void UpdateAI(uint32 /*diff*/) override
+    void UpdateAI(uint32 diff) override
     {
         if (!started)
             return;
@@ -5095,11 +5105,36 @@ struct npc_jade_forest_acid_rain_flight : public ScriptedAI
             player->ExitVehicle();
             return;
         }
+        if (me->GetMapId() != 870 || me->GetPositionX() < 2200.0f ||
+            me->GetPositionX() > 2600.0f || me->GetPositionY() < -750.0f ||
+            me->GetPositionY() > -400.0f || me->GetPositionZ() < 320.0f ||
+            me->GetPositionZ() > 450.0f)
+        {
+            player->ExitVehicle();
+            return;
+        }
+        if (boardingDelay > diff)
+        {
+            boardingDelay -= diff;
+            return;
+        }
+        boardingDelay = 0;
         if (!me->movespline->Finalized())
             return;
-        Position const& destination = AcidRain::Route[point];
-        me->GetMotionMaster()->MovePoint(point, destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(), false);
-        point = (point + 1) % (sizeof(AcidRain::Route) / sizeof(Position));
+        Position destination = AcidRain::Route[point];
+        if (takeoff)
+        {
+            destination = AcidRain::Landing;
+            destination.m_positionZ = 380.0f;
+            takeoff = false;
+        }
+        else
+            point = (point + 1) % (sizeof(AcidRain::Route) / sizeof(Position));
+        Movement::MoveSplineInit flight(me);
+        flight.MoveTo(destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(), false);
+        flight.SetFly();
+        flight.SetVelocity(5.0f);
+        flight.Launch();
     }
 };
 
