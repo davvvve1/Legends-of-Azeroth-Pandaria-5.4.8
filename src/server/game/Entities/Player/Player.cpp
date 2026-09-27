@@ -3616,7 +3616,9 @@ bool Player::AddSpell(uint32 spellId, bool active, bool learning, bool dependent
     {
         uint32 next_active_spell_id = 0;
         // fix activate state for non-stackable low rank (and find next spell for !active case)
-        if (spellInfo->IsRanked())
+        // Mount requirements refer to individual riding ranks. Keep those
+        // ranks active even when a higher riding license is already known.
+        if (spellInfo->IsRanked() && !spellInfo->IsAbilityOfSkillType(SKILL_RIDING))
         {
             if (uint32 next = sSpellMgr->GetNextSpellInChain(spellId))
             {
@@ -3738,7 +3740,8 @@ bool Player::AddSpell(uint32 spellId, bool active, bool learning, bool dependent
         newspell->disabled  = disabled;
 
         // replace spells in action bars and spellbook to bigger rank if only one spell rank must be accessible
-        if (newspell->active && !newspell->disabled && spellInfo->IsRanked())
+        if (newspell->active && !newspell->disabled && spellInfo->IsRanked() &&
+            !spellInfo->IsAbilityOfSkillType(SKILL_RIDING))
         {
             WorldPacket data(SMSG_SUPERCEDED_SPELL);
             uint32 bitCount = 0;

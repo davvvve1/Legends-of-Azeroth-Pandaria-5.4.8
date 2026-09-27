@@ -25,7 +25,8 @@ void LearnRidingForLevel(Player* player)
     };
 
     for (RidingTraining const& skill : training)
-        if (player->GetLevel() >= skill.level && !player->HasSpell(skill.spell))
+        // LearnSpell also restores ranks previously hidden by superseding.
+        if (player->GetLevel() >= skill.level && !player->HasActiveSpell(skill.spell))
             player->LearnSpell(skill.spell, false);
 
     // Mount capability selection uses the riding skill value, not just known spells.
