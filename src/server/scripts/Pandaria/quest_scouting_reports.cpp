@@ -19,10 +19,11 @@ namespace ScoutingReports
         char const* option;
     };
 
-    // Positions taken from existing spawns/quest objects on this server.
+    // Gorrok starts eight yards west of the warning sign, outside its collision.
+    // Other positions are taken from existing spawns on this server.
     Report const Reports[] =
     {
-        { 29730, 55671, 55648, {1464.87f,-1341.66f,247.242f,1.2f},
+        { 29730, 55671, 55648, {1456.87f,-1341.66f,247.242f,0.0f},
             {1444.61f,-545.21f,353.218f,0.0f}, "Go on, Riko. Tell me about Gorrok." },
         { 29823, 55686, 55648, {352.178f,-2027.27f,58.7399f,1.5f},
             {1444.61f,-545.21f,353.218f,0.0f}, "Go on, Riko. Tell me how you helped Kiryn." },
@@ -88,7 +89,14 @@ namespace ScoutingReports
             player->IsBeingTeleported() || player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE)
             return;
         player->Dismount();
-        Position const& pos = report->start;
+        Position pos = report->start;
+        if (quest == 29730 && player->GetMapId() == 870)
+        {
+            float ground = player->GetMap()->GetHeight(pos.GetPositionX(), pos.GetPositionY(),
+                pos.GetPositionZ() + 5.0f, true, 20.0f);
+            if (ground > INVALID_HEIGHT)
+                pos.m_positionZ = ground + 0.1f;
+        }
         if (player->TeleportTo(870, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation()))
         {
             ObjectGuid guid = player->GetGUID();
