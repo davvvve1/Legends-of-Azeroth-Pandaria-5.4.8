@@ -25,6 +25,8 @@
 #include "ObjectAccessor.h"
 #include "MoveSpline.h"
 
+void AddSC_scouting_reports();
+
 const Position MySerpentPath[2]
 {
     { 1709.67f, -2667.93f, 165.56f, 2.96f },
@@ -5379,6 +5381,7 @@ void AddSC_jade_forest()
     new npc_grookin_outrunner();
     new npc_bamboo_python();
     new npc_lurking_tiger();
+    AddSC_scouting_reports();
     new npc_jade_forest_right_track_report();
     new creature_script<npc_jade_forest_right_track_kiryn>("npc_jade_forest_right_track_kiryn");
     new spell_script<spell_jade_forest_right_track_smoke>("spell_jade_forest_right_track_smoke");
