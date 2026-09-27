@@ -42,6 +42,9 @@ EndContentData */
 #include "ScriptedFollowerAI.h"
 #include "Player.h"
 #include "SpellInfo.h"
+#include "SpellScript.h"
+#include "Spell.h"
+#include "Vehicle.h"
 #include "WorldSession.h"
 
 /*######
@@ -2523,8 +2526,86 @@ struct npc_hidden_cultist : public ScriptedAI
     }
 };
 
+// The Plains of Nasam: native vehicle rescue effect needs a quest handler.
+class spell_nasam_rescue_soldier : public SpellScript
+{
+    PrepareSpellScript(spell_nasam_rescue_soldier);
+    Player* Pilot()
+    {
+        Unit* tank = GetCaster();
+        if (!tank || tank->GetEntry() != 25334 || !tank->GetVehicleKit())
+            return nullptr;
+        Unit* passenger = tank->GetVehicleKit()->GetPassenger(0);
+        return passenger ? passenger->ToPlayer() : nullptr;
+    }
+    bool Soldier(Unit* target) const
+    {
+        return target && target->ToCreature() && target->IsAlive() &&
+            (target->GetEntry() == 27106 || target->GetEntry() == 27107 ||
+             target->GetEntry() == 27108 || target->GetEntry() == 27110);
+    }
+    SpellCastResult CheckTarget()
+    {
+        Player* player = Pilot();
+        Unit* target = GetExplTargetUnit();
+        if (!player || player->GetQuestStatus(11652) != QUEST_STATUS_INCOMPLETE ||
+            !Soldier(target) || !GetCaster()->IsWithinDistInMap(target, 15.0f))
+            return SPELL_FAILED_BAD_TARGETS;
+        return SPELL_CAST_OK;
+    }
+    void Rescue(SpellEffIndex effect)
+    {
+        PreventHitDefaultEffect(effect);
+        Player* player = Pilot();
+        Creature* soldier = GetHitCreature();
+        if (!player || !Soldier(soldier) || !GetCaster()->IsWithinDistInMap(soldier, 15.0f))
+            return;
+        // Consume this soldier immediately, so two tanks cannot both rescue it.
+        soldier->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        soldier->setDeathState(JUST_DIED);
+        player->KilledMonsterCredit(27109);
+        soldier->DespawnOrUnsummon(500);
+    }
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_nasam_rescue_soldier::CheckTarget);
+        OnEffectHitTarget += SpellEffectFn(spell_nasam_rescue_soldier::Rescue, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+class spell_nasam_demoralizer_aim : public SpellScript
+{
+    PrepareSpellScript(spell_nasam_demoralizer_aim);
+    SpellCastResult Aim()
+    {
+        Unit* tank = GetCaster();
+        if (!tank || tank->GetEntry() != 25334 || !tank->GetVehicleKit())
+            return SPELL_CAST_OK;
+        Unit* passenger = tank->GetVehicleKit()->GetPassenger(0);
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        Unit* target = player ? player->GetSelectedUnit() : nullptr;
+        if (!target)
+            return SPELL_CAST_OK; // Preserve ground aiming without a selected unit.
+        if (!target->IsAlive() || !tank->IsValidAttackTarget(target) ||
+            !tank->IsWithinDistInMap(target, 100.0f) || !tank->IsWithinLOSInMap(target))
+            return SPELL_FAILED_BAD_TARGETS;
+        WorldLocation destination(tank->GetMapId(), target->GetPositionX(),
+            target->GetPositionY(), target->GetPositionZ());
+        SetExplTargetDest(destination);
+        // Do not let the previous camera trajectory replace the selected destination.
+        GetSpell()->m_targets.SetSpeed(0.0f);
+        return SPELL_CAST_OK;
+    }
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_nasam_demoralizer_aim::Aim);
+    }
+};
+
 void AddSC_borean_tundra()
 {
+    new spell_script<spell_nasam_rescue_soldier>("spell_nasam_rescue_soldier");
+    new spell_script<spell_nasam_demoralizer_aim>("spell_nasam_demoralizer_aim");
     new npc_sinkhole_kill_credit();
     new npc_khunok_the_behemoth();
     new npc_keristrasza();
