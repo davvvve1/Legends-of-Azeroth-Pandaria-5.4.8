@@ -90,3 +90,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_16_world_magic_carpet_ride_gorge_credit.sql`: give the missing Magic Carpet Ride arrival event when speaking to Gorge (25329), gated to active quest 11636. Enables gossip and preserves quest turn-in. Restart required; no rebuild. Needs in-game verification of completion and follow-up quest 11642.
 
 - `2026_09_27_17_world_into_the_mist_guaranteed_loot.sql`: raise Into the Mist item 34814 quest-only drops from 25% to 100% on Kvaldir Mistweaver, Kvaldir Mist Lord and Orabus the Helmsman. Restart required; no rebuild.
+
+- `2026_09_27_18_world_horde_siege_tank_boarding.sql`: restore Horde Siege Tank click-to-board using vehicle 26 control seat 0, plus native Demoralizer and Meatpounder abilities. Restart required; no rebuild. Needs in-game boarding, movement, exit and weapon verification. Other Plains of Nasam mechanics are not audited by this migration.
