@@ -7,7 +7,7 @@ The playable sections are reconstructed from the installed spells, NPCs, objecti
 
 ## Manual verification
 
-1. Complete The Scouts Return (29971). Accept Hostile Natives (29730) from Riko. Confirm Gorrok starts on the ground eight yards west of the warning sign, can move freely, and the hidden passenger seat presents Gorrok as the controlled character. Right-click the warning sign, then the jade statue, then the private Widow Greenpaw. Verify each objective advances once, in order, and completion returns to Riko.
+1. Complete The Scouts Return (29971). Accept Hostile Natives (29730) from Riko. Confirm Gorrok starts on the ground eight yards west of the warning sign, can move freely, and the hidden passenger seat presents Gorrok as the controlled character. Right-click the warning sign, then approach the jade statue within five yards (inspection credit is automatic while controlling Gorrok), then speak to the private Widow Greenpaw. Verify approaching the statue before reading the sign gives no credit. Verify each objective advances once, in order, and completion returns to Riko.
 2. Accept On the Right Track (29731) from Kiryn. Target a Lurking Tiger and use Smoke Bomb. Verify fear and the native delayed Sniper Shot. Reach the Young Alliance Soldier, verify credit, and return to camp.
 3. Accept The Friend of My Enemy (29823) from Riko. Use Uppercut and Fling Filth against the two jinyu waves and the Alliance scout. Verify no final credit before all enemies die, then return to Riko.
 4. Accept Like Jinyu in a Barrel (29824) from Shokia. Select a private guard and use Sniper Shot. Clear two guard waves, then three barrels, then the escape guards. Verify Kiryn reaches the starting point before escort credit and return to Shokia.

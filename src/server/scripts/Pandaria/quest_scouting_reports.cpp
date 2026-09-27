@@ -431,6 +431,15 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             pilot->ExitVehicle();
             return;
         }
+        // A possessed vehicle cannot reliably open the statue's NPC gossip.
+        // Inspect on approach, using the controlled actor's position.
+        if (report->quest == 29730 && pilot->GetQuestObjectiveCounter(264502) &&
+            !pilot->GetQuestObjectiveCounter(264503) &&
+            me->FindNearestCreature(55378, INTERACTION_DISTANCE))
+        {
+            pilot->KilledMonsterCredit(55378);
+            me->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, pilot);
+        }
         if (report->quest == 29824 && stage == 4)
         {
             if (Creature* kiryn = me->GetMap()->GetCreature(kirynGuid))
