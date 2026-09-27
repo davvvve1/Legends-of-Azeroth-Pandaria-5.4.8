@@ -72,3 +72,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_07_world_echo_isles_spirit_healer.sql`: add the missing Spirit Healer at Echo Isles graveyard 1700. The accompanying core change makes ordinary Spirit Healers accessible across quest phases while preserving ghost visibility and battleground Spirit Guide phases. Build, sudo make install, and restart required.
 
 - `2026_09_27_08_world_zarjira_shorter_fight.sql`: reduce Zar'jira (38306) health multiplier from 100 to 10 for a shorter An Ancient Enemy fight. Reset saved spawn health to use the new maximum. Restart required; no rebuild. Needs in-game verification.
+
+- `2026_09_27_09_world_grookin_hill_services_and_reports.sql`: neutral Grookin Flapmaster and Eekle Eekle service factions, enable report gossip and direct credit for Beyond the Horizon, and add the missing flight menu option. Restart required; no rebuild. Needs in-game verification.
