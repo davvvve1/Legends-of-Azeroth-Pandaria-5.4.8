@@ -633,7 +633,13 @@ void LoadDBCStores(const std::string& dataPath, uint32& availableDbcLocales)
 
     for (uint32 i = 0; i < sSkillRaceClassInfoStore.GetNumRows(); ++i)
         if (auto entry = sSkillRaceClassInfoStore.LookupEntry(i))
+        {
+            // Server policy: riding and mounts are available from level 1.
+            // Modify only the in-memory server copy, never client files.
+            if (entry->SkillId == SKILL_RIDING || entry->SkillId == SKILL_MOUNTS)
+                const_cast<SkillRaceClassInfoEntry*>(entry)->ReqLevel = 1;
             sSkillRaceClassInfoBySkill.insert({ entry->SkillId, entry });
+        }
 
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellScalingStore,           dbcPath,"SpellScaling.dbc");//15595
     LoadDBC(availableDbcLocales, bad_dbc_files, sSpellTotemsStore,            dbcPath,"SpellTotems.dbc");//15595

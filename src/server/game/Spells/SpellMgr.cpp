@@ -3062,6 +3062,14 @@ void SpellMgr::LoadSpellInfoCorrections()
 {
     uint32 oldMSTime = getMSTime();
 
+    // This runs before the skill ability map is built. Read the DBC store
+    // directly to cover account-wide mounts as well as riding ranks.
+    std::set<uint32> levelOneMountSpells = { 54197, 90267, 115913, 130487 };
+    for (uint32 row = 0; row < sSkillLineAbilityStore.GetNumRows(); ++row)
+        if (SkillLineAbilityEntry const* ability = sSkillLineAbilityStore.LookupEntry(row))
+            if (ability->skillId == SKILL_MOUNTS || ability->skillId == SKILL_RIDING)
+                levelOneMountSpells.insert(ability->spellId);
+
     SpellInfo* spellInfo = NULL;
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
@@ -3070,6 +3078,12 @@ void SpellMgr::LoadSpellInfoCorrections()
             spellInfo = spellInfoMap[i];
             if (!spellInfo)
                 continue;
+
+            if (levelOneMountSpells.count(spellInfo->Id) || spellInfo->HasAura(SPELL_AURA_MOUNTED))
+            {
+                spellInfo->BaseLevel = 1;
+                spellInfo->SpellLevel = 1;
+            }
 
             if (spellInfo->ActiveIconID == 2158)  // flight
                 spellInfo->Attributes |= SPELL_ATTR0_PASSIVE;

@@ -106,3 +106,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_26_world_foolish_endeavors_turnin_marker.sql
 !sql/patches/world/2026_09_27_27_world_level_one_ground_mounts.sql
 !sql/patches/world/2026_09_27_28_world_all_mounts_level_one.sql
+!sql/patches/world/2026_09_27_29_world_mount_and_riding_level_one.sql

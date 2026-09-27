@@ -1,10 +1,10 @@
 # Automatic riding and account mounts
 
-`AutomaticRiding.cpp` grants riding ranks and flight licenses from level 1 and repairs riding skill to 375. World migrations 27/28 lower mount item level requirements. Account mounts still load through the existing `account_spell` login query.
+`AutomaticRiding.cpp` grants riding ranks and flight licenses from level 1 and repairs riding skill to 375. World migrations 27/28 lower mount item level requirements; migration 29 sets every mount item and riding trainer minimum to 1. The core also overrides riding/mount spell levels and skill race/class minimums in server memory, including account mount spells. Account mounts still load through the existing `account_spell` login query.
 
 `Player::AddSpell` preserves active riding ranks instead of superseding apprentice/journeyman when expert/artisan/master are learned. `SendInitialSpells` omits inactive spells, so previously only the highest riding rank was advertised at login. The login script now reactivates previously hidden riding ranks. Other spell rank behavior is unchanged.
 
-Build, run `sudo make install`, restart worldserver, then log out and in. No new SQL migration is needed for this correction.
+Build, run `sudo make install`, restart worldserver, then log out and in. Apply world migration 29 for the trainer/item policy; the active-rank correction itself requires no SQL.
 
 In-game verification still required:
 
