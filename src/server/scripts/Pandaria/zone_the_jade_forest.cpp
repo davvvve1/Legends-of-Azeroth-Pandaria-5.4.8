@@ -5032,6 +5032,17 @@ class npc_jade_forest_right_track_report : public CreatureScript
 public:
     npc_jade_forest_right_track_report() : CreatureScript("npc_jade_forest_right_track_report") { }
 
+    struct ReportGiverAI : public ScriptedAI
+    {
+        ReportGiverAI(Creature* creature) : ScriptedAI(creature) { }
+        void OnQuestAccept(Player* player, Quest const* quest) override
+        {
+            if (quest->GetQuestId() == RightTrack::Quest)
+                RightTrack::Begin(player);
+        }
+    };
+    CreatureAI* GetAI(Creature* creature) const override { return new ReportGiverAI(creature); }
+
     bool OnQuestAccept(Player* player, Creature*, Quest const* quest) override
     {
         if (quest->GetQuestId() == RightTrack::Quest)

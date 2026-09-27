@@ -144,6 +144,27 @@ class npc_jade_forest_scouting_report : public CreatureScript
 public:
     npc_jade_forest_scouting_report() : CreatureScript("npc_jade_forest_scouting_report") { }
 
+    struct ReportGiverAI : public ScriptedAI
+    {
+        ReportGiverAI(Creature* creature) : ScriptedAI(creature) { }
+        void Reset() override
+        {
+            me->SetReactState(REACT_PASSIVE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
+            me->CombatStop(true);
+        }
+        void OnQuestAccept(Player* player, Quest const* quest) override
+        {
+            if (auto report = ScoutingReports::Find(quest->GetQuestId()))
+                if (report->giver == me->GetEntry())
+                    ScoutingReports::Begin(player, report->quest);
+        }
+        void AttackStart(Unit*) override { }
+        void UpdateAI(uint32) override { }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override { return new ReportGiverAI(creature); }
+
     bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
     {
         if (auto report = ScoutingReports::Find(quest->GetQuestId()))
