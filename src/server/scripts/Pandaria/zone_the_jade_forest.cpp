@@ -4970,6 +4970,180 @@ private:
     }
 };
 
+namespace RightTrack
+{
+    uint32 const Quest = 29731;
+    uint32 const Kiryn = 55680;
+    uint32 const Soldier = 55770;
+    Position const Start = { 761.766f, -1633.19f, 58.359f, 4.9f };
+    Position const Return = { 1443.3f, -548.747f, 352.87f, 0.0f };
+
+    void Board(ObjectGuid guid, uint32 attempt = 0)
+    {
+        Player* player = ObjectAccessor::FindPlayer(guid);
+        if (!player || !player->IsAlive() || player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE || player->GetVehicle())
+            return;
+        // Wait for the teleport acknowledgement before creating the transport
+        // and sending its boarding spline to the client.
+        if (player->IsBeingTeleported())
+        {
+            if (attempt < 20)
+                player->m_Events.Schedule(500, [guid, attempt]() { Board(guid, attempt + 1); });
+            return;
+        }
+        if (player->GetMapId() != 870 || player->GetDistance(Start) > 15.0f)
+            return;
+        if (TempSummon* kiryn = player->SummonCreature(Kiryn, player->GetPosition(),
+            TEMPSUMMON_TIMED_DESPAWN, 15 * MINUTE * IN_MILLISECONDS, 238, player->GetGUID()))
+        {
+            if (!kiryn->GetVehicleKit())
+            {
+                kiryn->DespawnOrUnsummon();
+                return;
+            }
+            player->UpdateVisibilityOf(kiryn);
+            if (!player->HaveAtClient(kiryn))
+            {
+                kiryn->DespawnOrUnsummon();
+                return;
+            }
+            player->EnterVehicle(kiryn, 0);
+        }
+    }
+
+    void Begin(Player* player)
+    {
+        if (!player->IsAlive() || player->GetVehicle() || player->IsInCombat() || player->IsBeingTeleported() ||
+            player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE)
+            return;
+        player->Dismount();
+        if (player->TeleportTo(870, Start.GetPositionX(), Start.GetPositionY(), Start.GetPositionZ(), Start.GetOrientation()))
+        {
+            ObjectGuid guid = player->GetGUID();
+            player->m_Events.Schedule(500, [guid]() { Board(guid); });
+        }
+    }
+}
+
+class npc_jade_forest_right_track_report : public CreatureScript
+{
+public:
+    npc_jade_forest_right_track_report() : CreatureScript("npc_jade_forest_right_track_report") { }
+
+    bool OnQuestAccept(Player* player, Creature*, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == RightTrack::Quest)
+            RightTrack::Begin(player);
+        return true;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+        if (player->GetQuestStatus(RightTrack::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "What happened next, Kiryn?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+            player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            RightTrack::Begin(player);
+        return true;
+    }
+};
+
+struct npc_jade_forest_right_track_kiryn : public ScriptedAI
+{
+    npc_jade_forest_right_track_kiryn(Creature* creature) : ScriptedAI(creature) { }
+    bool boarded = false;
+    uint32 checkTimer = 500;
+
+    void OnCharmed(bool) override { }
+
+    void Reset() override
+    {
+        boarded = false;
+        checkTimer = 500;
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void PassengerBoarded(Unit* passenger, int8, bool apply) override
+    {
+        Player* player = passenger->ToPlayer();
+        if (!player)
+            return;
+        boarded = apply;
+        if (apply)
+            return; // This is a player-controlled ground vehicle.
+        ObjectGuid guid = player->GetGUID();
+        player->m_Events.Schedule(100, [guid]()
+        {
+            if (Player* pilot = ObjectAccessor::FindPlayer(guid))
+                if (pilot->IsAlive() && !pilot->IsBeingTeleported() && pilot->GetMapId() == 870 && !pilot->GetVehicle())
+                    pilot->NearTeleportTo(RightTrack::Return.GetPositionX(), RightTrack::Return.GetPositionY(),
+                        RightTrack::Return.GetPositionZ(), RightTrack::Return.GetOrientation());
+        });
+        me->DespawnOrUnsummon(500);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!boarded)
+            return;
+        if (checkTimer > diff)
+        {
+            checkTimer -= diff;
+            return;
+        }
+        checkTimer = 500;
+        Unit* passenger = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(0) : nullptr;
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        if (!player)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+        if (player->GetQuestStatus(RightTrack::Quest) != QUEST_STATUS_INCOMPLETE || !player->IsAlive())
+        {
+            player->ExitVehicle();
+            return;
+        }
+        if (me->FindNearestCreature(RightTrack::Soldier, 15.0f, true))
+        {
+            player->KilledMonsterCredit(RightTrack::Soldier);
+            player->ExitVehicle();
+        }
+    }
+};
+
+class spell_jade_forest_right_track_smoke : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_right_track_smoke);
+
+    SpellCastResult CheckTarget()
+    {
+        Unit* caster = GetCaster();
+        Unit* target = GetExplTargetUnit();
+        if (!caster || caster->GetEntry() != RightTrack::Kiryn || !caster->GetVehicleKit() ||
+            !target || target->GetEntry() != 55550 || !target->IsAlive())
+            return SPELL_FAILED_BAD_TARGETS;
+        Unit* passenger = caster->GetVehicleKit()->GetPassenger(0);
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        return player && player->GetQuestStatus(RightTrack::Quest) == QUEST_STATUS_INCOMPLETE
+            ? SPELL_CAST_OK : SPELL_FAILED_BAD_TARGETS;
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_jade_forest_right_track_smoke::CheckTarget);
+    }
+};
+
 namespace AcidRain
 {
     uint32 const Quest = 29827;
@@ -5205,6 +5379,9 @@ void AddSC_jade_forest()
     new npc_grookin_outrunner();
     new npc_bamboo_python();
     new npc_lurking_tiger();
+    new npc_jade_forest_right_track_report();
+    new creature_script<npc_jade_forest_right_track_kiryn>("npc_jade_forest_right_track_kiryn");
+    new spell_script<spell_jade_forest_right_track_smoke>("spell_jade_forest_right_track_smoke");
     new npc_rakira();
     new npc_ro_shen();
     new npc_sha_reminant();
