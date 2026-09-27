@@ -349,7 +349,7 @@ class npc_zarjira : public CreatureScript
         void DoAction(int32 action) override
         {
             if(action == 1)
-                events.ScheduleEvent(EVENT_INTRO, 12000);
+                events.ScheduleEvent(EVENT_INTRO, 3000);
             if(action == 2)
             {
                 Talk(SAY_FIRES);
@@ -374,7 +374,7 @@ class npc_zarjira : public CreatureScript
         {
             events.ScheduleEvent(EVENT_FROSTBOLT, 3000);
             events.ScheduleEvent(EVENT_MANIFESTATION, 10000);
-            events.ScheduleEvent(EVENT_FIRES, 60000);
+            events.ScheduleEvent(EVENT_FIRES, 15000);
         }
 
         void UpdateAI(uint32 diff) override
@@ -386,7 +386,7 @@ class npc_zarjira : public CreatureScript
                 {
                 case EVENT_INTRO:
                     Talk(1);
-                    events.ScheduleEvent(EVENT_COMBAT, 10000);
+                    events.ScheduleEvent(EVENT_COMBAT, 3000);
                     break;
                 case EVENT_COMBAT:
                     {
@@ -439,7 +439,7 @@ class npc_zarjira : public CreatureScript
                             (*i)->CastSpell(me, SPELL_FIRES_BEAM, true);
                             (*i)->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);                            
                         }
-                        events.ScheduleEvent(EVENT_FIRES, urand(60000, 80000));
+                        events.ScheduleEvent(EVENT_FIRES, urand(20000, 25000));
                     }
                     break;
                 default:
