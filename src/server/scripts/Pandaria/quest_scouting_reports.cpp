@@ -69,6 +69,11 @@ namespace ScoutingReports
         }
         if (player->GetMapId() != 870 || player->GetDistance(report->start) > 15.0f)
             return;
+        auto returnHome = [player, report]()
+        {
+            Position const& home = report->home;
+            player->NearTeleportTo(home.GetPositionX(), home.GetPositionY(), home.GetPositionZ(), home.GetOrientation());
+        };
         if (TempSummon* actor = player->SummonCreature(report->actor, player->GetPosition(),
             TEMPSUMMON_TIMED_DESPAWN, 15 * MINUTE * IN_MILLISECONDS, 238, guid))
         {
@@ -76,10 +81,18 @@ namespace ScoutingReports
             if (!actor->GetVehicleKit() || !player->HaveAtClient(actor))
             {
                 actor->DespawnOrUnsummon();
+                returnHome();
                 return;
             }
             player->EnterVehicle(actor, 1);
+            if (player->GetVehicleBase() != actor)
+            {
+                actor->DespawnOrUnsummon();
+                returnHome();
+            }
         }
+        else
+            returnHome();
     }
 
     void Begin(Player* player, uint32 quest)
@@ -216,6 +229,8 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
     std::set<ObjectGuid> targets;
     ObjectGuid kirynGuid;
     ObjectGuid rikoGuid;
+    ObjectGuid statueGuid;
+    ObjectGuid widowGuid;
     bool boarded = false;
     bool closing = false;
     bool spawnFailed = false;
@@ -235,6 +250,8 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         targets.clear();
         kirynGuid.Clear();
         rikoGuid.Clear();
+        statueGuid.Clear();
+        widowGuid.Clear();
         me->SetReactState(REACT_PASSIVE);
     }
 
@@ -313,7 +330,10 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         {
             if (report->quest == 29730)
             {
-                Spawn(55381, {1503.43f,-1302.06f,249.613f,3.0f});
+                if (Creature* statue = Spawn(55378, {1502.18f,-1260.24f,244.135f,0.0f}))
+                    statueGuid = statue->GetGUID();
+                if (Creature* widow = Spawn(55381, {1503.43f,-1302.06f,249.613f,3.0f}))
+                    widowGuid = widow->GetGUID();
                 me->Say("Inspect the warning sign, then the jade statue. Ask the widow what happened here.", LANG_UNIVERSAL, player);
             }
             else if (report->quest == 29823)
@@ -431,14 +451,40 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             pilot->ExitVehicle();
             return;
         }
-        // A possessed vehicle cannot reliably open the statue's NPC gossip.
-        // Inspect on approach, using the controlled actor's position.
-        if (report->quest == 29730 && pilot->GetQuestObjectiveCounter(264502) &&
-            !pilot->GetQuestObjectiveCounter(264503) &&
-            me->FindNearestCreature(55378, INTERACTION_DISTANCE))
+        // Use the controlled actor's position for all investigation steps.
+        // Keep the objectives ordered and use only this player's scene NPCs.
+        if (report->quest == 29730)
         {
-            pilot->KilledMonsterCredit(55378);
-            me->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, pilot);
+            Creature* statue = me->GetMap()->GetCreature(statueGuid);
+            Creature* widow = me->GetMap()->GetCreature(widowGuid);
+            if (!statue || !widow)
+            {
+                pilot->ExitVehicle();
+                return;
+            }
+            if (!pilot->GetQuestObjectiveCounter(264502))
+            {
+                if (GameObject* sign = me->FindNearestGameObject(209615, INTERACTION_DISTANCE))
+                {
+                    pilot->KillCreditGO(209615, sign->GetGUID());
+                    me->Say("No visitors? We should examine those statues.", LANG_UNIVERSAL, pilot);
+                }
+            }
+            else if (!pilot->GetQuestObjectiveCounter(264503))
+            {
+                if (me->IsWithinDistInMap(statue, INTERACTION_DISTANCE))
+                {
+                    pilot->KilledMonsterCredit(55378);
+                    me->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, pilot);
+                }
+            }
+            else if (!pilot->GetQuestObjectiveCounter(264504) && me->IsWithinDistInMap(widow, INTERACTION_DISTANCE))
+            {
+                widow->Say("Another visitor for my collection!", LANG_UNIVERSAL, pilot);
+                me->SetDisplayId(43669);
+                Finish(55381);
+            }
+            return;
         }
         if (report->quest == 29824 && stage == 4)
         {
@@ -499,8 +545,11 @@ public:
             return false;
         if (!player->IsWithinDistInMap(go, INTERACTION_DISTANCE))
             return true;
-        player->KillCreditGO(209615, go->GetGUID());
-        player->GetVehicleBase()->Say("No visitors? We should examine those statues.", LANG_UNIVERSAL, player);
+        if (!player->GetQuestObjectiveCounter(264502))
+        {
+            player->KillCreditGO(209615, go->GetGUID());
+            player->GetVehicleBase()->Say("No visitors? We should examine those statues.", LANG_UNIVERSAL, player);
+        }
         return true;
     }
 };
@@ -526,8 +575,11 @@ public:
         }
         if (creature->GetEntry() == 55378)
         {
-            player->KilledMonsterCredit(55378);
-            gorrok->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, player);
+            if (creature->GetPrivateObjectOwner() == player->GetGUID() && !player->GetQuestObjectiveCounter(264503))
+            {
+                player->KilledMonsterCredit(55378);
+                gorrok->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, player);
+            }
         }
         else if (creature->GetPrivateObjectOwner() == player->GetGUID() && player->GetQuestObjectiveCounter(264503))
         {
