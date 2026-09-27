@@ -1,6 +1,6 @@
 # The Plains of Nasam tank fixes
 
-Requires migrations 2026_09_27_23 and 2026_09_27_24 and matching installed worldserver.
+Requires migrations 2026_09_27_23 and 2026_09_27_24/25 and matching installed worldserver.
 
 Manual checks (not yet performed in-game):
 
@@ -13,3 +13,5 @@ Manual checks (not yet performed in-game):
 This patch restores rescue and selected-target cannon aim; it does not implement missing landmine, fuel mechanics.
 
 6. Drive the tank into area trigger 4963 around the central structure (2418.66, 6455.67, 54.48; radius 70 yards). Verify Scourge leader identified advances once, including if the client sends no area-trigger event. Stay outside the sphere, leave/re-enter, and use the tank without quest 11652: no premature or duplicate credit. Verify the quest completes only after all three objectives.
+
+7. Reconnect with already saved leader credit (including quest status complete): verify the leader checkbox displays complete without redoing the quest. Verify identification changes no objectives of other active quests.

@@ -2617,30 +2617,46 @@ class player_nasam_leader_identification : public PlayerScript
 {
 public:
     player_nasam_leader_identification() : PlayerScript("player_nasam_leader_identification") { }
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid guid = player->GetGUID();
+        player->m_Events.Schedule(500, [guid]()
+        {
+            Player* current = ObjectAccessor::FindPlayer(guid);
+            if (!current || !current->GetQuestObjectiveCounter(262375) ||
+                (current->GetQuestStatus(11652) != QUEST_STATUS_INCOMPLETE &&
+                 current->GetQuestStatus(11652) != QUEST_STATUS_COMPLETE))
+                return;
+            if (Quest const* quest = sObjectMgr->GetQuestTemplate(11652))
+                for (auto const& objective : quest->Objectives)
+                    if (objective.ID == 262375)
+                    {
+                        current->CreditQuestAreaTriggerObjective(11652, 262375);
+                        current->SendQuestUpdateAddCreditSimple(quest, &objective);
+                        if (current->GetQuestStatus(11652) == QUEST_STATUS_COMPLETE)
+                            current->SendQuestComplete(11652);
+                        break;
+                    }
+        });
+    }
     void OnUpdate(Player* player, uint32) override
     {
+        QuestStatus status = player->GetQuestStatus(11652);
         if (!player->IsAlive() || player->GetMapId() != 571 ||
-            player->GetQuestStatus(11652) != QUEST_STATUS_INCOMPLETE ||
-            player->GetQuestObjectiveCounter(262375))
+            (status != QUEST_STATUS_INCOMPLETE && status != QUEST_STATUS_COMPLETE))
             return;
+        if (player->GetQuestObjectiveCounter(262375))
+        {
+            // Repair the completion bit for existing, already credited players.
+            player->CreditQuestAreaTriggerObjective(11652, 262375);
+            return;
+        }
         Unit* tank = player->GetVehicleBase();
-        if (!tank || tank->GetEntry() != 25334 || !tank->GetVehicleKit() ||
-            tank->GetVehicleKit()->GetPassenger(0) != player ||
+        if (status != QUEST_STATUS_INCOMPLETE || !tank || tank->GetEntry() != 25334 ||
+            !tank->GetVehicleKit() || tank->GetVehicleKit()->GetPassenger(0) != player ||
             !player->IsInAreaTrigger(sAreaTriggerStore.LookupEntry(4963)))
             return;
-        Quest const* quest = sObjectMgr->GetQuestTemplate(11652);
-        if (!quest)
-            return;
-        for (auto const& objective : quest->Objectives)
-            if (objective.ID == 262375 && objective.Type == QUEST_OBJECTIVE_AREATRIGGER)
-            {
-                player->QuestObjectiveSatisfy(4963, 1, QUEST_OBJECTIVE_AREATRIGGER);
-                if (quest->HasFlag(QUEST_FLAGS_COMPLETION_AREA_TRIGGER))
-                    player->AreaExploredOrEventHappens(11652);
-                if (player->CanCompleteQuest(11652))
-                    player->CompleteQuest(11652);
-                break;
-            }
+        player->CreditQuestAreaTriggerObjective(11652, 262375);
     }
 };
 

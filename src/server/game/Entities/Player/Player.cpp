@@ -17753,6 +17753,38 @@ void Player::SwapQuestSlot(uint16 slot1, uint16 slot2)
     }
 }
 
+void Player::CreditQuestAreaTriggerObjective(uint32 questId, uint32 objectiveId)
+{
+    Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
+    uint16 slot = FindQuestSlot(questId);
+    QuestStatus status = GetQuestStatus(questId);
+    if (!quest || slot >= MAX_QUEST_LOG_SIZE ||
+        (status != QUEST_STATUS_INCOMPLETE && status != QUEST_STATUS_COMPLETE))
+        return;
+    for (auto const& objective : quest->Objectives)
+        if (objective.ID == objectiveId && objective.Type == QUEST_OBJECTIVE_AREATRIGGER)
+        {
+            if (GetQuestObjectiveCounter(objectiveId) &&
+                (GetQuestSlotState(slot) & (256u << objective.StorageIndex)))
+                return;
+            if (!GetQuestObjectiveCounter(objectiveId))
+            {
+                if (status != QUEST_STATUS_INCOMPLETE)
+                    return;
+                m_questObjectiveStatus[objectiveId] = 1;
+                MarkQuestObjectiveToSave(questId, objectiveId);
+            }
+            // Area trigger progress uses a completion bit, not a kill counter.
+            if (!(GetQuestSlotState(slot) & (256u << objective.StorageIndex)))
+                SendQuestUpdateAddCreditSimple(quest, &objective);
+            if (quest->HasFlag(QUEST_FLAGS_COMPLETION_AREA_TRIGGER))
+                AreaExploredOrEventHappens(questId);
+            if (status == QUEST_STATUS_INCOMPLETE && CanCompleteQuest(questId))
+                CompleteQuest(questId);
+            return;
+        }
+}
+
 void Player::AreaExploredOrEventHappens(uint32 questId)
 {
     if (questId)
