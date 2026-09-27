@@ -68,3 +68,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_05_world_acid_rain_autocomplete.sql`: supersede the Acid Rain flight requirement with immediate completion by removing its kill objectives and setting the autocomplete flag. Existing active quests can also be turned in. Prerequisites and rewards stay intact. Restart worldserver to load the SQL change; no rebuild required.
 
 - `2026_09_27_06_world_young_and_vicious_delivery.sql`: restore Swiftclaw delivery credit and dismount at the raptor pens for Young and Vicious (24626); correct the swapped capture/delivery map markers. Requires worldserver restart, no rebuild. Needs in-game verification.
+
+- `2026_09_27_07_world_echo_isles_spirit_healer.sql`: add the missing Spirit Healer at Echo Isles graveyard 1700. The accompanying core change makes ordinary Spirit Healers accessible across quest phases while preserving ghost visibility and battleground Spirit Guide phases. Build, sudo make install, and restart required.

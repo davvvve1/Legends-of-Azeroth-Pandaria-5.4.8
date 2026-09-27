@@ -3642,6 +3642,16 @@ bool WorldObject::IsPhased(WorldObject const* obj) const
 
 bool WorldObject::InSamePhase(WorldObject const* obj) const
 {
+    // Quest phases must not hide the graveyard resurrection service. Keep
+    // battleground spirit guides phased and retain the ghost visibility check.
+    if (ToPlayer())
+        if (Creature const* healer = obj->ToCreature())
+            if (healer->IsSpiritHealer() && !healer->IsSpiritGuide())
+                return true;
+    if (obj->ToPlayer())
+        if (Creature const* healer = ToCreature())
+            if (healer->IsSpiritHealer() && !healer->IsSpiritGuide())
+                return true;
     return InSamePhase(obj->GetPhaseMask()) && IsPhased(obj);
 }
 

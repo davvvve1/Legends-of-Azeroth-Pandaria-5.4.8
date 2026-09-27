@@ -84,3 +84,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_04_world_acid_rain_gyrocopter.sql
 !sql/patches/world/2026_09_27_05_world_acid_rain_autocomplete.sql
 !sql/patches/world/2026_09_27_06_world_young_and_vicious_delivery.sql
+!sql/patches/world/2026_09_27_07_world_echo_isles_spirit_healer.sql
