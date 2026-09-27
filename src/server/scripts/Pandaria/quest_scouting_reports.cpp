@@ -43,7 +43,7 @@ namespace ScoutingReports
     {
         if (!actor || !actor->GetVehicleKit())
             return nullptr;
-        Unit* passenger = actor->GetVehicleKit()->GetPassenger(0);
+        Unit* passenger = actor->GetVehicleKit()->GetPassenger(1);
         return passenger ? passenger->ToPlayer() : nullptr;
     }
 
@@ -78,7 +78,7 @@ namespace ScoutingReports
                 actor->DespawnOrUnsummon();
                 return;
             }
-            player->EnterVehicle(actor, 0);
+            player->EnterVehicle(actor, 1);
         }
     }
 

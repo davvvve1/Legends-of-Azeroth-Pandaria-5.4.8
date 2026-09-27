@@ -16,3 +16,5 @@ The playable sections are reconstructed from the installed spells, NPCs, objecti
 7. Check the shared warning sign, statue and Greenpaw still serve the Alliance SI:7 report (29726).
 
 The saved target POIs guide Gorrok. Shokia's Sniper Shot ability is the reconstructed click-and-fire control; selecting a target and pressing the ability is required. A lost actor or a blocked final escort route exits without awarding credit so the report can be restarted.
+
+Vehicle 238 has passenger seat 0 (2241) and control seat 1 (2242). All playable report actors must board the player in seat 1; pilot lookup and ability checks use the same seat. Verify the player model is hidden and WASD moves the report actor.

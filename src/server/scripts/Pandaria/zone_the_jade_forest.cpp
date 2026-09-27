@@ -5009,7 +5009,7 @@ namespace RightTrack
                 kiryn->DespawnOrUnsummon();
                 return;
             }
-            player->EnterVehicle(kiryn, 0);
+            player->EnterVehicle(kiryn, 1);
         }
     }
 
@@ -5114,7 +5114,7 @@ struct npc_jade_forest_right_track_kiryn : public ScriptedAI
             return;
         }
         checkTimer = 500;
-        Unit* passenger = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(0) : nullptr;
+        Unit* passenger = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(1) : nullptr;
         Player* player = passenger ? passenger->ToPlayer() : nullptr;
         if (!player)
         {
@@ -5145,7 +5145,7 @@ class spell_jade_forest_right_track_smoke : public SpellScript
         if (!caster || caster->GetEntry() != RightTrack::Kiryn || !caster->GetVehicleKit() ||
             !target || target->GetEntry() != 55550 || !target->IsAlive())
             return SPELL_FAILED_BAD_TARGETS;
-        Unit* passenger = caster->GetVehicleKit()->GetPassenger(0);
+        Unit* passenger = caster->GetVehicleKit()->GetPassenger(1);
         Player* player = passenger ? passenger->ToPlayer() : nullptr;
         return player && player->GetQuestStatus(RightTrack::Quest) == QUEST_STATUS_INCOMPLETE
             ? SPELL_CAST_OK : SPELL_FAILED_BAD_TARGETS;
