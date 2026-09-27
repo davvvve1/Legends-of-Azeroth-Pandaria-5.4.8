@@ -87,3 +87,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_07_world_echo_isles_spirit_healer.sql
 !sql/patches/world/2026_09_27_08_world_zarjira_shorter_fight.sql
 !sql/patches/world/2026_09_27_09_world_grookin_hill_services_and_reports.sql
+!sql/patches/world/2026_09_27_10_world_riko_questgiver_npc_protection.sql

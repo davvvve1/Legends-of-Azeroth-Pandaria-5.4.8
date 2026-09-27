@@ -74,3 +74,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_08_world_zarjira_shorter_fight.sql`: reduce Zar'jira (38306) health multiplier from 100 to 10 for a shorter An Ancient Enemy fight. Reset saved spawn health to use the new maximum. Restart required; no rebuild. Needs in-game verification.
 
 - `2026_09_27_09_world_grookin_hill_services_and_reports.sql`: neutral Grookin Flapmaster and Eekle Eekle service factions, enable report gossip and direct credit for Beyond the Horizon, and add the missing flight menu option. Restart required; no rebuild. Needs in-game verification.
+
+- `2026_09_27_10_world_riko_questgiver_npc_protection.sql`: protect Riko quest giver 55648 against NPC attacks at Grookin Hill, keeping other Riko story/combat versions unchanged. Restart required; no rebuild.
