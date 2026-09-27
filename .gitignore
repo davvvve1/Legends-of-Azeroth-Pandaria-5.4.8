@@ -104,3 +104,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_24_world_nasam_leader_identification.sql
 !sql/patches/world/2026_09_27_25_world_nasam_leader_client_objective.sql
 !sql/patches/world/2026_09_27_26_world_foolish_endeavors_turnin_marker.sql
+!sql/patches/world/2026_09_27_27_world_level_one_ground_mounts.sql
