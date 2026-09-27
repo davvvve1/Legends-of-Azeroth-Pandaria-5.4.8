@@ -106,3 +106,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_24_world_nasam_leader_identification.sql`: make Nasam leader identification a one-count area trigger objective. Matching PlayerScript uses original area trigger 4963 geometry to credit the tank driver without depending on client area-trigger events. Build, sudo make install and restart required; needs in-game inside/outside trigger and duplicate credit checks.
 
 - `2026_09_27_25_world_nasam_leader_client_objective.sql`: restore Nasam leader objective objectId=-1 for the client and correct its objective map marker. Matching code credits the scoped area objective using the simple completion packet/quest-log bit and repairs existing saved credit. Supersedes migration 24 objective ID. Build, sudo make install and restart required; needs UI verification.
+
+- `2026_09_27_26_world_foolish_endeavors_turnin_marker.sql`: point Foolish Endeavors completion marker at existing Garrosh Hellscream spawn inside Warsong Hold (2838,6187). NPC relation already correct. Restart required; no rebuild. Needs in-game map/turn-in verification.
