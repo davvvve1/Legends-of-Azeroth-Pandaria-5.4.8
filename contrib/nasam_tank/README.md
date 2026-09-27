@@ -1,6 +1,6 @@
 # The Plains of Nasam tank fixes
 
-Requires migration 2026_09_27_23 and matching installed worldserver.
+Requires migrations 2026_09_27_23 and 2026_09_27_24 and matching installed worldserver.
 
 Manual checks (not yet performed in-game):
 
@@ -10,4 +10,6 @@ Manual checks (not yet performed in-game):
 4. Kill Scourge at existing Nasam positions: verify Scourge Unit credit and 30-second respawn. Verify unrelated Scourge outside the bounded Nasam region keep existing respawn settings.
 5. Check Meatpounder still works and boarding, movement and dismount work both in Borean Tundra and battlegrounds.
 
-This patch restores rescue and selected-target cannon aim; it does not implement missing landmine, fuel or central-structure mechanics.
+This patch restores rescue and selected-target cannon aim; it does not implement missing landmine, fuel mechanics.
+
+6. Drive the tank into area trigger 4963 around the central structure (2418.66, 6455.67, 54.48; radius 70 yards). Verify Scourge leader identified advances once, including if the client sends no area-trigger event. Stay outside the sphere, leave/re-enter, and use the tank without quest 11652: no premature or duplicate credit. Verify the quest completes only after all three objectives.

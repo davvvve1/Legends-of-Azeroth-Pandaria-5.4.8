@@ -45,6 +45,8 @@ EndContentData */
 #include "SpellScript.h"
 #include "Spell.h"
 #include "Vehicle.h"
+#include "DBCStores.h"
+#include "ObjectMgr.h"
 #include "WorldSession.h"
 
 /*######
@@ -2610,8 +2612,41 @@ class spell_nasam_demoralizer_aim : public SpellScript
     }
 };
 
+// Vehicle drivers may not send the client event for area trigger 4963.
+class player_nasam_leader_identification : public PlayerScript
+{
+public:
+    player_nasam_leader_identification() : PlayerScript("player_nasam_leader_identification") { }
+    void OnUpdate(Player* player, uint32) override
+    {
+        if (!player->IsAlive() || player->GetMapId() != 571 ||
+            player->GetQuestStatus(11652) != QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestObjectiveCounter(262375))
+            return;
+        Unit* tank = player->GetVehicleBase();
+        if (!tank || tank->GetEntry() != 25334 || !tank->GetVehicleKit() ||
+            tank->GetVehicleKit()->GetPassenger(0) != player ||
+            !player->IsInAreaTrigger(sAreaTriggerStore.LookupEntry(4963)))
+            return;
+        Quest const* quest = sObjectMgr->GetQuestTemplate(11652);
+        if (!quest)
+            return;
+        for (auto const& objective : quest->Objectives)
+            if (objective.ID == 262375 && objective.Type == QUEST_OBJECTIVE_AREATRIGGER)
+            {
+                player->QuestObjectiveSatisfy(4963, 1, QUEST_OBJECTIVE_AREATRIGGER);
+                if (quest->HasFlag(QUEST_FLAGS_COMPLETION_AREA_TRIGGER))
+                    player->AreaExploredOrEventHappens(11652);
+                if (player->CanCompleteQuest(11652))
+                    player->CompleteQuest(11652);
+                break;
+            }
+    }
+};
+
 void AddSC_borean_tundra()
 {
+    new player_nasam_leader_identification();
     new spell_script<spell_nasam_rescue_soldier>("spell_nasam_rescue_soldier");
     new spell_script<spell_nasam_demoralizer_aim>("spell_nasam_demoralizer_aim");
     new npc_sinkhole_kill_credit();

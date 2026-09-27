@@ -102,3 +102,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_22_world_warsong_jetty_horn_focus.sql`: expose End of Warsong Jetty spell focus 1493 in normal and Kvaldir mist phases. Horn 45703 requires being within 10 yards of this focus. Restart required; no rebuild. Needs in-game cast and Orabus spawn verification.
 
 - `2026_09_27_23_world_plains_nasam_tank_mechanics.sql`: add Rescue Injured Soldier to Horde Siege Tank, bind rescue credit/despawn and selected enemy cannon aim, reduce Nasam Scourge respawns to 30 seconds and injured soldiers to 60 seconds at existing positions. Build, sudo make install and restart required. Needs in-game rescue, cannon trajectory, kill credit and respawn verification.
+
+- `2026_09_27_24_world_nasam_leader_identification.sql`: make Nasam leader identification a one-count area trigger objective. Matching PlayerScript uses original area trigger 4963 geometry to credit the tank driver without depending on client area-trigger events. Build, sudo make install and restart required; needs in-game inside/outside trigger and duplicate credit checks.
