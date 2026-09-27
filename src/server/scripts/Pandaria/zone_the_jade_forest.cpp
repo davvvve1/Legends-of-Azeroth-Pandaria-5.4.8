@@ -5035,6 +5035,15 @@ public:
             }
             flight->SetPhaseMask(player->GetPhaseMask(), false);
             flight->SetExplicitSeerGuid(player->GetGUID());
+            // The transport must exist at the client before the enter spline
+            // uses its GUID and local seat coordinates. Summoning only queues
+            // visibility updates; boarding immediately can send these first.
+            player->UpdateVisibilityOf(flight);
+            if (!player->HaveAtClient(flight))
+            {
+                flight->DespawnOrUnsummon();
+                return false;
+            }
             player->Dismount();
             player->EnterVehicle(flight, 0);
         }
