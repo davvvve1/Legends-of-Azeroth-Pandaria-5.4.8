@@ -92,3 +92,5 @@ phasing data. These SQL-only changes do not require recompilation.
 - `2026_09_27_17_world_into_the_mist_guaranteed_loot.sql`: raise Into the Mist item 34814 quest-only drops from 25% to 100% on Kvaldir Mistweaver, Kvaldir Mist Lord and Orabus the Helmsman. Restart required; no rebuild.
 
 - `2026_09_27_18_world_horde_siege_tank_boarding.sql`: restore Horde Siege Tank click-to-board using vehicle 26 control seat 0, plus native Demoralizer and Meatpounder abilities. Restart required; no rebuild. Needs in-game boarding, movement, exit and weapon verification. Other Plains of Nasam mechanics are not audited by this migration.
+
+- `2026_09_27_19_world_horde_tank_zone_boundary.sql`: replace Horde Siege Tank passenger restriction to subarea 4027 with zone 3537 (Borean Tundra). Prevents automatic ejection at subarea boundaries. Restart required; no rebuild. Needs in-game crossing and dismount verification.

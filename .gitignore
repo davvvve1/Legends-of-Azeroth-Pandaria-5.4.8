@@ -96,3 +96,4 @@ __pycache__/
 !sql/patches/world/2026_09_27_16_world_magic_carpet_ride_gorge_credit.sql
 !sql/patches/world/2026_09_27_17_world_into_the_mist_guaranteed_loot.sql
 !sql/patches/world/2026_09_27_18_world_horde_siege_tank_boarding.sql
+!sql/patches/world/2026_09_27_19_world_horde_tank_zone_boundary.sql
