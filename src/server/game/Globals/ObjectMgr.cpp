@@ -3208,6 +3208,12 @@ void ObjectMgr::LoadItemTemplates()
         }
     }
 
+    // Mount items must pass Player::CanUseItem at level 1, including DB2-only
+    // items. Apply after database overrides; leave other requirements intact.
+    for (auto& item : _itemTemplateStore)
+        if (item.second.Class == ITEM_CLASS_MISCELLANEOUS && item.second.SubClass == ITEM_SUBCLASS_JUNK_MOUNT)
+            item.second.RequiredLevel = 1;
+
     sSpellMgr->LoadItemSpellsCorrections();
     db2::LoadBattlePetCorrections();
 

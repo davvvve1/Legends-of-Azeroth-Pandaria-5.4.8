@@ -33,6 +33,10 @@ void LearnRidingForLevel(Player* player)
     // Repair missing or lower saved skill values without waiting for a trainer.
     if (player->GetPureSkillValue(SKILL_RIDING) < 375 || player->GetPureMaxSkillValue(SKILL_RIDING) < 375)
         player->SetSkill(SKILL_RIDING, 5, 375, 375);
+
+    // Shared ground/flying mount for both factions, including new accounts.
+    if (!player->HasActiveSpell(110051)) // Heart of the Aspects
+        player->LearnSpell(110051, false);
 }
 }
 
