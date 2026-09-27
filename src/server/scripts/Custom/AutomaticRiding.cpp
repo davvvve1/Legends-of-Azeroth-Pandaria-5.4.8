@@ -15,18 +15,23 @@ void LearnRidingForLevel(Player* player)
     {
         { 1, 33388 },   // Apprentice riding
         { 1, 33391 },   // Journeyman riding (all ordinary ground mounts)
-        { 60, 34090 },  // Expert riding
-        { 60, 90267 },  // Flight Master's License
-        { 68, 54197 },  // Cold Weather Flying
-        { 70, 34091 },  // Artisan riding
-        { 80, 90265 },  // Master riding
-        { 90, 115913 }, // Wisdom of the Four Winds
-        { 90, 130487 } // Cloud Serpent Riding
+        { 1, 34090 },  // Expert riding
+        { 1, 90267 },  // Flight Master's License
+        { 1, 54197 },  // Cold Weather Flying
+        { 1, 34091 },  // Artisan riding
+        { 1, 90265 },  // Master riding
+        { 1, 115913 }, // Wisdom of the Four Winds
+        { 1, 130487 } // Cloud Serpent Riding
     };
 
     for (RidingTraining const& skill : training)
         if (player->GetLevel() >= skill.level && !player->HasSpell(skill.spell))
             player->LearnSpell(skill.spell, false);
+
+    // Mount capability selection uses the riding skill value, not just known spells.
+    // Repair missing or lower saved skill values without waiting for a trainer.
+    if (player->GetPureSkillValue(SKILL_RIDING) < 375 || player->GetPureMaxSkillValue(SKILL_RIDING) < 375)
+        player->SetSkill(SKILL_RIDING, 5, 375, 375);
 }
 }
 
