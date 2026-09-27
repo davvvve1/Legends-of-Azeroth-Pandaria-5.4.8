@@ -2541,6 +2541,7 @@ class spell_nasam_rescue_soldier : public SpellScript
     bool Soldier(Unit* target) const
     {
         return target && target->ToCreature() && target->IsAlive() &&
+            !target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) &&
             (target->GetEntry() == 27106 || target->GetEntry() == 27107 ||
              target->GetEntry() == 27108 || target->GetEntry() == 27110);
     }
@@ -2560,11 +2561,18 @@ class spell_nasam_rescue_soldier : public SpellScript
         Creature* soldier = GetHitCreature();
         if (!player || !Soldier(soldier) || !GetCaster()->IsWithinDistInMap(soldier, 15.0f))
             return;
-        // Consume this soldier immediately, so two tanks cannot both rescue it.
+        // Reserve the living soldier immediately to prevent duplicate rescues.
         soldier->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        soldier->setDeathState(JUST_DIED);
+        soldier->SetHealth(soldier->GetMaxHealth());
+        soldier->SetStandState(UNIT_STAND_STATE_STAND);
+        soldier->Say("Thank you! I'm safe now!", LANG_UNIVERSAL, player);
         player->KilledMonsterCredit(27109);
-        soldier->DespawnOrUnsummon(500);
+        // Static spawn cleanup uses death internally. Hide before cleanup so
+        // no death animation or corpse reaches the client, then restore normal
+        // visibility for the next scheduled respawn.
+        soldier->SetVisible(false);
+        soldier->DespawnOrUnsummon();
+        soldier->SetVisible(true);
     }
     void Register() override
     {
