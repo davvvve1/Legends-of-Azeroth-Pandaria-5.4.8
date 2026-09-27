@@ -51,6 +51,8 @@ manual application unless database updates are explicitly enabled.
 
 Historical migrations are available in `sql/updates/`. Select migrations for your installed database version.
 
+- `2026_09_27_13_world_bees_knees_tigerfly_loot.sql`: guarantee quest-only Bug Leg drops from Tigerfly for The Bees' Knees (29933), retaining 6-10 legs per drop. Restart required; no rebuild. Needs in-game verification with the quest active and outside a raid group.
+
 - `2026_09_26_10_world_azjol_nerub_hadronox_duplicate_spawns.sql`: disable duplicate permanent Hadronox and initial pack spawns; the instance script creates them after Krik'thir. Requires matching code and restart to unload existing spawns.
 
 - `2026_09_26_11_world_jade_forest_final_blow_barricades.sql`: hide stair barricades after The Final Blow is complete or rewarded. Requires matching code and restart.
