@@ -995,23 +995,21 @@ class npc_pandriarch_windfur : public CreatureScript
 
             void DamageTaken(Unit* attacker, uint32& damage) override
             {
-                if (Player* player = attacker->ToPlayer())
+                if (Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
                 {
-                    if (me->HealthBelowPctDamaged(10, damage))
+                    if (me->HealthBelowPctDamaged(10, damage) || damage >= me->GetHealth())
                     {
                         damage = 0;
                         me->CombatStop();
                         me->GetMotionMaster()->MovePoint(0, 1996.76001f, -2216.780029f, 247.725006f);
                         me->SetFaction(35);
+                        me->SetReactState(REACT_PASSIVE);
                         me->SetFullHealth();
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                         me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                         player->KilledMonsterCredit(56206);
                     }
-
-                    if (damage > me->GetHealth())
-                        damage = 0;
                 }
             }
 
@@ -1146,14 +1144,15 @@ class npc_pandriarch_bramblestaff : public CreatureScript
 
             void DamageTaken(Unit* attacker, uint32& damage) override
             {
-                if (Player* player = attacker->ToPlayer())
+                if (Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
                 {
-                    if (me->HealthBelowPctDamaged(10, damage) || damage > me->GetHealth())
+                    if (me->HealthBelowPctDamaged(10, damage) || damage >= me->GetHealth())
                     {
                         damage = 0;
                         me->CombatStop();
                         me->GetMotionMaster()->MovePoint(0, 1862.300049f, -2325.060059f, 257.062012f);
                         me->SetFaction(35);
+                        me->SetReactState(REACT_PASSIVE);
                         me->SetFullHealth();
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
@@ -1295,14 +1294,15 @@ class npc_pandriarch_goldendraft : public CreatureScript
 
             void DamageTaken(Unit* attacker, uint32& damage) override
             {
-                if (Player* player = attacker->ToPlayer())
+                if (Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
                 {
-                    if (me->HealthBelowPctDamaged(10, damage) || damage > me->GetHealth())
+                    if (me->HealthBelowPctDamaged(10, damage) || damage >= me->GetHealth())
                     {
                         damage = 0;
                         me->CombatStop();
                         me->GetMotionMaster()->MovePoint(0, 1942.630005f, -2290.530029f, 240.429001f);
                         me->SetFaction(35);
+                        me->SetReactState(REACT_PASSIVE);
                         me->SetFullHealth();
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);

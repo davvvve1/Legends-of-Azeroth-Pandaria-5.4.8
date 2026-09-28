@@ -264,6 +264,15 @@ bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
         target->GetMap() != requester->GetMap())
         return false;
 
+    // Skull and cross assigned by the party leader/assistant form an explicit
+    // kill order. Let managed LFG fillers engage them even before the
+    // requester has generated combat or threat; all regular target, range and
+    // movement checks are still performed by the selecting action.
+    if ((group->GetTargetIcon(7) == target->GetGUID() ||
+         group->GetTargetIcon(6) == target->GetGUID()) &&
+        bot->IsValidAttackTarget(target))
+        return true;
+
     // The old check allowed every hostile target as soon as the requester was
     // in combat. That let a filler chain-pull unrelated packs while the real
     // player was still fighting the first one. LFG fillers may now engage only

@@ -74,11 +74,11 @@ bool FindTargetStrategy::IsHighPriority(Unit* attacker)
         group = botAI->GetBot()->GetGroup();
     if (group)
     {
-        ObjectGuid guid = group->GetTargetIcon(7);
-        if (guid && attacker->GetGUID() == guid)
-        {
+        ObjectGuid skullGuid = group->GetTargetIcon(7);
+        ObjectGuid crossGuid = group->GetTargetIcon(6);
+        if ((skullGuid && attacker->GetGUID() == skullGuid) ||
+            (crossGuid && attacker->GetGUID() == crossGuid))
             return true;
-        }
     }
     GuidVector prioritizedTargets = botAI->GetAiObjectContext()->GetValue<GuidVector>("prioritized targets")->Get();
     for (ObjectGuid targetGuid : prioritizedTargets)

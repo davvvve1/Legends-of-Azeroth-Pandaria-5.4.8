@@ -82,6 +82,7 @@ enum ZoneKunLaiSummitSpellData
     SPELL_JADE_STRIKE                       = 113503,
 
     SPELL_POSSESSED_BY_RAGE                 = 121154,
+    SPELL_SUMMON_BAN_GUARDIAN               = 121187,
 
     SPELL_BELLOWING_RAGE                    = 124297,
     SPELL_HOOF_STOMP                        = 124289,
@@ -194,6 +195,10 @@ enum ZoneKunLaiSummitCreatures
     NPC_SWORDMISTRESS_MEI                   = 59273,
     NPC_EXPLOSIVE_HATRED                    = 61530,
     NPC_FARMSTEAD_SLAVE                     = 59577,
+    NPC_ESCAPED_YAK                         = 59319,
+    NPC_MUSKPAW_JR_YAK_WASH                = 59354,
+    NPC_MISHI_FLIGHT_VEHICLE                = 66386,
+    NPC_BAN_BEARHEART_GUARDIAN              = 62227,
     NPC_URBATAAR                            = 59483,
     NPC_EASTERN_OIL_RIG                     = 60096,
     NPC_SOUTHERN_OIL_RIG                    = 60098,
@@ -213,6 +218,10 @@ enum ZoneKunLaiSummitQuests
     QUEST_BOOM_BOOMS_FUSE                   = 32840,
     QUEST_UNBELIEVABLE                      = 30752,
     QUEST_THE_RITUAL                        = 30480,
+    QUEST_AT_THE_YAK_WASH                  = 30491,
+    QUEST_STAYING_CONNECTED                 = 30795,
+    QUEST_INTO_THE_MONASTERY                = 31030,
+    QUEST_INTO_THE_MONASTERY_ALLIANCE       = 31031,
     QUEST_FARMHAND_FREEDOM                  = 30571,
     QUEST_CHALLENGE_ACCEPTED                = 30514,
     QUEST_FREE_THE_DISSENTERS               = 30967
@@ -287,6 +296,20 @@ const Position BashonSpawn[3]
     { 3460.0f, 2118.0f, 1084.2f, 5.6f },
     { 3466.0f, 2124.0f, 1083.0f, 5.6f },
 };
+
+const Position MishiStayingConnectedPath[]
+{
+    { 3477.46f, 2101.92f, 1087.00f },
+    { 3491.00f, 1990.00f, 1100.00f },
+    { 3510.00f, 1840.00f, 1095.00f },
+    { 3532.00f, 1680.00f, 1060.00f },
+    { 3554.00f, 1510.00f,  990.00f },
+    { 3572.00f, 1370.00f,  880.00f },
+    { 3585.00f, 1285.00f,  800.00f },
+    { 3599.06f, 1222.27f,  752.00f }
+};
+
+const Position MishiStayingConnectedLanding = { 3599.06f, 1222.27f, 749.10f, 4.77f };
 
 const Position ChuangPath[19]
 {
@@ -1151,6 +1174,48 @@ private:
     EventMap events;
 };
 
+struct npc_escaped_yak : public VehicleAI
+{
+    npc_escaped_yak(Creature* creature) : VehicleAI(creature) { }
+
+    bool washed;
+    uint32 destinationCheckTimer;
+
+    void Reset() override
+    {
+        washed = false;
+        destinationCheckTimer = 250;
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (washed)
+            return;
+
+        if (destinationCheckTimer > diff)
+        {
+            destinationCheckTimer -= diff;
+            return;
+        }
+
+        destinationCheckTimer = 250;
+
+        Vehicle* vehicle = me->GetVehicleKit();
+        Player* rider = vehicle && vehicle->GetPassenger(0) ? vehicle->GetPassenger(0)->ToPlayer() : nullptr;
+        if (!rider || rider->GetQuestStatus(QUEST_AT_THE_YAK_WASH) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        if (!me->FindNearestCreature(NPC_MUSKPAW_JR_YAK_WASH, 35.0f, true))
+            return;
+
+        washed = true;
+        rider->KilledMonsterCredit(NPC_ESCAPED_YAK);
+        me->SetDisplayId(40703); // Clean Yak
+        rider->ExitVehicle();
+        me->DespawnOrUnsummon(4 * IN_MILLISECONDS);
+    }
+};
+
 class go_yaungol_banner : public GameObjectScript
 {
     public:
@@ -1301,6 +1366,8 @@ class npc_shado_pan_sentinel : public CreatureScript
             if (action == GOSSIP_ACTION_INFO_DEF + 1)
             {
                 player->CLOSE_GOSSIP_MENU();
+                creature->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                creature->AI()->SetGUID(player->GetGUID());
                 creature->AI()->Talk(SAY_SENTINEL_1);
                 creature->HandleEmoteCommand(EMOTE_ONESHOT_POINT);
 
@@ -1316,10 +1383,16 @@ class npc_shado_pan_sentinel : public CreatureScript
                     creature->CastSpell(creature, SPELL_POSSESSED_BY_RAGE);
                 });
 
-                creature->m_Events.Schedule(delay += 1000, [creature, player]()
+                ObjectGuid playerGuid = player->GetGUID();
+                creature->m_Events.Schedule(delay += 1000, [creature, playerGuid]()
                 {
-                    creature->SetFaction(14);
-                    creature->Attack(player, true);
+                    if (Player* challenger = ObjectAccessor::GetPlayer(*creature, playerGuid))
+                    {
+                        creature->SetFaction(14);
+                        creature->Attack(challenger, true);
+                    }
+                    else
+                        creature->AI()->EnterEvadeMode();
                 });
             }
 
@@ -1330,15 +1403,86 @@ class npc_shado_pan_sentinel : public CreatureScript
         {
             npc_shado_pan_sentinelAI(Creature* creature) : ScriptedAI(creature) { }
 
+            ObjectGuid challengerGuid;
+
             void Reset() override
             {
+                challengerGuid.Clear();
                 me->SetFaction(me->GetCreatureTemplate()->faction);
+                me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            }
+
+            void SetGUID(ObjectGuid guid, int32 /*type*/) override
+            {
+                challengerGuid = guid;
+            }
+
+            void JustDied(Unit* killer) override
+            {
+                Player* player = ObjectAccessor::GetPlayer(*me, challengerGuid);
+                if (!player && killer)
+                    player = killer->GetCharmerOrOwnerPlayerOrPlayerItself();
+
+                if (!player || player->GetQuestStatus(QUEST_UNBELIEVABLE) != QUEST_STATUS_INCOMPLETE)
+                    return;
+
+                player->KilledMonsterCredit(me->GetEntry());
+
+                if (!player->FindNearestCreature(NPC_BAN_BEARHEART_GUARDIAN, 100.0f, true))
+                    player->CastSpell(player, SPELL_SUMMON_BAN_GUARDIAN, true);
             }
         };
 
         CreatureAI* GetAI(Creature* creature) const override
         {
             return new npc_shado_pan_sentinelAI(creature);
+        }
+};
+
+class npc_shado_pan_guardian_monastery : public CreatureScript
+{
+    public:
+        npc_shado_pan_guardian_monastery() : CreatureScript("npc_shado_pan_guardian_monastery") { }
+
+        bool OnGossipHello(Player* player, Creature* creature) override
+        {
+            // Only the guardian beside the challenged sentinel controls monastery admission.
+            if (creature->GetDistance2d(3628.35f, 2549.75f) > 12.0f)
+            {
+                player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+                return true;
+            }
+
+            QuestStatus unbelievableStatus = player->GetQuestStatus(QUEST_UNBELIEVABLE);
+            if (unbelievableStatus == QUEST_STATUS_COMPLETE)
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "The sentinel is defeated. Where is Ban Bearheart?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+            if (unbelievableStatus == QUEST_STATUS_REWARDED ||
+                player->GetQuestStatus(QUEST_INTO_THE_MONASTERY) != QUEST_STATUS_NONE ||
+                player->GetQuestStatus(QUEST_INTO_THE_MONASTERY_ALLIANCE) != QUEST_STATUS_NONE)
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I am ready to enter the Shado-Pan Monastery.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+
+            player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+
+        bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            player->CLOSE_GOSSIP_MENU();
+
+            if (action == GOSSIP_ACTION_INFO_DEF + 1 && player->GetQuestStatus(QUEST_UNBELIEVABLE) == QUEST_STATUS_COMPLETE)
+            {
+                if (!player->FindNearestCreature(NPC_BAN_BEARHEART_GUARDIAN, 100.0f, true))
+                    player->CastSpell(player, SPELL_SUMMON_BAN_GUARDIAN, true);
+            }
+            else if (action == GOSSIP_ACTION_INFO_DEF + 2 &&
+                (player->GetQuestStatus(QUEST_UNBELIEVABLE) == QUEST_STATUS_REWARDED ||
+                 player->GetQuestStatus(QUEST_INTO_THE_MONASTERY) != QUEST_STATUS_NONE ||
+                 player->GetQuestStatus(QUEST_INTO_THE_MONASTERY_ALLIANCE) != QUEST_STATUS_NONE))
+                player->TeleportTo(959, 3657.29f, 2551.92f, 766.966f, 0.436332f);
+
+            return true;
         }
 };
 
@@ -1373,6 +1517,76 @@ class npc_lorewalker_cho_bashon : public CreatureScript
             player->ADD_GOSSIP_ITEM_DB(player->GetDefaultGossipMenuForSource(creature), 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
             player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+};
+
+class npc_mishi_staying_connected : public CreatureScript
+{
+    public:
+        npc_mishi_staying_connected() : CreatureScript("npc_mishi_staying_connected") { }
+
+        bool OnGossipHello(Player* player, Creature* creature) override
+        {
+            if (player->GetQuestStatus(QUEST_STAYING_CONNECTED) == QUEST_STATUS_INCOMPLETE)
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Take me to the Valley of Emperors.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+            player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+
+        bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+        {
+            player->PlayerTalkClass->ClearMenus();
+            player->CLOSE_GOSSIP_MENU();
+
+            if (action != GOSSIP_ACTION_INFO_DEF + 1 || player->GetQuestStatus(QUEST_STAYING_CONNECTED) != QUEST_STATUS_INCOMPLETE || player->GetVehicle())
+                return true;
+
+            Creature* mishi = creature->SummonCreature(NPC_MISHI_FLIGHT_VEHICLE, *creature, TEMPSUMMON_TIMED_DESPAWN, 90 * IN_MILLISECONDS);
+            if (!mishi)
+                return true;
+
+            mishi->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            mishi->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
+            mishi->SetPhaseMask(player->GetPhaseMask(), true);
+            mishi->SetCanFly(true);
+            mishi->SetDisableGravity(true);
+
+            player->RemoveAurasByType(SPELL_AURA_MOUNTED);
+            player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
+            player->EnterVehicle(mishi, 0);
+
+            if (player->GetVehicleBase() != mishi)
+            {
+                mishi->DespawnOrUnsummon();
+                return true;
+            }
+
+            Movement::MoveSplineInit flight(mishi);
+            for (Position const& point : MishiStayingConnectedPath)
+                flight.Path().push_back(G3D::Vector3(point.GetPositionX(), point.GetPositionY(), point.GetPositionZ()));
+
+            flight.SetFly();
+            flight.SetUncompressed();
+            flight.SetVelocity(30.0f);
+            flight.Launch();
+
+            ObjectGuid playerGuid = player->GetGUID();
+            mishi->m_Events.Schedule(mishi->GetSplineDuration(), [mishi, playerGuid]()
+            {
+                if (Player* passenger = ObjectAccessor::GetPlayer(*mishi, playerGuid))
+                {
+                    if (passenger->GetVehicleBase() == mishi)
+                        passenger->ExitVehicle();
+
+                    passenger->NearTeleportTo(MishiStayingConnectedLanding.GetPositionX(), MishiStayingConnectedLanding.GetPositionY(),
+                        MishiStayingConnectedLanding.GetPositionZ(), MishiStayingConnectedLanding.GetOrientation());
+                }
+
+                mishi->DespawnOrUnsummon();
+            });
+
             return true;
         }
 };
@@ -1698,6 +1912,16 @@ class npc_xuen_celestial_experience : public CreatureScript
             if (!creature->GetDBTableGUIDLow() || (player->GetQuestStatus(QUEST_CELESTIAL_EXPERIENCE_A) != QUEST_STATUS_INCOMPLETE && player->GetQuestStatus(QUEST_CELESTIAL_EXPERIENCE_H) != QUEST_STATUS_INCOMPLETE))
                 return false;
 
+            std::list<Creature*> xuens;
+            GetCreatureListWithEntryInGrid(xuens, player, NPC_XUEN, 150.0f);
+            for (Creature* xuen : xuens)
+                if (TempSummon* summon = xuen->ToTempSummon())
+                    if (summon->GetSummonerGUID() == player->GetGUID())
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        return true;
+                    }
+
             player->KilledMonsterCredit(NPC_XUEN);
             player->SummonCreature(NPC_XUEN, *creature, TEMPSUMMON_TIMED_DESPAWN, 300 * IN_MILLISECONDS);
             player->SetPhaseMask(3, true);
@@ -1717,6 +1941,8 @@ class npc_xuen_celestial_experience : public CreatureScript
             {
                 me->SetPhaseMask(2, true);
                 summonerGUID = summoner->GetGUID();
+                if (TempSummon* xuen = me->ToTempSummon())
+                    xuen->SetPrivateObjectOwner(summonerGUID);
 
                 for (auto&& cItr : CelestialDefenders)
                 {
@@ -1724,6 +1950,8 @@ class npc_xuen_celestial_experience : public CreatureScript
                     {
                         cList.push_back(celestialDef->GetGUID());
                         celestialDef->SetPhaseMask(2, true);
+                        if (TempSummon* defender = celestialDef->ToTempSummon())
+                            defender->SetPrivateObjectOwner(summonerGUID);
                     }
                 }
 
@@ -1768,6 +1996,8 @@ class npc_xuen_celestial_experience : public CreatureScript
                         {
                             if (Creature* SpiritOfViolence = me->SummonCreature(NPC_SPIRIT_OF_VIOLENCE, ArenaCenterPos, TEMPSUMMON_MANUAL_DESPAWN))
                             {
+                                if (TempSummon* spirit = SpiritOfViolence->ToTempSummon())
+                                    spirit->SetPrivateObjectOwner(pCaster->GetGUID());
                                 SpiritOfViolence->Attack(pCaster, true);
                                 SpiritOfViolence->GetMotionMaster()->MoveChase(pCaster);
                             }
@@ -1816,6 +2046,8 @@ class npc_xuen_celestial_experience : public CreatureScript
                                 {
                                     if (Creature* SpiritOfAnger = me->SummonCreature(NPC_SPIRIT_OF_ANGER, ArenaCenterPos, TEMPSUMMON_MANUAL_DESPAWN))
                                     {
+                                        if (TempSummon* spirit = SpiritOfAnger->ToTempSummon())
+                                            spirit->SetPrivateObjectOwner(pCaster->GetGUID());
                                         SpiritOfAnger->Attack(pCaster, true);
                                         SpiritOfAnger->GetMotionMaster()->MoveChase(pCaster);
                                     }
@@ -1855,6 +2087,8 @@ class npc_xuen_celestial_experience : public CreatureScript
                                 {
                                     if (Creature* SpiritOfHatred = me->SummonCreature(pCaster->GetTeam() == HORDE ? NPC_SPIRIT_OF_HATRED_H : NPC_SPIRIT_OF_HATRED_A, ArenaCenterPos, TEMPSUMMON_MANUAL_DESPAWN))
                                     {
+                                        if (TempSummon* spirit = SpiritOfHatred->ToTempSummon())
+                                            spirit->SetPrivateObjectOwner(pCaster->GetGUID());
                                         SpiritOfHatred->Attack(pCaster, true);
                                         SpiritOfHatred->GetMotionMaster()->MoveChase(pCaster);
                                     }
@@ -1935,8 +2169,15 @@ struct celestial_experience_sha : public ScriptedAI
 
     void JustEngagedWith(Unit* /*victim*/) override
     {
-        events.ScheduleEvent(EVENT_HATED_BLAST, randtime(2s, 3s));
-        events.ScheduleEvent(EVENT_SHA_CORRUPTION, 8s);
+        // Test 1 (Spirit of Violence) is an avoidable ground-pool test. Hated
+        // Blast is reserved for the later spirits and must not be cast here.
+        if (me->GetEntry() == NPC_SPIRIT_OF_VIOLENCE)
+            events.ScheduleEvent(EVENT_SHA_CORRUPTION, 1s);
+        else
+        {
+            events.ScheduleEvent(EVENT_HATED_BLAST, randtime(2s, 3s));
+            events.ScheduleEvent(EVENT_SHA_CORRUPTION, 8s);
+        }
 
         switch (me->GetEntry())
         {
@@ -2096,6 +2337,28 @@ class spell_celestial_experience_whirlwind_of_anger : public AuraScript
     void Register() override
     {
         OnEffectApply += AuraEffectApplyFn(spell_celestial_experience_whirlwind_of_anger::Apply, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class spell_celestial_experience_sha_corruption : public AuraScript
+{
+    PrepareAuraScript(spell_celestial_experience_sha_corruption);
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        PreventDefaultAction();
+
+        Unit* caster = GetCaster();
+        Unit* target = GetTarget();
+        if (!caster || !target || !target->IsAlive())
+            return;
+
+        caster->DealDamage(target, 20000, nullptr, DOT, SPELL_SCHOOL_MASK_SHADOW, GetSpellInfo(), false);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_celestial_experience_sha_corruption::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE_PERCENT);
     }
 };
 
@@ -2579,11 +2842,14 @@ void AddSC_kun_lai_summit()
     // Quest scripts
     new npc_waterspeaker_gorai();
     new creature_script<npc_ordo_overseer>("npc_ordo_overseer");
+    new creature_script<npc_escaped_yak>("npc_escaped_yak");
     new go_yaungol_banner();
     new creature_script<npc_explosives_barrel>("npc_explosives_barrel");
     new npc_inkgill_dissenter();
     new npc_shado_pan_sentinel();
+    new npc_shado_pan_guardian_monastery();
     new npc_lorewalker_cho_bashon();
+    new npc_mishi_staying_connected();
     new creature_script<npc_lorewalker_cho_bashon_summoned>("npc_lorewalker_cho_bashon_summoned");
     new creature_script<npc_relcaimer_zuan_pets>("npc_relcaimer_zuan_pets");
     new npc_master_hight();
@@ -2592,6 +2858,7 @@ void AddSC_kun_lai_summit()
     new creature_script<celestial_experience_sha>("celestial_experience_sha");
     new creature_script<npc_varatus_the_conqueror>("npc_varatus_the_conqueror");
     new aura_script<spell_summ_lorewalker_cho_bashon>("spell_summ_lorewalker_cho_bashon");
+    new aura_script<spell_celestial_experience_sha_corruption>("spell_celestial_experience_sha_corruption");
     new aura_script<spell_celestial_experience_whirlwind_of_anger>("spell_celestial_experience_whirlwind_of_anger");
     new spell_script<spell_celestial_experience_devastation>("spell_celestial_experience_devastation");
     new scene_memory_wine();

@@ -66,8 +66,9 @@ bool AttackAction::Attack(Unit* target, bool with_pet /*true*/)
                 return false;
             target = opening;
         }
-    // Request-driven LFG bots assist the real player; they never initiate a
-    // dungeon pull merely because their autonomous target scan saw an NPC.
+    // Request-driven LFG bots assist the real player; they initiate a pull
+    // only for an enemy already engaged by the party or explicitly marked in
+    // the skull-then-cross kill order.
     if (!bot->InBattleground() && !botAI->CanLfgAutoQueueEngage(target))
         return false;
 

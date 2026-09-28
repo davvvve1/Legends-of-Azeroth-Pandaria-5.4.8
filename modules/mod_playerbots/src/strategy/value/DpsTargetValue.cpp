@@ -394,6 +394,15 @@ public:
                 return;
         }
 
+        if (foundHighPriority)
+            return;
+        if (IsHighPriority(attacker))
+        {
+            result = attacker;
+            foundHighPriority = true;
+            return;
+        }
+
         if (!result || result->GetHealth() < attacker->GetHealth())
             result = attacker;
     }

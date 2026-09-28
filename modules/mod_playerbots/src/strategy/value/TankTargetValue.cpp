@@ -19,6 +19,14 @@ public:
         {
             return;
         }
+        if (foundHighPriority)
+            return;
+        if (IsHighPriority(creature))
+        {
+            result = creature;
+            foundHighPriority = true;
+            return;
+        }
         Player* bot = botAI->GetBot();
         float threat = threatMgr->getThreat(bot);
         if (!result)
@@ -62,6 +70,14 @@ public:
         }
         if (!attacker->IsAlive())
         {
+            return;
+        }
+        if (foundHighPriority)
+            return;
+        if (IsHighPriority(attacker))
+        {
+            result = attacker;
+            foundHighPriority = true;
             return;
         }
         if (!result || IsBetter(attacker, result))

@@ -1583,6 +1583,8 @@ public:
 
 enum BerylSorcerer
 {
+    QUEST_ABDUCTION                     = 11590,
+
     NPC_CAPTURED_BERLY_SORCERER         = 25474,
     NPC_LIBRARIAN_DONATHAN              = 25262,
 
@@ -1614,18 +1616,37 @@ public:
                 AttackStart(who);
         }
 
+        void DamageTaken(Unit* attacker, uint32& damage) override
+        {
+            if (bEnslaved || !attacker)
+                return;
+
+            Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself();
+            if (!player || player->GetQuestStatus(QUEST_ABDUCTION) != QUEST_STATUS_INCOMPLETE)
+                return;
+
+            // The Arcane Binder can only be used below 50% health. Keep the quest
+            // target alive at 25% so modern/high-level damage cannot one-shot it.
+            uint32 healthFloor = std::max<uint32>(1, me->CountPctFromMaxHealth(25));
+            if (me->GetHealth() <= healthFloor)
+                damage = 0;
+            else if (damage >= me->GetHealth() - healthFloor)
+                damage = me->GetHealth() - healthFloor;
+        }
+
         void SpellHit(Unit* pCaster, const SpellInfo* pSpell) override
         {
-            if (pSpell->Id == SPELL_ARCANE_CHAINS && pCaster->GetTypeId() == TYPEID_PLAYER && !HealthAbovePct(50) && !bEnslaved)
+            Player* player = pCaster ? pCaster->ToPlayer() : nullptr;
+            if (pSpell->Id == SPELL_ARCANE_CHAINS && player && player->GetQuestStatus(QUEST_ABDUCTION) == QUEST_STATUS_INCOMPLETE && !HealthAbovePct(50) && !bEnslaved)
             {
                 EnterEvadeMode(); //We make sure that the npc is not attacking the player!
                 me->SetReactState(REACT_PASSIVE);
-                StartFollow(pCaster->ToPlayer(), 0, NULL);
+                StartFollow(player, 0, nullptr);
                 me->UpdateEntry(NPC_CAPTURED_BERLY_SORCERER, TEAM_NEUTRAL);
+                me->SetFullHealth();
                 DoCast(me, SPELL_COSMETIC_ENSLAVE_CHAINS_SELF, true);
 
-                if (Player* player = pCaster->ToPlayer())
-                    player->KilledMonsterCredit(NPC_CAPTURED_BERLY_SORCERER, ObjectGuid::Empty);
+                player->KilledMonsterCredit(NPC_CAPTURED_BERLY_SORCERER, ObjectGuid::Empty);
 
                 bEnslaved = true;
             }
@@ -2660,8 +2681,76 @@ public:
     }
 };
 
+enum RescuingEvanor
+{
+    QUEST_RESCUING_EVANOR = 11681,
+    NPC_ARCHMAGE_EVANOR_PRISONER = 25784,
+    SPELL_EVANOR_TELEPORT = 46018
+};
+
+// Evanor's Prison is the final interaction of Rescuing Evanor. The template
+// identifies the quest but has no objective of its own, so the rescue event
+// must complete the exploration/event requirement explicitly.
+class go_evanors_prison : public GameObjectScript
+{
+public:
+    go_evanors_prison() : GameObjectScript("go_evanors_prison") { }
+
+    bool OnGossipHello(Player* player, GameObject* /*go*/) override
+    {
+        if (player->GetQuestStatus(QUEST_RESCUING_EVANOR) != QUEST_STATUS_INCOMPLETE)
+            return false;
+
+        if (Creature* evanor = player->FindNearestCreature(NPC_ARCHMAGE_EVANOR_PRISONER, 20.0f, true))
+            evanor->AI()->Talk(0, player);
+
+        player->AreaExploredOrEventHappens(QUEST_RESCUING_EVANOR);
+        if (player->GetQuestStatus(QUEST_RESCUING_EVANOR) == QUEST_STATUS_INCOMPLETE)
+            player->CompleteQuest(QUEST_RESCUING_EVANOR);
+
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1800, [playerGuid]()
+        {
+            Player* current = ObjectAccessor::FindPlayer(playerGuid);
+            if (!current || current->GetQuestStatus(QUEST_RESCUING_EVANOR) != QUEST_STATUS_COMPLETE)
+                return;
+
+            if (Creature* evanor = current->FindNearestCreature(NPC_ARCHMAGE_EVANOR_PRISONER, 20.0f, true))
+                evanor->AI()->Talk(1, current);
+
+            current->CastSpell(current, SPELL_EVANOR_TELEPORT, true);
+        });
+
+        // Allow the normal goober handling to play the prison opening state.
+        return false;
+    }
+};
+
+// Recover players who reached the tower through the rescue teleport while the
+// old prison event failed to set its hidden exploration completion bit.
+class npc_archmage_evanor_turnin : public CreatureScript
+{
+public:
+    npc_archmage_evanor_turnin() : CreatureScript("npc_archmage_evanor_turnin") { }
+
+    bool OnGossipHello(Player* player, Creature* /*creature*/) override
+    {
+        if (player->GetQuestStatus(QUEST_RESCUING_EVANOR) == QUEST_STATUS_INCOMPLETE)
+        {
+            player->AreaExploredOrEventHappens(QUEST_RESCUING_EVANOR);
+            if (player->GetQuestStatus(QUEST_RESCUING_EVANOR) == QUEST_STATUS_INCOMPLETE)
+                player->CompleteQuest(QUEST_RESCUING_EVANOR);
+        }
+
+        // Continue through the core's normal quest-giver menu handling.
+        return false;
+    }
+};
+
 void AddSC_borean_tundra()
 {
+    new npc_archmage_evanor_turnin();
+    new go_evanors_prison();
     new player_nasam_leader_identification();
     new spell_script<spell_nasam_rescue_soldier>("spell_nasam_rescue_soldier");
     new spell_script<spell_nasam_demoralizer_aim>("spell_nasam_demoralizer_aim");
