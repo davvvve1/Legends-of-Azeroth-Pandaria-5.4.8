@@ -403,9 +403,50 @@ enum Jenny
     NPC_FEZZIX_GEARTWIST        = 25849,
     NPC_JENNY                   = 25969,
 
+    SPELL_JENNYS_WHISTLE        = 46338,
     SPELL_GIVE_JENNY_CREDIT     = 46358,
     SPELL_CRATES_CARRIED        = 46340,
     SPELL_DROP_CRATE            = 46342
+};
+
+// The client spell is a minion summon.  Using the generic minion path can
+// silently replace/fail the summon depending on the player's occupied summon
+// slots, so create the quest follower explicitly instead.
+class spell_jennys_whistle : public SpellScript
+{
+    PrepareSpellScript(spell_jennys_whistle);
+
+    void HandleSummon(SpellEffIndex effIndex)
+    {
+        PreventDefaultEffect(effIndex);
+
+        Player* player = GetCaster()->ToPlayer();
+        if (!player || player->GetQuestStatus(QUEST_LOADER_UP) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        TempSummon* previousJenny = nullptr;
+        for (TempSummon* summon : player->GetSummons())
+            if (summon->GetEntry() == NPC_JENNY)
+            {
+                previousJenny = summon;
+                break;
+            }
+
+        // Despawning mutates the summon container, so never do it while the
+        // container itself is being iterated.
+        if (previousJenny)
+            previousJenny->DespawnOrUnsummon();
+
+        Position position = player->GetNearPosition(2.0f, 0.0f);
+        if (TempSummon* jenny = player->SummonCreature(NPC_JENNY, position,
+            TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 10 * MINUTE * IN_MILLISECONDS))
+            jenny->SetOwnerGUID(player->GetGUID());
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_jennys_whistle::HandleSummon, EFFECT_0, SPELL_EFFECT_SUMMON);
+    }
 };
 
 class npc_jenny : public CreatureScript
@@ -413,50 +454,70 @@ class npc_jenny : public CreatureScript
 public:
     npc_jenny() : CreatureScript("npc_jenny") { }
 
-    struct npc_jennyAI : public ScriptedAI
+    struct npc_jennyAI : public FollowerAI
     {
-        npc_jennyAI(Creature* creature) : ScriptedAI(creature) { }
-
-        bool setCrateNumber;
+        npc_jennyAI(Creature* creature) : FollowerAI(creature), _cargoInitialized(false) { }
 
         void Reset() override
         {
-            if (!setCrateNumber)
-                setCrateNumber = true;
-
             me->SetReactState(REACT_PASSIVE);
+        }
 
-            switch (me->GetOwner()->ToPlayer()->GetTeamId())
+        void IsSummonedBy(Unit* summoner) override
+        {
+            Player* player = summoner->ToPlayer();
+            if (!player || player->GetQuestStatus(QUEST_LOADER_UP) != QUEST_STATUS_INCOMPLETE)
             {
-                case TEAM_ALLIANCE:
-                    me->SetFaction(FACTION_ESCORT_A_NEUTRAL_ACTIVE);
-                    break;
-                default:
-                case TEAM_HORDE:
-                    me->SetFaction(FACTION_ESCORT_H_NEUTRAL_ACTIVE);
-                    break;
+                me->DespawnOrUnsummon();
+                return;
             }
+
+            me->SetFaction(player->GetTeamId() == TEAM_ALLIANCE
+                ? FACTION_ESCORT_A_NEUTRAL_ACTIVE : FACTION_ESCORT_H_NEUTRAL_ACTIVE);
+            StartFollow(player);
         }
 
         void DamageTaken(Unit* /*pDone_by*/, uint32& /*uiDamage*/) override
         {
-            DoCast(me, SPELL_DROP_CRATE, true);
+            if (me->HasAura(SPELL_CRATES_CARRIED))
+                DoCast(me, SPELL_DROP_CRATE, true);
         }
 
-        void UpdateAI(uint32 /*diff*/) override
+        void MoveInLineOfSight(Unit* who) override
         {
-            if (setCrateNumber)
+            FollowerAI::MoveInLineOfSight(who);
+
+            if (who->GetEntry() != NPC_FEZZIX_GEARTWIST ||
+                !me->HasAura(SPELL_CRATES_CARRIED) || !me->IsWithinDistInMap(who, 10.0f))
+                return;
+
+            if (Player* player = GetLeaderForFollower())
+            {
+                if (player->GetQuestStatus(QUEST_LOADER_UP) == QUEST_STATUS_INCOMPLETE)
+                {
+                    player->CastSpell(player, SPELL_GIVE_JENNY_CREDIT, true);
+                    if (player->GetQuestStatus(QUEST_LOADER_UP) == QUEST_STATUS_INCOMPLETE)
+                        player->CompleteQuest(QUEST_LOADER_UP);
+                }
+
+                SetFollowComplete();
+                me->DespawnOrUnsummon(1000);
+            }
+        }
+
+        void UpdateFollowerAI(uint32 /*diff*/) override
+        {
+            // Aura casts during TempSummon construction are unreliable in this
+            // core.  Apply the cargo on the first normal AI update instead.
+            if (!_cargoInitialized)
             {
                 me->AddAura(SPELL_CRATES_CARRIED, me);
-                setCrateNumber = false;
+                _cargoInitialized = true;
             }
-
-            if (!setCrateNumber && !me->HasAura(SPELL_CRATES_CARRIED))
-                me->DisappearAndDie();
-
-            if (!UpdateVictim())
-                return;
         }
+
+    private:
+        bool _cargoInitialized;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -2760,8 +2821,8 @@ void AddSC_borean_tundra()
     new npc_corastrasza();
     new npc_iruk();
     new npc_nerubar_victim();
+    new spell_script<spell_jennys_whistle>("spell_jennys_whistle");
     new npc_jenny();
-    new npc_fezzix_geartwist();
     new npc_nesingwary_trapper();
     new npc_lurgglbr();
     new npc_nexus_drake_hatchling();

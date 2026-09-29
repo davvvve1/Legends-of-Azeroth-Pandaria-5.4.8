@@ -245,6 +245,10 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
         engine->addStrategy("avoid aoe", false);
     }
     engine->addStrategy("formation", false);
+    // Dungeon-specific triggers are map-gated and therefore harmless outside
+    // Oculus.  Keeping the strategy loaded also makes it survive teleports and
+    // engine resets in this older playerbot branch.
+    engine->addStrategy("wotlk-occ", false);
     if (player->InBattleground() && player->GetBattleground() && !player->GetBattleground()->IsArena())
         engine->addStrategy("battleground", false);
 
@@ -588,6 +592,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
         nonCombatEngine->addStrategy("battleground", false);
     }
     nonCombatEngine->addStrategy("say hello");
+    nonCombatEngine->addStrategy("wotlk-occ", false);
 }
 
 Engine* AiFactory::createNonCombatEngine(Player* player, PlayerbotAI* const facade, AiObjectContext* aiObjectContext)

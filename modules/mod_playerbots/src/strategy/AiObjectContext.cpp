@@ -17,6 +17,7 @@
 #include "ValueContext.h"
 #include "WorldPacketActionContext.h"
 #include "WorldPacketTriggerContext.h"
+#include "OculusStrategy.h"
 
 
 AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
@@ -24,13 +25,16 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     strategyContexts.Add(new StrategyContext());
     strategyContexts.Add(new MovementStrategyContext());
     strategyContexts.Add(new AssistStrategyContext());
+    strategyContexts.Add(new OculusBot::OculusStrategyContext());
 
     actionContexts.Add(new ActionContext());
     actionContexts.Add(new WorldPacketActionContext());
+    actionContexts.Add(new OculusBot::OculusActionContext());
 
     triggerContexts.Add(new TriggerContext());
     triggerContexts.Add(new WorldPacketTriggerContext());
     triggerContexts.Add(new PveRotationTriggerContext());
+    triggerContexts.Add(new OculusBot::OculusTriggerContext());
 
     valueContexts.Add(new ValueContext());
     valueContexts.Add(sSharedValueContext);
