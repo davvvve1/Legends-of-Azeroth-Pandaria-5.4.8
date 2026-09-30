@@ -2230,6 +2230,19 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, uint32 dungeonId, Map* map)
             continue;
         }
 
+        // Pandaria championing rewards every completed heroic dungeon, not only
+        // the hidden quest for the first random heroic of the day.
+        if (dungeonDone && dungeonDone->expansion == EXPANSION_MISTS_OF_PANDARIA &&
+            dungeonDone->difficulty == DUNGEON_DIFFICULTY_HEROIC)
+        {
+            uint32 factionId = player->GetUInt32Value(PLAYER_FIELD_LFG_BONUS_FACTION_ID);
+            if (FactionEntry const* faction = sFactionStore.LookupEntry(factionId))
+            {
+                float reputationGain = player->CalculateReputationGain(REPUTATION_SOURCE_DAILY_QUEST, player->GetLevel(), 300, factionId);
+                player->GetReputationMgr().ModifyReputation(faction, reputationGain);
+            }
+        }
+
         // We have no rDungeonId if registered to concrete scenario. Do it before !dungeon check
         if (scenarioId)
         {
@@ -2265,17 +2278,6 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, uint32 dungeonId, Map* map)
             if (player->CanRewardQuest(quest, false))
             {
                 player->RewardQuest(quest, 0, NULL, false);
-                if (quest->GetQuestId() == 31614)   // Daily Heroic Random (1st) (Mists)
-                {
-                    if (uint32 bonusRepFaction = player->GetUInt32Value(PLAYER_FIELD_LFG_BONUS_FACTION_ID))
-                    {
-                        if (auto factionEntry = sFactionStore.LookupEntry(bonusRepFaction))
-                        {
-                            float donerep = player->CalculateReputationGain(REPUTATION_SOURCE_DAILY_QUEST, quest->GetQuestLevel(), 300, bonusRepFaction);
-                            player->GetReputationMgr().ModifyReputation(factionEntry, donerep);
-                        }
-                    }
-                }
             }
             else
             {

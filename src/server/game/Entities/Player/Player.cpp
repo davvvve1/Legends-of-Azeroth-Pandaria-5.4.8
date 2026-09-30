@@ -7193,13 +7193,28 @@ void Player::RewardReputationOnChampioning(Unit* victim)
     if (!target)
         return;
 
+    Map const* map = GetMap();
+    uint32 rank = target->GetCreatureTemplate()->rank;
+    if (!target->IsSummon() && map->GetEntry()->IsWorldMap() &&
+        map->GetEntry()->Expansion() == EXPANSION_MISTS_OF_PANDARIA &&
+        (rank == CREATURE_ELITE_RARE || rank == CREATURE_ELITE_RAREELITE))
+    {
+        uint32 factionId = GetUInt32Value(PLAYER_FIELD_LFG_BONUS_FACTION_ID);
+        if (FactionEntry const* faction = sFactionStore.LookupEntry(factionId))
+        {
+            float reputationGain = CalculateReputationGain(REPUTATION_SOURCE_KILL, target->GetLevel(), 150, factionId);
+            GetReputationMgr().ModifyReputation(faction, reputationGain);
+        }
+
+        return;
+    }
+
     if (!target->isElite() && !target->isWorldBoss() && !target->IsDungeonBoss())
         return;
 
     if (target->IsSummon())
         return;
 
-    Map const* map = GetMap();
     if (!map->IsNonRaidDungeon())
         return;
 
