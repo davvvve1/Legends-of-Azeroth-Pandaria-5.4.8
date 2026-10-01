@@ -1357,6 +1357,8 @@ float Creature::_GetDamageMod(int32 Rank)
             return sWorld->getRate(RATE_CREATURE_ELITE_WORLDBOSS_DAMAGE);
         case CREATURE_ELITE_RARE:
             return sWorld->getRate(RATE_CREATURE_ELITE_RARE_DAMAGE);
+        case CREATURE_WEAK:
+            return sWorld->getRate(RATE_CREATURE_NORMAL_DAMAGE) * 0.1f;
         default:
             return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_DAMAGE);
     }
@@ -1376,6 +1378,8 @@ float Creature::GetSpellDamageMod(int32 Rank) const
             return sWorld->getRate(RATE_CREATURE_ELITE_WORLDBOSS_SPELLDAMAGE);
         case CREATURE_ELITE_RARE:
             return sWorld->getRate(RATE_CREATURE_ELITE_RARE_SPELLDAMAGE);
+        case CREATURE_WEAK:
+            return sWorld->getRate(RATE_CREATURE_NORMAL_SPELLDAMAGE) * 0.1f;
         default:
             return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
     }

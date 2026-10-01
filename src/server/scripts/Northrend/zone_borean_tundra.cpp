@@ -456,7 +456,7 @@ public:
 
     struct npc_jennyAI : public FollowerAI
     {
-        npc_jennyAI(Creature* creature) : FollowerAI(creature), _cargoInitialized(false) { }
+        npc_jennyAI(Creature* creature) : FollowerAI(creature), _cargoInitialized(false), _deliveryComplete(false) { }
 
         void Reset() override
         {
@@ -488,36 +488,60 @@ public:
             FollowerAI::MoveInLineOfSight(who);
 
             if (who->GetEntry() != NPC_FEZZIX_GEARTWIST ||
-                !me->HasAura(SPELL_CRATES_CARRIED) || !me->IsWithinDistInMap(who, 10.0f))
+                !me->HasAura(SPELL_CRATES_CARRIED) || !me->IsWithinDistInMap(who, 20.0f))
+                return;
+
+            CompleteDelivery();
+        }
+
+        void CompleteDelivery()
+        {
+            if (_deliveryComplete)
                 return;
 
             if (Player* player = GetLeaderForFollower())
             {
                 if (player->GetQuestStatus(QUEST_LOADER_UP) == QUEST_STATUS_INCOMPLETE)
                 {
+                    _deliveryComplete = true;
+                    player->KilledMonsterCredit(NPC_JENNY, me->GetGUID());
                     player->CastSpell(player, SPELL_GIVE_JENNY_CREDIT, true);
                     if (player->GetQuestStatus(QUEST_LOADER_UP) == QUEST_STATUS_INCOMPLETE)
                         player->CompleteQuest(QUEST_LOADER_UP);
                 }
 
-                SetFollowComplete();
-                me->DespawnOrUnsummon(1000);
+                if (_deliveryComplete)
+                {
+                    SetFollowComplete();
+                    me->DespawnOrUnsummon(1000);
+                }
             }
         }
 
-        void UpdateFollowerAI(uint32 /*diff*/) override
+        void UpdateFollowerAI(uint32 diff) override
         {
             // Aura casts during TempSummon construction are unreliable in this
             // core.  Apply the cargo on the first normal AI update instead.
             if (!_cargoInitialized)
             {
                 me->AddAura(SPELL_CRATES_CARRIED, me);
-                _cargoInitialized = true;
+                _cargoInitialized = me->HasAura(SPELL_CRATES_CARRIED);
             }
+
+            // MoveInLineOfSight can be missed when the follower stops behind
+            // the player.  Poll the actual delivery radius as a reliable
+            // fallback while Jenny still carries at least one crate.
+            if (!_deliveryComplete && me->HasAura(SPELL_CRATES_CARRIED))
+                if (me->FindNearestCreature(NPC_FEZZIX_GEARTWIST, 20.0f, true))
+                    CompleteDelivery();
+
+            if (!_deliveryComplete)
+                FollowerAI::UpdateFollowerAI(diff);
         }
 
     private:
         bool _cargoInitialized;
+        bool _deliveryComplete;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -2742,6 +2766,50 @@ public:
     }
 };
 
+enum BlendingIn
+{
+    QUEST_BLENDING_IN             = 11633,
+    ITEM_IMBUED_SCOURGE_SHROUD    = 34782,
+    NPC_SPIRE_OF_DECAY_CREDIT     = 25471,
+    NPC_SPIRE_OF_BLOOD_CREDIT     = 25472,
+    NPC_SPIRE_OF_PAIN_CREDIT      = 25473,
+    OBJECTIVE_SPIRE_OF_DECAY      = 259318,
+    OBJECTIVE_SPIRE_OF_BLOOD      = 259319,
+    OBJECTIVE_SPIRE_OF_PAIN       = 259320
+};
+
+// The legacy invisible Temple creatures do not reliably receive line-of-sight
+// callbacks on the 5.4.8 core.  Credit the player directly at the original
+// three trigger positions while the quest cloak is equipped.
+class player_blending_in : public PlayerScript
+{
+public:
+    player_blending_in() : PlayerScript("player_blending_in") { }
+
+    void OnUpdate(Player* player, uint32 /*diff*/) override
+    {
+        if (!player->IsAlive() || player->GetMapId() != 571 ||
+            player->GetQuestStatus(QUEST_BLENDING_IN) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        Item* cloak = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_BACK);
+        if (!cloak || cloak->GetEntry() != ITEM_IMBUED_SCOURGE_SHROUD)
+            return;
+
+        if (!player->GetQuestObjectiveCounter(OBJECTIVE_SPIRE_OF_DECAY) &&
+            player->GetExactDist(4111.14f, 3734.87f, 91.8481f) <= 22.0f)
+            player->KilledMonsterCredit(NPC_SPIRE_OF_DECAY_CREDIT);
+
+        if (!player->GetQuestObjectiveCounter(OBJECTIVE_SPIRE_OF_BLOOD) &&
+            player->GetExactDist(4094.38f, 3493.95f, 131.75f) <= 22.0f)
+            player->KilledMonsterCredit(NPC_SPIRE_OF_BLOOD_CREDIT);
+
+        if (!player->GetQuestObjectiveCounter(OBJECTIVE_SPIRE_OF_PAIN) &&
+            player->GetExactDist(3791.67f, 3425.03f, 83.8943f) <= 22.0f)
+            player->KilledMonsterCredit(NPC_SPIRE_OF_PAIN_CREDIT);
+    }
+};
+
 enum RescuingEvanor
 {
     QUEST_RESCUING_EVANOR = 11681,
@@ -2812,6 +2880,7 @@ void AddSC_borean_tundra()
 {
     new npc_archmage_evanor_turnin();
     new go_evanors_prison();
+    new player_blending_in();
     new player_nasam_leader_identification();
     new spell_script<spell_nasam_rescue_soldier>("spell_nasam_rescue_soldier");
     new spell_script<spell_nasam_demoralizer_aim>("spell_nasam_demoralizer_aim");

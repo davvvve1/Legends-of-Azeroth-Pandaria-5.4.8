@@ -4977,40 +4977,72 @@ namespace RightTrack
     uint32 const Quest = 29731;
     uint32 const Kiryn = 55680;
     uint32 const Soldier = 55770;
+    uint32 const Tiger = 55550;
+    uint32 const PrivatePhase = 65536;
+    uint32 const OriginalPhaseData = 1;
     Position const Start = { 761.766f, -1633.19f, 58.359f, 4.9f };
     Position const Return = { 1443.3f, -548.747f, 352.87f, 0.0f };
+    Position const SoldierPosition = { 859.583f, -1941.82f, 64.6361f, 5.60492f };
+    Position const TigerPositions[] =
+    {
+        { 761.766f, -1633.19f, 58.359f, 0.414101f },
+        { 812.758f, -1676.58f, 55.8086f, 5.35897f },
+        { 797.644f, -1773.41f, 56.8139f, 2.70746f },
+        { 684.927f, -1695.43f, 40.9345f, 4.78406f }
+    };
 
-    void Board(ObjectGuid guid, uint32 attempt = 0)
+    void Board(ObjectGuid guid, uint32 originalPhaseMask, uint32 attempt = 0)
     {
         Player* player = ObjectAccessor::FindPlayer(guid);
         if (!player || !player->IsAlive() || player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE || player->GetVehicle())
+        {
+            if (player && player->GetPhaseMask() == PrivatePhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
+        }
         // Wait for the teleport acknowledgement before creating the transport
         // and sending its boarding spline to the client.
         if (player->IsBeingTeleported())
         {
             if (attempt < 20)
-                player->m_Events.Schedule(500, [guid, attempt]() { Board(guid, attempt + 1); });
+                player->m_Events.Schedule(500, [guid, originalPhaseMask, attempt]()
+                    { Board(guid, originalPhaseMask, attempt + 1); });
+            else if (player->GetPhaseMask() == PrivatePhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
         }
         if (player->GetMapId() != 870 || player->GetDistance(Start) > 15.0f)
+        {
+            if (player->GetPhaseMask() == PrivatePhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
+        }
         if (TempSummon* kiryn = player->SummonCreature(Kiryn, player->GetPosition(),
             TEMPSUMMON_TIMED_DESPAWN, 15 * MINUTE * IN_MILLISECONDS, 238, player->GetGUID()))
         {
+            kiryn->AI()->SetData(OriginalPhaseData, originalPhaseMask);
             if (!kiryn->GetVehicleKit())
             {
                 kiryn->DespawnOrUnsummon();
+                player->SetPhaseMask(originalPhaseMask, true);
                 return;
             }
             player->UpdateVisibilityOf(kiryn);
             if (!player->HaveAtClient(kiryn))
             {
                 kiryn->DespawnOrUnsummon();
+                player->SetPhaseMask(originalPhaseMask, true);
                 return;
             }
             player->EnterVehicle(kiryn, 1);
+            if (player->GetVehicleBase() != kiryn)
+            {
+                kiryn->DespawnOrUnsummon();
+                player->SetPhaseMask(originalPhaseMask, true);
+            }
         }
+        else
+            player->SetPhaseMask(originalPhaseMask, true);
     }
 
     void Begin(Player* player)
@@ -5019,11 +5051,18 @@ namespace RightTrack
             player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE)
             return;
         player->Dismount();
+        uint32 originalPhaseMask = player->GetPhaseMask() == PrivatePhase
+            ? PHASEMASK_NORMAL : player->GetPhaseMask();
+        // Let TeleportTo rebuild visibility after changing the phase. An
+        // additional asynchronous visibility update races grid loading.
+        player->SetPhaseMask(PrivatePhase, false);
         if (player->TeleportTo(870, Start.GetPositionX(), Start.GetPositionY(), Start.GetPositionZ(), Start.GetOrientation()))
         {
             ObjectGuid guid = player->GetGUID();
-            player->m_Events.Schedule(500, [guid]() { Board(guid); });
+            player->m_Events.Schedule(500, [guid, originalPhaseMask]() { Board(guid, originalPhaseMask); });
         }
+        else
+            player->SetPhaseMask(originalPhaseMask, true);
     }
 }
 
@@ -5072,9 +5111,12 @@ public:
 
 struct npc_jade_forest_right_track_kiryn : public ScriptedAI
 {
-    npc_jade_forest_right_track_kiryn(Creature* creature) : ScriptedAI(creature) { }
+    npc_jade_forest_right_track_kiryn(Creature* creature) : ScriptedAI(creature), summons(creature) { }
+    SummonList summons;
+    ObjectGuid soldierGuid;
     bool boarded = false;
     uint32 checkTimer = 500;
+    uint32 originalPhaseMask = PHASEMASK_NORMAL;
 
     void OnCharmed(bool) override { }
 
@@ -5082,7 +5124,31 @@ struct npc_jade_forest_right_track_kiryn : public ScriptedAI
     {
         boarded = false;
         checkTimer = 500;
+        originalPhaseMask = PHASEMASK_NORMAL;
+        soldierGuid.Clear();
         me->SetReactState(REACT_PASSIVE);
+        // Kiryn shares terrain with the Lurking Tigers used as report targets.
+        // They must not auto-attack and kill the player-controlled vehicle.
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+    }
+
+    void SetData(uint32 type, uint32 data) override
+    {
+        if (type == RightTrack::OriginalPhaseData)
+            originalPhaseMask = data;
+    }
+
+    void JustSummoned(Creature* summon) override { summons.Summon(summon); }
+    void SummonedCreatureDespawn(Creature* summon) override { summons.Despawn(summon); }
+    void JustDied(Unit*) override { summons.DespawnAll(); }
+
+    Creature* Spawn(uint32 entry, Position const& position, Player* player)
+    {
+        Creature* summon = me->SummonCreature(entry, position, TEMPSUMMON_TIMED_DESPAWN,
+            15 * MINUTE * IN_MILLISECONDS, 0, player->GetGUID());
+        if (summon && entry == RightTrack::Tiger)
+            summon->SetReactState(REACT_PASSIVE);
+        return summon;
     }
 
     void PassengerBoarded(Unit* passenger, int8, bool apply) override
@@ -5092,14 +5158,32 @@ struct npc_jade_forest_right_track_kiryn : public ScriptedAI
             return;
         boarded = apply;
         if (apply)
-            return; // This is a player-controlled ground vehicle.
+        {
+            for (Position const& position : RightTrack::TigerPositions)
+                if (!Spawn(RightTrack::Tiger, position, player))
+                {
+                    player->ExitVehicle();
+                    return;
+                }
+            if (Creature* soldier = Spawn(RightTrack::Soldier, RightTrack::SoldierPosition, player))
+                soldierGuid = soldier->GetGUID();
+            else
+                player->ExitVehicle();
+            return;
+        }
+        summons.DespawnAll();
         ObjectGuid guid = player->GetGUID();
-        player->m_Events.Schedule(100, [guid]()
+        uint32 phaseMask = originalPhaseMask;
+        player->m_Events.Schedule(100, [guid, phaseMask]()
         {
             if (Player* pilot = ObjectAccessor::FindPlayer(guid))
                 if (pilot->IsAlive() && !pilot->IsBeingTeleported() && pilot->GetMapId() == 870 && !pilot->GetVehicle())
+                {
+                    if (pilot->GetPhaseMask() == RightTrack::PrivatePhase)
+                        pilot->SetPhaseMask(phaseMask, false);
                     pilot->NearTeleportTo(RightTrack::Return.GetPositionX(), RightTrack::Return.GetPositionY(),
                         RightTrack::Return.GetPositionZ(), RightTrack::Return.GetOrientation());
+                }
         });
         me->DespawnOrUnsummon(500);
     }
@@ -5118,6 +5202,7 @@ struct npc_jade_forest_right_track_kiryn : public ScriptedAI
         Player* player = passenger ? passenger->ToPlayer() : nullptr;
         if (!player)
         {
+            summons.DespawnAll();
             me->DespawnOrUnsummon();
             return;
         }
@@ -5126,7 +5211,13 @@ struct npc_jade_forest_right_track_kiryn : public ScriptedAI
             player->ExitVehicle();
             return;
         }
-        if (me->FindNearestCreature(RightTrack::Soldier, 15.0f, true))
+        Creature* soldier = me->GetMap()->GetCreature(soldierGuid);
+        if (!soldier)
+        {
+            player->ExitVehicle();
+            return;
+        }
+        if (me->IsWithinDistInMap(soldier, 15.0f))
         {
             player->KilledMonsterCredit(RightTrack::Soldier);
             player->ExitVehicle();
@@ -5147,7 +5238,9 @@ class spell_jade_forest_right_track_smoke : public SpellScript
             return SPELL_FAILED_BAD_TARGETS;
         Unit* passenger = caster->GetVehicleKit()->GetPassenger(1);
         Player* player = passenger ? passenger->ToPlayer() : nullptr;
-        return player && player->GetQuestStatus(RightTrack::Quest) == QUEST_STATUS_INCOMPLETE
+        TempSummon* summon = target->ToCreature() ? target->ToCreature()->ToTempSummon() : nullptr;
+        return player && summon && player->GetQuestStatus(RightTrack::Quest) == QUEST_STATUS_INCOMPLETE &&
+            summon->GetPrivateObjectOwner() == player->GetGUID() && summon->GetSummonerGUID() == caster->GetGUID()
             ? SPELL_CAST_OK : SPELL_FAILED_BAD_TARGETS;
     }
 

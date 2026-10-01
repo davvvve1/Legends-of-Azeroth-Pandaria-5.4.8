@@ -9,6 +9,17 @@
 
 namespace ScoutingReports
 {
+    uint32 const HostileNatives = 29730;
+    uint32 const FriendOfMyEnemy = 29823;
+    uint32 const JinyuInABarrel = 29824;
+    uint32 const PrivateReportPhase = 65536;
+    uint32 const OriginalPhaseData = 1;
+
+    bool UsesPrivatePhase(uint32 quest)
+    {
+        return quest == HostileNatives || quest == FriendOfMyEnemy || quest == JinyuInABarrel;
+    }
+
     struct Report
     {
         uint32 quest;
@@ -54,21 +65,32 @@ namespace ScoutingReports
             base->GetEntry() == actor && Pilot(base) == player;
     }
 
-    void Board(ObjectGuid guid, uint32 quest, uint32 attempt = 0)
+    void Board(ObjectGuid guid, uint32 quest, uint32 originalPhaseMask, uint32 attempt = 0)
     {
         Player* player = ObjectAccessor::FindPlayer(guid);
         Report const* report = Find(quest);
         if (!player || !report || !player->IsAlive() || player->GetVehicle() ||
             player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE)
+        {
+            if (player && player->GetPhaseMask() == PrivateReportPhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
+        }
         if (player->IsBeingTeleported())
         {
             if (attempt < 20)
-                player->m_Events.Schedule(500, [guid, quest, attempt]() { Board(guid, quest, attempt + 1); });
+                player->m_Events.Schedule(500, [guid, quest, originalPhaseMask, attempt]()
+                    { Board(guid, quest, originalPhaseMask, attempt + 1); });
+            else if (player->GetPhaseMask() == PrivateReportPhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
         }
         if (player->GetMapId() != 870 || player->GetDistance(report->start) > 15.0f)
+        {
+            if (player->GetPhaseMask() == PrivateReportPhase)
+                player->SetPhaseMask(originalPhaseMask, true);
             return;
+        }
         auto returnHome = [player, report]()
         {
             Position const& home = report->home;
@@ -77,10 +99,12 @@ namespace ScoutingReports
         if (TempSummon* actor = player->SummonCreature(report->actor, player->GetPosition(),
             TEMPSUMMON_TIMED_DESPAWN, 15 * MINUTE * IN_MILLISECONDS, 238, guid))
         {
+            actor->AI()->SetData(OriginalPhaseData, originalPhaseMask);
             player->UpdateVisibilityOf(actor);
             if (!actor->GetVehicleKit() || !player->HaveAtClient(actor))
             {
                 actor->DespawnOrUnsummon();
+                player->SetPhaseMask(originalPhaseMask, false);
                 returnHome();
                 return;
             }
@@ -88,11 +112,15 @@ namespace ScoutingReports
             if (player->GetVehicleBase() != actor)
             {
                 actor->DespawnOrUnsummon();
+                player->SetPhaseMask(originalPhaseMask, false);
                 returnHome();
             }
         }
         else
+        {
+            player->SetPhaseMask(originalPhaseMask, false);
             returnHome();
+        }
     }
 
     void Begin(Player* player, uint32 quest)
@@ -102,6 +130,11 @@ namespace ScoutingReports
             player->IsBeingTeleported() || player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE)
             return;
         player->Dismount();
+        uint32 originalPhaseMask = player->GetPhaseMask() == PrivateReportPhase
+            ? PHASEMASK_NORMAL : player->GetPhaseMask();
+        // TeleportTo performs the visibility rebuild. Scheduling one here as
+        // well races grid loading and can insert the same object twice.
+        player->SetPhaseMask(PrivateReportPhase, false);
         Position pos = report->start;
         if (quest == 29730 && player->GetMapId() == 870)
         {
@@ -113,8 +146,11 @@ namespace ScoutingReports
         if (player->TeleportTo(870, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation()))
         {
             ObjectGuid guid = player->GetGUID();
-            player->m_Events.Schedule(500, [guid, quest]() { Board(guid, quest); });
+            player->m_Events.Schedule(500, [guid, quest, originalPhaseMask]()
+                { Board(guid, quest, originalPhaseMask); });
         }
+        else
+            player->SetPhaseMask(originalPhaseMask, true);
     }
 
     void Recover(ObjectGuid guid, uint32 attempt = 0)
@@ -130,6 +166,10 @@ namespace ScoutingReports
         }
         if (player->GetMapId() != 870)
             return;
+        // A disconnect during the private Riko scene must not leave the player
+        // stranded in its otherwise empty visibility phase.
+        if (player->GetPhaseMask() == PrivateReportPhase)
+            player->SetPhaseMask(PHASEMASK_NORMAL, false);
         for (auto const& report : Reports)
         {
             QuestStatus status = player->GetQuestStatus(report.quest);
@@ -237,6 +277,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
     uint32 checkTimer = 500;
     uint32 stage = 0;
     uint32 escapeElapsed = 0;
+    uint32 originalPhaseMask = PHASEMASK_NORMAL;
 
     void OnCharmed(bool) override { }
     void Reset() override
@@ -247,12 +288,32 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         checkTimer = 500;
         stage = 0;
         escapeElapsed = 0;
+        originalPhaseMask = PHASEMASK_NORMAL;
         targets.clear();
         kirynGuid.Clear();
         rikoGuid.Clear();
         statueGuid.Clear();
         widowGuid.Clear();
         me->SetReactState(REACT_PASSIVE);
+    }
+
+    void SetData(uint32 type, uint32 data) override
+    {
+        if (type == ScoutingReports::OriginalPhaseData)
+            originalPhaseMask = data;
+    }
+
+    void DamageTaken(Unit* attacker, uint32& damage) override
+    {
+        // Only this player's private report targets may hurt the controlled
+        // actor. Public creatures from overlapping world content (notably the
+        // Lurking Tigers) must not participate in this scene.
+        if (!attacker || !targets.count(attacker->GetGUID()))
+        {
+            damage = 0;
+            if (attacker)
+                attacker->AttackStop();
+        }
     }
 
     void JustSummoned(Creature* summon) override { summons.Summon(summon); }
@@ -358,11 +419,16 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         summons.DespawnAll();
         ObjectGuid guid = player->GetGUID();
         Position home = report->home;
-        player->m_Events.Schedule(100, [guid, home]()
+        uint32 phaseMask = originalPhaseMask;
+        player->m_Events.Schedule(100, [guid, home, phaseMask]()
         {
             if (Player* pilot = ObjectAccessor::FindPlayer(guid))
                 if (pilot->IsAlive() && !pilot->IsBeingTeleported() && pilot->GetMapId() == 870 && !pilot->GetVehicle())
+                {
+                    if (pilot->GetPhaseMask() == ScoutingReports::PrivateReportPhase)
+                        pilot->SetPhaseMask(phaseMask, false);
                     pilot->NearTeleportTo(home.GetPositionX(), home.GetPositionY(), home.GetPositionZ(), home.GetOrientation());
+                }
         });
         me->DespawnOrUnsummon(500);
     }
@@ -596,41 +662,63 @@ public:
 class spell_jade_forest_report_shooting : public SpellScript
 {
     PrepareSpellScript(spell_jade_forest_report_shooting);
+    ObjectGuid actorGuid;
     ObjectGuid targetGuid;
+    bool controlledCast = false;
+
+    Creature* GetShokiaActor()
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return nullptr;
+        if (caster->GetEntry() == 55702)
+            return caster->ToCreature();
+        if (Player* player = caster->ToPlayer())
+            if (Unit* base = player->GetVehicleBase())
+                if (base->GetEntry() == 55702)
+                    return base->ToCreature();
+        return nullptr;
+    }
 
     SpellCastResult CheckTarget()
     {
         // This native impact spell is also triggered by Kiryn's Smoke Bomb
         // on a tiger. Only override the controlled Shokia cast.
-        if (GetCaster()->GetEntry() != 55702)
+        Creature* actor = GetShokiaActor();
+        if (!actor)
             return SPELL_CAST_OK;
-        Player* pilot = ScoutingReports::Pilot(GetCaster());
+        controlledCast = true;
+        Player* pilot = ScoutingReports::Pilot(actor);
         if (!pilot || !ScoutingReports::Playing(pilot, 29824, 55702))
             return SPELL_FAILED_BAD_TARGETS;
         Creature* target = pilot->GetSelectedUnit() ? pilot->GetSelectedUnit()->ToCreature() : nullptr;
         if (!target || !target->IsAlive() || target->GetPrivateObjectOwner() != pilot->GetGUID() ||
-            !GetCaster()->IsWithinDistInMap(target, 150.0f) ||
+            !actor->IsWithinDistInMap(target, 150.0f) ||
             (target->GetEntry() != 55709 && target->GetEntry() != 55710 &&
              target->GetEntry() != 55711 && target->GetEntry() != 55784))
             return SPELL_FAILED_BAD_TARGETS;
         TempSummon* summon = target->ToTempSummon();
-        if (!summon || summon->GetSummonerGUID() != GetCaster()->GetGUID())
+        if (!summon || summon->GetSummonerGUID() != actor->GetGUID())
             return SPELL_FAILED_BAD_TARGETS;
+        actorGuid = actor->GetGUID();
         targetGuid = target->GetGUID();
         return SPELL_CAST_OK;
     }
 
     void Suppress(SpellEffIndex index)
     {
-        if (GetCaster()->GetEntry() == 55702)
+        if (controlledCast)
             PreventHitDefaultEffect(index);
     }
     void Shoot()
     {
-        if (Creature* target = GetCaster()->GetMap()->GetCreature(targetGuid))
+        Map* map = GetCaster()->GetMap();
+        Creature* actor = map->GetCreature(actorGuid);
+        Creature* target = map->GetCreature(targetGuid);
+        if (actor && target)
         {
-            GetCaster()->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_RIFLE);
-            GetCaster()->DealDamage(target, target->GetHealth(), nullptr, DIRECT_DAMAGE,
+            actor->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_RIFLE);
+            actor->DealDamage(target, target->GetHealth(), nullptr, DIRECT_DAMAGE,
                 SPELL_SCHOOL_MASK_NORMAL, GetSpellInfo(), false);
         }
     }

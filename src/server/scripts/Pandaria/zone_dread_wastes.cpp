@@ -2529,6 +2529,7 @@ class npc_hisek_the_swarmkeeper : public CreatureScript
                 ObjectGuid playerGUID = player->GetGUID();
                 if (auto qgiver = creature->SummonCreature(64705, pos))
                 {
+                    qgiver->DespawnOrUnsummon(120000);
                     qgiver->SetExplicitSeerGuid(playerGUID);
                     qgiver->AI()->SetGUID(playerGUID);
                 }
@@ -2576,10 +2577,19 @@ class npc_hisek_the_swarmkeeper_summon : public CreatureScript
                     }
                     else if (phase == 1)
                     {
-                        if (auto traitor = me->SummonCreature(64813, -572.95f, 3015.31f, 181.15f, 2.17f))
+                        Position traitorPosition = me->GetPosition();
+                        traitorPosition.m_positionX += 14.0f;
+                        traitorPosition.m_positionY -= 20.0f;
+                        traitorPosition.m_positionZ = me->GetMap()->GetHeight(
+                            traitorPosition.GetPositionX(), traitorPosition.GetPositionY(),
+                            me->GetPositionZ());
+
+                        if (auto traitor = me->SummonCreature(64813, traitorPosition))
                         {
+                            traitor->DespawnOrUnsummon(120000);
                             traitorGUID = traitor->GetGUID();
-                            me->GetMotionMaster()->MovePoint(1, -577.2f, 3021.62f, 183.7f);
+                            me->GetMotionMaster()->MovePoint(1, traitorPosition.GetPositionX() - 4.0f,
+                                traitorPosition.GetPositionY() + 6.0f, traitorPosition.GetPositionZ());
                             traitor->SetExplicitSeerGuid(playerGUID);
                             traitor->AI()->Talk(0);
                         }
@@ -2613,7 +2623,27 @@ class npc_hisek_the_swarmkeeper_summon : public CreatureScript
                         {
                             traitor->AI()->Talk(4);
                             traitor->UpdateEntry(64583);
-                            AttackStart(traitor);
+                            traitor->SetFaction(14);
+                            traitor->RemoveFlag(UNIT_FIELD_FLAGS,
+                                UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC);
+                            traitor->SetHomePosition(traitor->GetPosition());
+
+                            // UpdateEntry changes the template but deliberately keeps the
+                            // old AI.  Kor'ik therefore retained his neutral ReactorAI after
+                            // becoming the hostile traitor and immediately evaded/reset when
+                            // attacked.  Select the AI again from the new template before
+                            // starting combat.
+                            traitor->AIM_Initialize();
+                            traitor->SetReactState(REACT_AGGRESSIVE);
+                            traitor->SetCannotReachTarget(false);
+
+                            if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
+                            {
+                                traitor->CombatStart(player, true);
+                                traitor->AddThreat(player, 1.0f);
+                                traitor->AI()->AttackStart(player);
+                            }
+
                             playerGUID = ObjectGuid::Empty;
                         }
                     }
@@ -3259,27 +3289,344 @@ class AreaTrigger_q31087 : public AreaTriggerScript
 
         bool OnTrigger(Player* player, AreaTriggerEntry const* trigger) override
         {
-            if (player->GetQuestStatus(31087) != QUEST_STATUS_INCOMPLETE)
+            if (player->GetQuestStatus(31087) != QUEST_STATUS_INCOMPLETE &&
+                player->GetQuestStatus(31679) != QUEST_STATUS_INCOMPLETE)
                 return true;
 
             player->KilledMonsterCredit(65328);
 
-            if (player->FindNearestCreature(65478, 100.0f) || player->FindNearestCreature(65486, 100.0f) || player->FindNearestCreature(65475, 100.0f))
+            // There are permanent Wingblades inside this radius.  Including
+            // entry 65486 in this guard prevented the encounter from ever
+            // spawning.  Only an already-running personal event should stop
+            // a duplicate wave.
+            if (player->FindNearestCreature(65478, 100.0f) ||
+                player->FindNearestCreature(65475, 100.0f))
                 return true;
 
             for (uint32 i = 0; i < 3; i++)
-                player->SummonCreature(65486, eventPos[i], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                if (Creature* wingblade = player->SummonCreature(65486, eventPos[i],
+                    TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000))
+                    wingblade->SetExplicitSeerGuid(player->GetGUID());
 
             player->m_Events.Schedule(10000, [=]()
             {
+                if (player->GetQuestStatus(31087) != QUEST_STATUS_INCOMPLETE &&
+                    player->GetQuestStatus(31679) != QUEST_STATUS_INCOMPLETE)
+                    return;
+
                 if (Creature* korik = player->SummonCreature(65475, eventPos[3], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 66000))
+                {
+                    korik->SetExplicitSeerGuid(player->GetGUID());
                     korik->HandleEmoteStateCommand(EMOTE_STATE_STRANGULATE);
+                }
                 if (Creature* adjunct = player->SummonCreature(65478, eventPos[4], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 66000))
+                {
+                    adjunct->SetExplicitSeerGuid(player->GetGUID());
                     adjunct->AI()->Talk(0);
+                    player->KilledMonsterCredit(65478);
+                }
             });
 
             return true;
         }
+};
+
+namespace Reunited
+{
+    enum : uint32
+    {
+        Quest                = 31091,
+        NpcEscortKaztik      = 64013,
+        NpcKovokCredit       = 62542,
+        NpcFleshHunter       = 64194,
+        NpcShaman            = 64195,
+        NpcSlayer            = 64196,
+        NpcRipper            = 64197,
+        ActionStartEscort    = 1,
+        EventMoveNext        = 1,
+        EventRevealKovok     = 2,
+        EventCallKovok       = 3,
+    };
+
+    Position const Path[] =
+    {
+        { -890.67f, 3836.25f,  0.62f, 0.0f },
+        { -943.89f, 3868.35f,  0.34f, 0.0f },
+        { -992.52f, 3891.00f, -0.09f, 0.0f },
+        { -1045.96f, 3897.59f, 0.09f, 0.0f },
+        { -1092.55f, 3895.59f, 0.31f, 0.0f },
+        { -1127.30f, 3906.95f, 0.61f, 0.0f },
+        { -1151.75f, 3905.94f, 1.92f, 0.0f },
+    };
+
+    uint32 const Attackers[] =
+    {
+        NpcFleshHunter, NpcShaman, NpcSlayer, NpcRipper
+    };
+}
+
+// Kaz'tik the Manipulator - 63876; starts Reunited's personal escort.
+class npc_kaztik_reunited_starter : public CreatureScript
+{
+public:
+    npc_kaztik_reunited_starter() : CreatureScript("npc_kaztik_reunited_starter") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(Reunited::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT,
+                "I am ready. Let us find your weapon.", GOSSIP_SENDER_MAIN,
+                GOSSIP_ACTION_INFO_DEF);
+
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        player->CLOSE_GOSSIP_MENU();
+
+        if (sender != GOSSIP_SENDER_MAIN || action != GOSSIP_ACTION_INFO_DEF ||
+            player->GetQuestStatus(Reunited::Quest) != QUEST_STATUS_INCOMPLETE ||
+            !creature->IsWithinDistInMap(player, INTERACTION_DISTANCE))
+            return true;
+
+        if (player->FindNearestCreature(Reunited::NpcEscortKaztik, 100.0f, true))
+            return true;
+
+        if (Creature* escort = player->SummonCreature(Reunited::NpcEscortKaztik,
+            creature->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN))
+        {
+            escort->SetExplicitSeerGuid(player->GetGUID());
+            escort->AI()->SetGUID(player->GetGUID());
+            escort->AI()->DoAction(Reunited::ActionStartEscort);
+        }
+
+        return true;
+    }
+};
+
+// Kaz'tik the Manipulator - 64013; personal Reunited escort.
+struct npc_kaztik_reunited_escort : public ScriptedAI
+{
+    npc_kaztik_reunited_escort(Creature* creature) : ScriptedAI(creature), summons(me) { }
+
+    void Reset() override
+    {
+        events.Reset();
+        summons.DespawnAll();
+        attackers.clear();
+        playerGuid.Clear();
+        waypoint = 0;
+        active = false;
+        finished = false;
+        lifetime = 12 * MINUTE * IN_MILLISECONDS;
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void SetGUID(ObjectGuid guid, int32 /*id*/) override
+    {
+        playerGuid = guid;
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action != Reunited::ActionStartEscort || playerGuid.IsEmpty() || active)
+            return;
+
+        active = true;
+        me->SetWalk(false);
+        events.ScheduleEvent(Reunited::EventMoveNext, 1000);
+    }
+
+    void MovementInform(uint32 type, uint32 pointId) override
+    {
+        if (type != POINT_MOTION_TYPE || pointId != 100 + waypoint || finished)
+            return;
+
+        if (waypoint == 6)
+        {
+            FinishEscort();
+            return;
+        }
+
+        StartWave();
+    }
+
+    void StartWave()
+    {
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        Talk(0, player);
+        attackers.clear();
+
+        for (uint8 i = 0; i < 2; ++i)
+        {
+            Position spawn = me->GetRandomNearPosition(8.0f);
+            uint32 entry = Reunited::Attackers[(waypoint + i) % 4];
+            if (Creature* enemy = me->SummonCreature(entry, spawn,
+                TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 60000))
+            {
+                summons.Summon(enemy);
+                attackers.insert(enemy->GetGUID());
+                enemy->SetExplicitSeerGuid(playerGuid);
+                enemy->SetHomePosition(enemy->GetPosition());
+                enemy->SetCannotReachTarget(false);
+                enemy->setRegeneratingHealth(false);
+
+                // AttackStart alone can leave these personal summons without
+                // a persistent threat target when their path to Kaz'tik is
+                // interrupted.  They then drop combat and regenerate a third
+                // of their health each creature regen tick.  Bind the wave to
+                // its player explicitly so damage remains persistent.
+                if (player)
+                {
+                    enemy->CombatStart(player, true);
+                    enemy->AddThreat(player, 1.0f);
+                    enemy->AI()->AttackStart(player);
+                }
+                else
+                    enemy->AI()->AttackStart(me);
+            }
+        }
+
+        if (attackers.empty())
+            events.ScheduleEvent(Reunited::EventMoveNext, 10000);
+    }
+
+    void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+    {
+        if (!attackers.erase(summon->GetGUID()) || !attackers.empty() || finished)
+            return;
+
+        me->SetHealth(me->GetMaxHealth());
+        ++waypoint;
+        events.ScheduleEvent(Reunited::EventMoveNext, 10000);
+    }
+
+    void SummonedCreatureDespawn(Creature* summon) override
+    {
+        summons.Despawn(summon);
+        if (!summon->IsAlive())
+            SummonedCreatureDies(summon, nullptr);
+    }
+
+    void EnterEvadeMode() override
+    {
+        me->DeleteThreatList();
+        me->CombatStop(true);
+        me->ClearUnitState(UNIT_STATE_EVADE);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        FailEscort();
+    }
+
+    void FinishEscort()
+    {
+        finished = true;
+        summons.DespawnAll();
+
+        if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+        {
+            player->KilledMonsterCredit(Reunited::NpcEscortKaztik);
+            Talk(1, player);
+        }
+
+        events.ScheduleEvent(Reunited::EventRevealKovok, 2000);
+    }
+
+    void RevealKovok()
+    {
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        if (!player)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
+        Creature* kovok = me->FindNearestCreature(Reunited::NpcKovokCredit, 20.0f, true);
+        if (!kovok)
+        {
+            Position kovokPosition = me->GetNearPosition(4.0f, 0.0f);
+            kovok = me->SummonCreature(Reunited::NpcKovokCredit,
+                kovokPosition, TEMPSUMMON_TIMED_DESPAWN, 180000);
+        }
+
+        if (kovok)
+        {
+            kovok->SetExplicitSeerGuid(playerGuid);
+            kovok->SetStandState(UNIT_STAND_STATE_STAND);
+        }
+
+        player->KilledMonsterCredit(Reunited::NpcKovokCredit);
+        Talk(2, player);
+        events.ScheduleEvent(Reunited::EventCallKovok, 2500);
+    }
+
+    void FailEscort()
+    {
+        if (finished)
+            return;
+
+        finished = true;
+        summons.DespawnAll();
+        me->DespawnOrUnsummon();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        events.Update(diff);
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case Reunited::EventMoveNext:
+                    if (!finished)
+                        me->GetMotionMaster()->MovePoint(100 + waypoint, Reunited::Path[waypoint]);
+                    break;
+                case Reunited::EventRevealKovok:
+                    RevealKovok();
+                    break;
+                case Reunited::EventCallKovok:
+                    if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+                        Talk(3, player);
+                    me->DespawnOrUnsummon(5000);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (!active || finished)
+            return;
+
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        if (!player || !player->IsAlive() ||
+            player->GetQuestStatus(Reunited::Quest) != QUEST_STATUS_INCOMPLETE ||
+            !me->IsWithinDistInMap(player, 120.0f) || lifetime <= diff)
+        {
+            FailEscort();
+            return;
+        }
+
+        lifetime -= diff;
+    }
+
+private:
+    EventMap events;
+    SummonList summons;
+    std::set<ObjectGuid> attackers;
+    ObjectGuid playerGuid;
+    uint32 lifetime = 0;
+    uint8 waypoint = 0;
+    bool active = false;
+    bool finished = false;
 };
 
 class go_silent_beacon : public GameObjectScript
@@ -3845,6 +4192,8 @@ void AddSC_dread_wastes()
     new spell_item_living_amber();
     new npc_hisek_the_swarmkeeper();
     new npc_hisek_the_swarmkeeper_summon();
+    new npc_kaztik_reunited_starter();
+    new creature_script<npc_kaztik_reunited_escort>("npc_kaztik_reunited_escort");
     new npc_klaxxiva_ik();
     new AreaTrigger_q31185;
     new spell_script<spell_q31182>("spell_q31182");
