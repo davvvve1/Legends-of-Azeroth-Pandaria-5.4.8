@@ -226,6 +226,8 @@
       "terrain_worldmap",
       "transports",
       "trinity_string",
+      "updates",
+      "updates_include",
       "vehicle_accessory",
       "vehicle_template_accessory",
       "version",
@@ -237,9 +239,9 @@
       "world_map_template"
     ],
     "sha256": {
-      "world.sql.gz.001": "38ab56276d5afdacfc0fa56fba2230efaa05d0c7a88095ad60a9a62210aed4ae",
-      "world.sql.gz.002": "f05f3b52b042a9278564a53f7491fbeed520bc79602577172c77fe6e3f0fcff5",
-      "world.sql.gz.003": "095ea66f1a22f1032fbb3ccc5e9ea5834d78589fa156d6a326b1eb8a6dda6baf"
+      "world.sql.gz.001": "482828ccb6f599b54ebf663ca9fcf41dbbda27ee8e99735eedbc2cd348f53864",
+      "world.sql.gz.002": "5c9769a39c71abe5f5cb2e8592e2371c0a253286bd742513a29717f77e33f02d",
+      "world.sql.gz.003": "7a412a4cd6ff6861793b2e2756ec1ad8ceac5a8abacb163b61792f7d05a237ce"
     }
   },
   "auth": {
@@ -253,7 +255,7 @@
       "realm_races"
     ],
     "sha256": {
-      "auth.sql.gz": "99a7797e6e91b9e7819c479ef6269df36eada4012c773f36aea9d6570ab02edf"
+      "auth.sql.gz": "2340a6e51130db7ad6063f124475b404d3edd2a02570bc498e44ac2305d086cb"
     }
   },
   "characters": {

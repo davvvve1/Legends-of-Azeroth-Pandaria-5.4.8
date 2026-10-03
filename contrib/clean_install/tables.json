@@ -455,6 +455,8 @@
       "terrain_worldmap",
       "transports",
       "trinity_string",
+      "updates",
+      "updates_include",
       "vehicle_accessory",
       "vehicle_template_accessory",
       "version",
