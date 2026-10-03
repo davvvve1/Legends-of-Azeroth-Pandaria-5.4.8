@@ -3555,7 +3555,7 @@ struct npc_kaztik_reunited_escort : public ScriptedAI
         {
             Position kovokPosition = me->GetNearPosition(4.0f, 0.0f);
             kovok = me->SummonCreature(Reunited::NpcKovokCredit,
-                kovokPosition, TEMPSUMMON_TIMED_DESPAWN, 180000);
+                kovokPosition, TEMPSUMMON_TIMED_DESPAWN, 10000);
         }
 
         if (kovok)
@@ -3627,6 +3627,65 @@ private:
     uint8 waypoint = 0;
     bool active = false;
     bool finished = false;
+};
+
+namespace FeedOrBeEaten
+{
+    enum : uint32
+    {
+        Quest           = 31092,
+        AreaBrinyMuck   = 6391,
+        NpcKovok        = 62542,
+        SpellSummonKovok = 125641,
+    };
+
+    Creature* GetCompanion(Player* player)
+    {
+        std::list<Creature*> kovoks;
+        GetCreatureListWithEntryInGrid(kovoks, player, NpcKovok, 120.0f);
+        for (Creature* kovok : kovoks)
+            if (TempSummon* summon = kovok->ToTempSummon())
+                if (summon->IsAlive() && summon->GetSummonerGUID() == player->GetGUID())
+                    return summon;
+
+        return nullptr;
+    }
+
+    void EnsureCompanion(Player* player)
+    {
+        if (player->IsAlive() && player->GetAreaId() == AreaBrinyMuck &&
+            player->GetQuestStatus(Quest) == QUEST_STATUS_INCOMPLETE && !GetCompanion(player))
+            // Spell 125642 normally force-casts this spell from spell_area.
+            // Cast the summon directly because updating phases from 125642
+            // crashes this client-era core.  The summoned Kovok's SmartAI
+            // stores this player, follows them, and handles filet spell 126058.
+            player->CastSpell(player, SpellSummonKovok, true);
+    }
+}
+
+// Feed or Be Eaten (31092): restore the personal, moving Kovok without the
+// unsafe spell-area force-cast aura.  Zone entry and login also recover him.
+class player_feed_or_be_eaten : public PlayerScript
+{
+public:
+    player_feed_or_be_eaten() : PlayerScript("player_feed_or_be_eaten") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == FeedOrBeEaten::Quest)
+            FeedOrBeEaten::EnsureCompanion(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        FeedOrBeEaten::EnsureCompanion(player);
+    }
+
+    void OnUpdateZone(Player* player, uint32 /*newZone*/, uint32 newArea) override
+    {
+        if (newArea == FeedOrBeEaten::AreaBrinyMuck)
+            FeedOrBeEaten::EnsureCompanion(player);
+    }
 };
 
 class go_silent_beacon : public GameObjectScript
@@ -4194,6 +4253,7 @@ void AddSC_dread_wastes()
     new npc_hisek_the_swarmkeeper_summon();
     new npc_kaztik_reunited_starter();
     new creature_script<npc_kaztik_reunited_escort>("npc_kaztik_reunited_escort");
+    new player_feed_or_be_eaten();
     new npc_klaxxiva_ik();
     new AreaTrigger_q31185;
     new spell_script<spell_q31182>("spell_q31182");
