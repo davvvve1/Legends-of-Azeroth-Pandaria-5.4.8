@@ -20,6 +20,12 @@
 
 #define MAX_ENCOUNTER     3
 
+enum FromDepthsQuestData
+{
+    QUEST_FROM_DEPTHS_OF_AZJOL_NERUB = 12036,
+    OBJECTIVE_PIT_OF_NARJUN_EXPLORED = 257501
+};
+
 /* Azjol Nerub encounters:
  0 - Krik'thir the Gatewatcher
  1 - Hadronox
@@ -96,6 +102,13 @@ class instance_azjol_nerub : public InstanceMapScript
                 trashLeft = 0;
 
                 events.Reset();
+            }
+
+            void OnPlayerEnter(Player* player) override
+            {
+                if (player->GetQuestStatus(QUEST_FROM_DEPTHS_OF_AZJOL_NERUB) == QUEST_STATUS_INCOMPLETE)
+                    player->CreditQuestAreaTriggerObjective(QUEST_FROM_DEPTHS_OF_AZJOL_NERUB,
+                        OBJECTIVE_PIT_OF_NARJUN_EXPLORED);
             }
 
             bool IsEncounterInProgress() const override
@@ -463,7 +476,42 @@ class instance_azjol_nerub : public InstanceMapScript
         }
 };
 
+enum GatewatchersTalismanData
+{
+    QUEST_GATEWATCHERS_TALISMAN = 29811,
+    ITEM_GATEWATCHERS_TALISMAN  = 74616
+};
+
+// The Gatewatcher's Talisman - explicit quest pickup placed before Anub'arak.
+class go_gatewatchers_talisman : public GameObjectScript
+{
+    public:
+        go_gatewatchers_talisman() : GameObjectScript("go_gatewatchers_talisman") { }
+
+        bool OnGossipHello(Player* player, GameObject* /*go*/) override
+        {
+            if (player->GetQuestStatus(QUEST_GATEWATCHERS_TALISMAN) != QUEST_STATUS_INCOMPLETE ||
+                player->HasItemCount(ITEM_GATEWATCHERS_TALISMAN, 1, true))
+                return true;
+
+            ItemPosCountVec destination;
+            InventoryResult result = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination,
+                ITEM_GATEWATCHERS_TALISMAN, 1);
+            if (result != EQUIP_ERR_OK)
+            {
+                player->SendEquipError(result, nullptr, nullptr);
+                return true;
+            }
+
+            if (Item* item = player->StoreNewItem(destination, ITEM_GATEWATCHERS_TALISMAN, true))
+                player->SendNewItem(item, 1, true, false);
+
+            return true;
+        }
+};
+
 void AddSC_instance_azjol_nerub()
 {
    new instance_azjol_nerub;
+   new go_gatewatchers_talisman;
 }

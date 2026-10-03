@@ -128,6 +128,39 @@ ReachSpellAction::ReachSpellAction(PlayerbotAI* botAI)
 {
 }
 
+bool ReachSpellAction::Execute(Event /*event*/)
+{
+    if (AhnQirajStrategy::IsActive(bot))
+        return false;
+
+    Unit* target = GetTarget();
+    if (!target)
+        return false;
+
+    // Being inside nominal spell range is not enough when terrain blocks the
+    // cast. Move close and let the path generator route around the obstacle;
+    // ReachCombatTo would otherwise immediately report success and casters
+    // could remain idle forever on the blocked side.
+    if (!bot->IsWithinLOSInMap(target))
+        return MoveTo(target, sPlayerbotAIConfig->contactDistance,
+            MovementPriority::MOVEMENT_COMBAT);
+
+    return ReachCombatTo(target, distance);
+}
+
+bool ReachSpellAction::isUseful()
+{
+    if (ReachTargetAction::isUseful())
+        return true;
+
+    if (AhnQirajStrategy::IsActive(bot) ||
+        bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL) != nullptr)
+        return false;
+
+    Unit* target = GetTarget();
+    return target && !bot->IsWithinLOSInMap(target);
+}
+
 ReachPartyMemberToHealAction::ReachPartyMemberToHealAction(PlayerbotAI* botAI)
     : ReachTargetAction(botAI, "reach party member to heal", botAI->GetRange("heal"))
 {

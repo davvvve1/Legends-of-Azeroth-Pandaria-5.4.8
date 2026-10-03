@@ -2516,6 +2516,32 @@ class spell_item_living_amber : public SpellScriptLoader
         }
 };
 
+// By the Sea, Nevermore - remove the Ocean-Worn Rocks when the tuning fork
+// reaches the hidden event bunny. The existing SmartAI continues the Kaz'tik
+// awakening sequence and quest credit.
+class spell_by_the_sea_nevermore_tuning_fork : public SpellScript
+{
+    PrepareSpellScript(spell_by_the_sea_nevermore_tuning_fork);
+
+    void HandleHit()
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        Unit* target = GetHitUnit();
+        if (!player || !target || target->GetEntry() != 62853 ||
+            (player->GetQuestStatus(31089) != QUEST_STATUS_INCOMPLETE &&
+             player->GetQuestStatus(31682) != QUEST_STATUS_INCOMPLETE))
+            return;
+
+        if (GameObject* rocks = target->FindNearestGameObject(212294, 15.0f))
+            rocks->ForcedDespawn();
+    }
+
+    void Register() override
+    {
+        OnHit += SpellHitFn(spell_by_the_sea_nevermore_tuning_fork::HandleHit);
+    }
+};
+
 class npc_hisek_the_swarmkeeper : public CreatureScript
 {
     public:
@@ -3636,7 +3662,10 @@ namespace FeedOrBeEaten
         Quest           = 31092,
         AreaBrinyMuck   = 6391,
         NpcKovok        = 62542,
+        NpcFeedingCredit = 64485,
         SpellSummonKovok = 125641,
+        SpellDeliciousFilet = 126058,
+        SpellKovokGrowth = 121989,
     };
 
     Creature* GetCompanion(Player* player)
@@ -3662,6 +3691,110 @@ namespace FeedOrBeEaten
             player->CastSpell(player, SpellSummonKovok, true);
     }
 }
+
+// Personal Kovok companion for Feed or Be Eaten.  Reapply MoveFollow after
+// every feeding animation because the growth spell replaces his movement
+// generator on this core.
+struct npc_feed_or_be_eaten_kovok : public ScriptedAI
+{
+    npc_feed_or_be_eaten_kovok(Creature* creature) : ScriptedAI(creature) { }
+
+    ObjectGuid playerGuid;
+    uint32 refollowTimer = 0;
+    uint32 ownerCheckTimer = 1000;
+    bool finished = false;
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        Player* player = summoner->ToPlayer();
+        if (!player || player->GetQuestStatus(FeedOrBeEaten::Quest) != QUEST_STATUS_INCOMPLETE)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
+        playerGuid = player->GetGUID();
+        if (TempSummon* summon = me->ToTempSummon())
+            summon->SetPrivateObjectOwner(playerGuid);
+
+        me->SetFaction(player->GetFaction());
+        me->SetReactState(REACT_PASSIVE);
+        me->SetWalk(false);
+        FollowOwner();
+    }
+
+    void FollowOwner()
+    {
+        if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+            me->GetMotionMaster()->MoveFollow(player, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
+    }
+
+    void SpellHit(Unit* caster, SpellInfo const* spell) override
+    {
+        if (finished || !spell || spell->Id != FeedOrBeEaten::SpellDeliciousFilet)
+            return;
+
+        Player* player = caster ? caster->ToPlayer() : nullptr;
+        if (!player || player->GetGUID() != playerGuid ||
+            player->GetQuestStatus(FeedOrBeEaten::Quest) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        player->KilledMonsterCredit(FeedOrBeEaten::NpcFeedingCredit);
+        me->CastSpell(me, FeedOrBeEaten::SpellKovokGrowth, true);
+
+        if (player->GetQuestStatus(FeedOrBeEaten::Quest) == QUEST_STATUS_COMPLETE)
+        {
+            finished = true;
+            me->DespawnOrUnsummon(1000);
+            return;
+        }
+
+        refollowTimer = 750;
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (finished)
+            return;
+
+        if (refollowTimer)
+        {
+            if (refollowTimer > diff)
+                refollowTimer -= diff;
+            else
+            {
+                refollowTimer = 0;
+                FollowOwner();
+            }
+        }
+
+        if (ownerCheckTimer > diff)
+        {
+            ownerCheckTimer -= diff;
+            return;
+        }
+
+        ownerCheckTimer = 1000;
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        if (!player || !player->IsAlive() ||
+            player->GetQuestStatus(FeedOrBeEaten::Quest) != QUEST_STATUS_INCOMPLETE)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
+        if (!me->IsWithinDistInMap(player, 60.0f))
+        {
+            Position position = player->GetNearPosition(2.0f, float(M_PI));
+            me->NearTeleportTo(position.GetPositionX(), position.GetPositionY(),
+                position.GetPositionZ(), position.GetOrientation());
+            FollowOwner();
+        }
+        else if (!refollowTimer &&
+            me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+            FollowOwner();
+    }
+};
 
 // Feed or Be Eaten (31092): restore the personal, moving Kovok without the
 // unsafe spell-area force-cast aura.  Zone entry and login also recover him.
@@ -4249,10 +4382,12 @@ void AddSC_dread_wastes()
     new AreaTrigger_at_q_wood_and_shade();
     new go_full_crab_pot();
     new spell_item_living_amber();
+    new spell_script<spell_by_the_sea_nevermore_tuning_fork>("spell_by_the_sea_nevermore_tuning_fork");
     new npc_hisek_the_swarmkeeper();
     new npc_hisek_the_swarmkeeper_summon();
     new npc_kaztik_reunited_starter();
     new creature_script<npc_kaztik_reunited_escort>("npc_kaztik_reunited_escort");
+    new creature_script<npc_feed_or_be_eaten_kovok>("npc_feed_or_be_eaten_kovok");
     new player_feed_or_be_eaten();
     new npc_klaxxiva_ik();
     new AreaTrigger_q31185;

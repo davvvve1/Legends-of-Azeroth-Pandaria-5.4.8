@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
+#include <limits>
 #include <string>
 #include <algorithm>
 
@@ -2541,6 +2542,26 @@ MovementAction::MovementAction(PlayerbotAI* botAI, std::string const name) : Act
     bot = botAI->GetBot();
 }
 
+bool MovementAction::JumpTo(uint32 mapId, float x, float y, float z, MovementPriority priority)
+{
+    if (!IsMovingAllowed(mapId, x, y, z) || IsDuplicateMove(mapId, x, y, z) ||
+        IsWaitingForLastMove(priority))
+        return false;
+
+    float const speed = bot->GetSpeed(MOVE_RUN);
+    bot->GetMotionMaster()->Clear();
+    bot->GetMotionMaster()->MoveJump(x, y, z, speed, speed);
+    SetNextMovementDelay(sPlayerbotAIConfig->globalCoolDown);
+    return true;
+}
+
+void MovementAction::SetNextMovementDelay(float delayMillis)
+{
+    AI_VALUE(LastMovement&, "last movement").Set(bot->GetMapId(), bot->GetPositionX(),
+        bot->GetPositionY(), bot->GetPositionZ(), bot->GetOrientation(), delayMillis,
+        MovementPriority::MOVEMENT_FORCED);
+}
+
 void MovementAction::ClearIdleState()
 {
     context->GetValue<time_t>("stay time")->Set(0);
@@ -3108,6 +3129,39 @@ bool MoveRandomAction::isUseful()
         !bot->HasWorldBossStagingAccess();
 }
 
+bool MoveInsideAction::Execute(Event /*event*/)
+{
+    return MoveInside(bot->GetMapId(), x, y, bot->GetPositionZ(), distance);
+}
+
+bool RotateAroundTheCenterPointAction::Execute(Event /*event*/)
+{
+    uint32 nextPoint = GetCurrWaypoint();
+    if (nextPoint >= waypoints.size())
+        return false;
+    if (!MoveTo(bot->GetMapId(), waypoints[nextPoint].first, waypoints[nextPoint].second,
+        bot->GetPositionZ(), false, false, false, false, MovementPriority::MOVEMENT_COMBAT))
+        return false;
+    ++call_counters;
+    return true;
+}
+
+uint32 RotateAroundTheCenterPointAction::FindNearestWaypoint()
+{
+    uint32 nearest = 0;
+    float nearestDistance = std::numeric_limits<float>::max();
+    for (uint32 i = 0; i < waypoints.size(); ++i)
+    {
+        float distance = bot->GetExactDist2d(waypoints[i].first, waypoints[i].second);
+        if (distance < nearestDistance)
+        {
+            nearestDistance = distance;
+            nearest = i;
+        }
+    }
+    return nearest;
+}
+
 bool MovementAction::IsMovingAllowed(WorldObject* target)
 {
     if (!target)
@@ -3419,6 +3473,14 @@ bool MovementAction::Move(float angle, float distance)
         return false;
 
     return MoveTo(bot->GetMapId(), x, y, z);
+}
+
+bool MovementAction::MoveInside(uint32 mapId, float x, float y, float z, float distance,
+    MovementPriority priority)
+{
+    if (bot->GetDistance2d(x, y) <= distance)
+        return false;
+    return MoveNear(mapId, x, y, z, distance, priority);
 }
 
 // just calculates average position of group and runs away from that position
@@ -8100,4 +8162,68 @@ bool BattlegroundObjectiveAction::Execute(Event /*event*/)
     float targetZ = (ownZ + enemyZ) * 0.5f;
     return MoveTo(bg->GetMapId(), targetX, targetY, targetZ, false, true,
         false, false, MovementPriority::MOVEMENT_FORCED);
+}
+
+bool MoveAwayFromCreatureAction::Execute(Event /*event*/)
+{
+    std::list<Creature*> hazards;
+    bot->GetCreatureListWithEntryInGrid(hazards, creatureId, range + 30.0f);
+
+    Unit* nearest = nullptr;
+    float nearestDistance = std::numeric_limits<float>::max();
+    for (Creature* hazard : hazards)
+    {
+        if (!hazard || (alive && !hazard->IsAlive()))
+            continue;
+
+        float const distance = bot->GetDistance2d(hazard);
+        if (distance < nearestDistance)
+        {
+            nearest = hazard;
+            nearestDistance = distance;
+        }
+    }
+
+    if (!nearest || nearestDistance >= range)
+        return false;
+
+    return MoveAway(nearest, range + 5.0f);
+}
+
+bool MoveAwayFromCreatureAction::isPossible()
+{
+    return bot->CanFreeMove();
+}
+
+bool MoveAwayFromPlayerWithDebuffAction::Execute(Event /*event*/)
+{
+    Group* group = bot->GetGroup();
+    if (!group)
+        return false;
+
+    Player* nearest = nullptr;
+    float nearestDistance = std::numeric_limits<float>::max();
+    for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
+    {
+        Player* player = reference->GetSource();
+        if (!player || player == bot || !player->IsAlive() || !player->HasAura(spellId))
+            continue;
+
+        float const distance = bot->GetDistance2d(player);
+        if (distance < nearestDistance)
+        {
+            nearest = player;
+            nearestDistance = distance;
+        }
+    }
+
+    if (!nearest || nearestDistance >= range)
+        return false;
+
+    return MoveAway(nearest, range + 5.0f);
+}
+
+bool MoveAwayFromPlayerWithDebuffAction::isPossible()
+{
+    return bot->CanFreeMove();
 }

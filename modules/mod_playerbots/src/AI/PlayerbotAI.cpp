@@ -366,6 +366,74 @@ uint32 PlayerbotAI::GetReactDelay()
     return base * multiplier;
 }
 
+void PlayerbotAI::AddTimedEvent(std::function<void()> callback, uint32 delayMs)
+{
+    class PlayerbotLambdaEvent final : public BasicEvent
+    {
+    public:
+        explicit PlayerbotLambdaEvent(std::function<void()> cb) : _callback(std::move(cb)) { }
+
+        bool Execute(uint64 /*execTime*/, uint32 /*diff*/) override
+        {
+            _callback();
+            return true;
+        }
+
+    private:
+        std::function<void()> _callback;
+    };
+
+    bot->m_Events.AddEvent(new PlayerbotLambdaEvent(std::move(callback)),
+        bot->m_Events.CalculateTime(delayMs));
+}
+
+std::vector<Item*> PlayerbotAI::GetInventoryItems()
+{
+    std::vector<Item*> items;
+    for (uint8 bagSlot = INVENTORY_SLOT_BAG_START; bagSlot < INVENTORY_SLOT_BAG_END; ++bagSlot)
+        if (Bag* bag = bot->GetBagByPos(bagSlot))
+            for (uint32 slot = 0; slot < bag->GetBagSize(); ++slot)
+                if (Item* item = bag->GetItemByPos(slot))
+                    items.push_back(item);
+
+    for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        if (Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+            items.push_back(item);
+
+    return items;
+}
+
+bool PlayerbotAI::HasItemInInventory(uint32 itemId)
+{
+    for (Item* item : GetInventoryItems())
+        if (item && item->GetEntry() == itemId)
+            return true;
+    return false;
+}
+
+void PlayerbotAI::ImbueItem(Item* item, Unit* target)
+{
+    if (!item || !target)
+        return;
+
+    uint32 spellId = 0;
+    for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        if (item->GetTemplate()->Spells[i].SpellId > 0 &&
+            item->GetTemplate()->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
+        {
+            spellId = item->GetTemplate()->Spells[i].SpellId;
+            break;
+        }
+
+    if (!spellId)
+        return;
+
+    WorldPacket packet(CMSG_USE_ITEM);
+    packet << item->GetBagSlot() << item->GetSlot() << uint8(1) << spellId << item->GetGUID()
+           << uint32(0) << uint8(0) << uint32(TARGET_FLAG_UNIT) << target->GetGUID().WriteAsPacked();
+    bot->GetSession()->HandleUseItemOpcode(packet);
+}
+
 void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 {
     // Handle the AI check delay
@@ -1596,11 +1664,190 @@ void PlayerbotAI::ResetStrategies()
     AiFactory::AddDefaultCombatStrategies(bot, this, _engines[BOT_STATE_COMBAT]);
     AiFactory::AddDefaultNonCombatStrategies(bot, this, _engines[BOT_STATE_NON_COMBAT]);
     AiFactory::AddDefaultDeadStrategies(bot, this, _engines[BOT_STATE_DEAD]);
-    //if (sPlayerbotAIConfig->applyInstanceStrategies)
-        //ApplyInstanceStrategies(bot->GetMapId());
+    if (sPlayerbotAIConfig->applyInstanceStrategies)
+        ApplyInstanceStrategies(bot->GetMapId());
 
     for (uint8 i = 0; i < BOT_STATE_MAX; i++)
         _engines[i]->Init();
+}
+
+void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
+{
+    static std::vector<std::string> const raidStrategies =
+    {
+        "aq20", "bwl", "gruulslair", "icc", "karazhan", "magtheridon",
+        "moltencore", "naxx", "onyxia", "rs", "uld", "voa", "wotlk-eoe", "wotlk-os"
+    };
+
+    for (std::string const& strategy : raidStrategies)
+    {
+        _engines[BOT_STATE_COMBAT]->removeStrategy(strategy);
+        _engines[BOT_STATE_NON_COMBAT]->removeStrategy(strategy);
+    }
+
+    std::string strategyName;
+    switch (mapId)
+    {
+        case 249: strategyName = "onyxia"; break;
+        case 409: strategyName = "moltencore"; break;
+        case 469: strategyName = "bwl"; break;
+        case 509: strategyName = "aq20"; break;
+        case 532: strategyName = "karazhan"; break;
+        case 533: strategyName = "naxx"; break;
+        case 544: strategyName = "magtheridon"; break;
+        case 565: strategyName = "gruulslair"; break;
+        case 603: strategyName = "uld"; break;
+        case 615: strategyName = "wotlk-os"; break;
+        case 616: strategyName = "wotlk-eoe"; break;
+        case 624: strategyName = "voa"; break;
+        case 631: strategyName = "icc"; break;
+        case 724: strategyName = "rs"; break;
+        default: return;
+    }
+
+    _engines[BOT_STATE_COMBAT]->addStrategy(strategyName);
+    _engines[BOT_STATE_NON_COMBAT]->addStrategy(strategyName);
+
+    if (tellMaster)
+        TellMasterNoFacing("Added " + strategyName + " raid strategy");
+}
+
+bool PlayerbotAI::IsTank(Player* player) const { return PlayerBotSpec::IsTank(player, true); }
+bool PlayerbotAI::IsHeal(Player* player) const { return PlayerBotSpec::IsHeal(player, true); }
+bool PlayerbotAI::IsDps(Player* player) const { return PlayerBotSpec::IsDps(player, true); }
+bool PlayerbotAI::IsRanged(Player* player) const { return PlayerBotSpec::IsRanged(player, true); }
+bool PlayerbotAI::IsRangedDps(Player* player) const { return PlayerBotSpec::IsRangedDps(player, true); }
+bool PlayerbotAI::IsMelee(Player* player) const { return PlayerBotSpec::IsMelee(player, true); }
+bool PlayerbotAI::IsMainTank(Player* player) const { return PlayerBotSpec::IsMainTank(player); }
+bool PlayerbotAI::IsAssistTank(Player* player) const { return PlayerBotSpec::IsAssistTank(player); }
+bool PlayerbotAI::IsAssistTankOfIndex(Player* player, int index) const
+{
+    return PlayerBotSpec::IsAssistTankOfIndex(bot, player, index);
+}
+
+namespace
+{
+template <typename RoleCheck>
+bool IsOrderedRaidRole(Player* player, uint8 wantedIndex, bool livingOnly, RoleCheck roleCheck)
+{
+    Group* group = player ? player->GetGroup() : nullptr;
+    if (!group || !roleCheck(player) || (livingOnly && !player->IsAlive()))
+        return false;
+
+    std::vector<Player*> assistants;
+    std::vector<Player*> members;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || (livingOnly && !member->IsAlive()) || !roleCheck(member))
+            continue;
+        (group->IsAssistant(member->GetGUID()) ? assistants : members).push_back(member);
+    }
+    assistants.insert(assistants.end(), members.begin(), members.end());
+    return wantedIndex < assistants.size() && assistants[wantedIndex] == player;
+}
+}
+
+bool PlayerbotAI::IsAssistHealOfIndex(Player* player, uint8 index, bool livingOnly) const
+{
+    return IsOrderedRaidRole(player, index, livingOnly,
+        [](Player* member) { return PlayerBotSpec::IsHeal(member, true); });
+}
+
+bool PlayerbotAI::IsAssistRangedDpsOfIndex(Player* player, uint8 index, bool livingOnly) const
+{
+    return IsOrderedRaidRole(player, index, livingOnly,
+        [](Player* member) { return PlayerBotSpec::IsRangedDps(member, true); });
+}
+
+int32 PlayerbotAI::GetGroupSlotIndex(Player* player) const
+{
+    Group* group = bot->GetGroup();
+    if (!group)
+        return 0;
+
+    int32 index = 0;
+    for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
+    {
+        Player* member = reference->GetSource();
+        if (!member)
+            continue;
+        if (member == player)
+            return index;
+        ++index;
+    }
+    return 0;
+}
+
+namespace
+{
+template <typename Predicate>
+int32 GetRoleIndex(Player* player, Predicate predicate)
+{
+    if (!player || !predicate(player))
+        return -1;
+    Group* group = player->GetGroup();
+    if (!group)
+        return -1;
+    int32 index = 0;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || !predicate(member))
+            continue;
+        if (member == player)
+            return index;
+        ++index;
+    }
+    return -1;
+}
+}
+
+int32 PlayerbotAI::GetClassIndex(Player* player, uint8 playerClass) const
+{
+    return GetRoleIndex(player, [playerClass](Player* member) { return member->GetClass() == playerClass; });
+}
+
+int32 PlayerbotAI::GetRangedIndex(Player* player) const
+{
+    return GetRoleIndex(player, [](Player* member) { return PlayerBotSpec::IsRanged(member, true); });
+}
+
+int32 PlayerbotAI::GetRangedDpsIndex(Player* player) const
+{
+    return GetRoleIndex(player, [](Player* member) { return PlayerBotSpec::IsRangedDps(member, true); });
+}
+
+bool PlayerbotAI::CanCastVehicleSpell(uint32 spellId, Unit* target) const
+{
+    Vehicle* vehicle = bot->GetVehicle();
+    Unit* vehicleBase = vehicle ? vehicle->GetBase() : nullptr;
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+    if (!vehicleBase || !spellInfo)
+        return false;
+
+    Unit* spellTarget = target ? target : vehicleBase;
+    if (Creature* creature = vehicleBase->ToCreature())
+        if (creature->HasSpellCooldown(spellId))
+            return false;
+
+    return vehicleBase == spellTarget || vehicleBase->GetDistance(spellTarget) <= 120.0f;
+}
+
+bool PlayerbotAI::CastVehicleSpell(uint32 spellId, Unit* target)
+{
+    if (!CanCastVehicleSpell(spellId, target))
+        return false;
+
+    Unit* vehicleBase = bot->GetVehicle()->GetBase();
+    vehicleBase->CastSpell(target ? target : vehicleBase, spellId, false);
+    SetNextCheckDelay(sPlayerbotAIConfig->globalCoolDown);
+    return true;
+}
+
+bool PlayerbotAI::EqualLowercaseName(std::string const& first, std::string const& second) const
+{
+    return StringEqualI(first, second);
 }
 
 void PlayerbotAI::ReInitCurrentEngine()
@@ -1904,8 +2151,8 @@ void PlayerbotAI::HandleTeleportAck()
             bot->GetSession()->HandleMoveWorldportAck();
         }
         // SetNextCheckDelay(urand(2000, 5000));
-        //if (sPlayerbotAIConfig->applyInstanceStrategies)
-            //ApplyInstanceStrategies(bot->GetMapId(), true);
+        if (sPlayerbotAIConfig->applyInstanceStrategies)
+            ApplyInstanceStrategies(bot->GetMapId(), true);
         Reset(true);
     }
     SetNextCheckDelay(sPlayerbotAIConfig->globalCoolDown);

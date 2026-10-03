@@ -79,6 +79,8 @@ bool PlayerbotAIConfig::Initialize()
     }
 
     perfMonEnabled = sConfigMgr->GetBoolDefault("AiPlayerbot.PerfMonEnabled", false);
+    applyInstanceStrategies = sConfigMgr->GetBoolDefault("AiPlayerbot.ApplyInstanceStrategies", true);
+    EnableICCBuffs = sConfigMgr->GetBoolDefault("AiPlayerbot.EnableICCBuffs", true);
     globalCoolDown = sConfigMgr->GetIntDefault("AiPlayerbot.GlobalCooldown", 1500);
     maxWaitForMove = sConfigMgr->GetIntDefault("AiPlayerbot.MaxWaitForMove", 5000);
     disableMoveSplinePath = sConfigMgr->GetIntDefault("AiPlayerbot.DisableMoveSplinePath", 0);

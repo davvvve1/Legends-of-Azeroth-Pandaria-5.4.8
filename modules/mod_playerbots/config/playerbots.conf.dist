@@ -419,6 +419,9 @@ AiPlayerbot.DropObsoleteQuests = 1
 # Auto add dungeon/raid strategies when entering the instance if implemented
 AiPlayerbot.ApplyInstanceStrategies = 1
 
+# Apply the Icecrown Citadel raid helpers used by heroic encounters.
+AiPlayerbot.EnableICCBuffs = 1
+
 # Enable auto avoid aoe (experimental)
 # Default: 1 (enable)
 AiPlayerbot.AutoAvoidAoe = 1
