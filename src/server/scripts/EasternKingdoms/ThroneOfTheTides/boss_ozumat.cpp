@@ -197,7 +197,10 @@ class npc_neptulon : public CreatureScript
                 uiMindLasherCount = 0;
                 uiSapperCount = 0;
                 phase = PHASE_OZUMAT_IDLE;
-                me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                if (instance && instance->GetBossState(DATA_OZUMAT) == DONE)
+                    me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                else
+                    me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 events.Reset();
                 summons.DespawnAll();
                 me->SetHealth(me->GetMaxHealth());
@@ -253,9 +256,10 @@ class npc_neptulon : public CreatureScript
                         return;
 
                     uiMindLasherCount++;
-                    if (uiMindLasherCount > 2)
+                    if (uiMindLasherCount >= 3)
                     {
                         phase = PHASE_OZUMAT_SAPPERS;
+                        me->SetHealth(me->GetMaxHealth());
                         Talk(SAY_PHASE_2_2);
                         events.CancelEvent(EVENT_SUMMON_MURLOC);
                         events.CancelEvent(EVENT_SUMMON_MINDLASHER);
@@ -277,9 +281,10 @@ class npc_neptulon : public CreatureScript
                         return;
 
                     uiSapperCount++;
-                    if (uiSapperCount > 2)
+                    if (uiSapperCount >= 3)
                     {
                         phase = PHASE_OZUMAT_BOSS;
+                        me->SetHealth(me->GetMaxHealth());
                         Talk(SAY_PHASE_3_2);
                         events.CancelEvent(EVENT_BLIGHT_OF_OZUMAT);
                         events.CancelEvent(EVENT_SUMMON_BEAST);
@@ -387,6 +392,7 @@ class npc_neptulon : public CreatureScript
 
                             if (Creature* pMindlasher = me->SummonCreature(NPC_VICIOUS_MINDLASHER, spawnPos[urand(0, 1)]))
                             {
+                                pMindlasher->AI()->DoZoneInCombat();
                                 pMindlasher->AddThreat(me, 1.0f);
                                 pMindlasher->AI()->AttackStart(me);
                             }
@@ -397,6 +403,7 @@ class npc_neptulon : public CreatureScript
 
                             if (Creature* pBehemoth = me->SummonCreature(NPC_UNYIELDING_BEHEMOTH, spawnPos[urand(0, 1)]))
                             {
+                                pBehemoth->AI()->DoZoneInCombat();
                                 pBehemoth->AddThreat(me, 1.0f);
                                 pBehemoth->AI()->AttackStart(me);
                             }
@@ -407,7 +414,10 @@ class npc_neptulon : public CreatureScript
 
                             for (uint8 i = 2; i < 5; i++)
                                 if (Creature* pSapper = me->SummonCreature(NPC_FACELESS_SAPPER, spawnPos[i]))
+                                {
+                                    pSapper->AI()->DoZoneInCombat();
                                     pSapper->CastSpell(me, SPELL_ENTANGLING_GRASP, false);
+                                }
                             break;
                         case EVENT_SUMMON_BEAST:
                             if (phase != PHASE_OZUMAT_SAPPERS)
@@ -430,6 +440,7 @@ class npc_neptulon : public CreatureScript
                             {
                                 if (Creature* pMurloc = me->SummonCreature(NPC_DEEP_MURLOC_INVADER, spawnPos[urand(0, 1)]))
                                 {
+                                    pMurloc->AI()->DoZoneInCombat();
                                     pMurloc->AddThreat(me, 1.0f);
                                     pMurloc->AI()->AttackStart(me);
                                 }
