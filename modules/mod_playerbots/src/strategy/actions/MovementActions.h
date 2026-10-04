@@ -18,6 +18,9 @@ enum class MovementPriority
     MOVEMENT_IDLE,
     MOVEMENT_NORMAL,
     MOVEMENT_COMBAT,
+    // May interrupt follow, formation and rotation movement, while explicit
+    // encounter mechanics using MOVEMENT_FORCED still take precedence.
+    MOVEMENT_HAZARD,
     MOVEMENT_FORCED
 };
 
@@ -56,7 +59,8 @@ protected:
         MovementPriority priority = MovementPriority::MOVEMENT_NORMAL);
     bool Move(float angle, float distance);
     bool Flee(Unit* target);
-    bool FleePosition(Position pos, float radius, uint32 minInterval = 1000);
+    bool FleePosition(Position pos, float radius, uint32 minInterval = 1000,
+        MovementPriority priority = MovementPriority::MOVEMENT_COMBAT);
     bool CheckLastFlee(float curAngle, std::list<FleeInfo>& infoList);
     Position BestPositionForMeleeToFlee(Position pos, float radius);
     Position BestPositionForRangedToFlee(Position pos, float radius);

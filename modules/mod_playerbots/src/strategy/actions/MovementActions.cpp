@@ -494,6 +494,77 @@ bool GetPersistentSpellHazard(WorldObject* object, Unit*& caster,
     return false;
 }
 
+bool SpellCanDamageUnit(SpellInfo const* spellInfo, uint8 depth = 0)
+{
+    if (!spellInfo)
+        return false;
+
+    for (SpellEffectInfo const& effect : spellInfo->Effects)
+    {
+        switch (effect.Effect)
+        {
+            case SPELL_EFFECT_INSTAKILL:
+            case SPELL_EFFECT_SCHOOL_DAMAGE:
+            case SPELL_EFFECT_ENVIRONMENTAL_DAMAGE:
+            case SPELL_EFFECT_HEALTH_LEECH:
+            case SPELL_EFFECT_POWER_BURN:
+            case SPELL_EFFECT_DAMAGE_FROM_MAX_HEALTH_PCT:
+                return true;
+            default:
+                break;
+        }
+
+        switch (effect.ApplyAuraName)
+        {
+            case SPELL_AURA_PERIODIC_DAMAGE:
+            case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
+            case SPELL_AURA_PERIODIC_LEECH:
+                return true;
+            default:
+                break;
+        }
+
+        // Many ground emitters carry a harmless-looking controller aura which
+        // periodically fires the actual damage spell.  Follow that short
+        // trigger chain instead of depending solely on the controller's
+        // positivity flag.
+        if (depth < 2 && effect.TriggerSpell &&
+            SpellCanDamageUnit(sSpellMgr->GetSpellInfo(effect.TriggerSpell),
+                depth + 1))
+            return true;
+    }
+
+    return false;
+}
+
+bool IsAvoidableGroundSpell(SpellInfo const* spellInfo)
+{
+    return spellInfo && !sPlayerbotAIConfig->aoeAvoidSpellWhitelist.count(
+        spellInfo->Id) &&
+        (!spellInfo->IsPositive() || SpellCanDamageUnit(spellInfo));
+}
+
+float GetSpellAreaRadius(SpellInfo const* spellInfo, Unit* caster,
+    uint8 depth = 0)
+{
+    if (!spellInfo)
+        return 0.0f;
+
+    float radius = 0.0f;
+    for (SpellEffectInfo const& effect : spellInfo->Effects)
+    {
+        if (!effect.IsEffect())
+            continue;
+
+        radius = std::max(radius, effect.CalcRadius(caster));
+        if (depth < 2 && effect.TriggerSpell)
+            radius = std::max(radius, GetSpellAreaRadius(
+                sSpellMgr->GetSpellInfo(effect.TriggerSpell), caster,
+                depth + 1));
+    }
+    return radius;
+}
+
 void CollectOrdosFireHazards(Player* bot,
     std::vector<OrdosFireHazard>& hazards)
 {
@@ -3860,7 +3931,8 @@ Position MovementAction::BestPositionForRangedToFlee(Position pos, float radius)
     return Position();
 }
 
-bool MovementAction::FleePosition(Position pos, float radius, uint32 minInterval)
+bool MovementAction::FleePosition(Position pos, float radius,
+    uint32 minInterval, MovementPriority priority)
 {
     std::list<FleeInfo>& infoList = AI_VALUE(std::list<FleeInfo>&, "recently flee info");
 
@@ -3879,7 +3951,7 @@ bool MovementAction::FleePosition(Position pos, float radius, uint32 minInterval
     if (bestPos != Position())
     {
         if (MoveTo(bot->GetMapId(), bestPos.GetPositionX(), bestPos.GetPositionY(), bestPos.GetPositionZ(), false,
-            false, true, false, MovementPriority::MOVEMENT_COMBAT))
+            false, true, false, priority))
         {
             uint32 curTS = getMSTime();
             while (!infoList.empty())
@@ -4012,7 +4084,9 @@ bool AvoidAoeAction::FindNearestHazard(Position& position, float& radius) const
     if (!bot || !bot->IsInWorld() || !bot->IsAlive() || !bot->IsInCombat())
         return false;
 
-    constexpr float searchRadius = 16.0f;
+    float const maximumRadius = std::max(2.0f,
+        sPlayerbotAIConfig->maxAoeAvoidRadius);
+    float const searchRadius = maximumRadius + 3.0f;
     std::list<WorldObject*> nearbyObjects;
     Trinity::AllWorldObjectsInRange check(bot, searchRadius);
     Trinity::WorldObjectListSearcher<Trinity::AllWorldObjectsInRange> searcher(
@@ -4020,7 +4094,7 @@ bool AvoidAoeAction::FindNearestHazard(Position& position, float& radius) const
     bot->VisitNearbyObject(searchRadius, searcher);
 
     bool found = false;
-    float nearestDistance = FLT_MAX;
+    float greatestPenetration = -FLT_MAX;
     for (WorldObject* object : nearbyObjects)
     {
         if (!object || !object->IsInWorld())
@@ -4031,27 +4105,65 @@ bool AvoidAoeAction::FindNearestHazard(Position& position, float& radius) const
         float hazardRadius = 0.0f;
 
         if (!GetPersistentSpellHazard(object, caster, spellId, hazardRadius))
+        {
+            // Cataclysm and later encounters also implement pools as passive,
+            // unattackable creature emitters carrying a periodic area aura.
+            // They are not DynamicObjects/AreaTriggers and the old code could
+            // never see them (for example Blight of Ozumat).
+            Creature* emitter = object->ToCreature();
+            if (!emitter ||
+                !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) ||
+                !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+                continue;
+
+            for (auto const& auraPair : emitter->GetAppliedAuras())
+            {
+                AuraApplication const* application = auraPair.second;
+                Aura const* aura = application ? application->GetBase() : nullptr;
+                SpellInfo const* auraInfo = aura ? aura->GetSpellInfo() : nullptr;
+                if (!IsAvoidableGroundSpell(auraInfo))
+                    continue;
+
+                float const auraRadius = GetSpellAreaRadius(auraInfo, emitter);
+                if (auraRadius > hazardRadius)
+                {
+                    caster = emitter;
+                    spellId = auraInfo->Id;
+                    hazardRadius = auraRadius;
+                }
+            }
+
+            if (!spellId)
+                continue;
+        }
+
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        if (!IsAvoidableGroundSpell(spellInfo))
             continue;
 
-        // Do not guess about ownerless triggers or run out of friendly ground
-        // effects.  A hazard must have a hostile caster and a non-positive
-        // spell in this 5.4.8 spell store.
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
-        if (!caster || !spellInfo || spellInfo->IsPositive() ||
-            !bot->IsValidAttackTarget(caster))
-            continue;
+        // Never flee a friendly player's healing/utility zone.  Hostile
+        // encounter emitters are often non-attackable, dead, or temporarily
+        // neutral, so IsValidAttackTarget is intentionally not required.
+        if (caster)
+            if (Player* owner = caster->GetCharmerOrOwnerPlayerOrPlayerItself())
+                if (owner->IsFriendlyTo(bot))
+                    continue;
 
         // Some AreaTrigger records do not expose their visual radius.  Use a
         // conservative minimum while clamping malformed data so one bad DBC
         // row cannot make a bot flee across an encounter room.
-        hazardRadius = std::max(2.0f, std::min(hazardRadius, 12.0f));
+        hazardRadius = std::max(2.0f, hazardRadius);
+        if (hazardRadius > maximumRadius)
+            continue;
+
         float distance = bot->GetExactDist2d(object);
-        if (distance > hazardRadius + 0.75f || distance >= nearestDistance)
+        float const penetration = hazardRadius + 0.75f - distance;
+        if (penetration < 0.0f || penetration <= greatestPenetration)
             continue;
 
         position.Relocate(object);
         radius = hazardRadius + 2.0f;
-        nearestDistance = distance;
+        greatestPenetration = penetration;
         found = true;
     }
 
@@ -4072,7 +4184,8 @@ bool AvoidAoeAction::Execute(Event /*event*/)
     if (!FindNearestHazard(position, radius))
         return false;
 
-    return FleePosition(position, radius, 500);
+    return FleePosition(position, radius, 250,
+        MovementPriority::MOVEMENT_HAZARD);
 }
 
 Player* BossMechanicsAction::GetOrdosDesignatedTank(Creature* ordos) const
