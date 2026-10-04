@@ -2148,6 +2148,13 @@ bool GameObject::IsAtInteractDistance(Player const* player, SpellInfo const* spe
             distance = 0.0f;
             break;
         case GAMEOBJECT_TYPE_QUESTGIVER:
+            // Twilight Cauldron (quest 25297) has a large scaled visual whose
+            // usable point is offset from the nearby ingredient/brazier area.
+            // The default questgiver radius rejects both the initial gossip
+            // and the reward packet while the cauldron still appears close
+            // enough to use on the client.
+            distance = GetEntry() == 202706 ? 15.0f : 5.5555553f;
+            break;
         case GAMEOBJECT_TYPE_TEXT:
         case GAMEOBJECT_TYPE_FLAGSTAND:
         case GAMEOBJECT_TYPE_FLAGDROP:
