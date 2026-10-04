@@ -818,6 +818,11 @@ void RandomPlayerbotMgr::UpdateAutoQueueObserver(uint32 /*elapsed*/)
     for (auto const& managedPair : LfgAutoQueueManagedBots)
     {
         LfgAutoQueueManagedBot const& managed = managedPair.second;
+        // A kicked filler is being returned and logged out. It no longer
+        // reserves its former role while the replacement queue is active.
+        if (managed.CleanupRequested)
+            continue;
+
         auto demandItr = lfgDemands.find(managed.RequesterGuid);
         if (demandItr == lfgDemands.end())
             continue;
