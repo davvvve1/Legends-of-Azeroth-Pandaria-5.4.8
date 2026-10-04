@@ -1153,6 +1153,14 @@ void GameObject::ForcedDespawn(uint32 msTimeToDespawn /*= 0*/)
 
 bool GameObject::ActivateToQuest(Player* target) const
 {
+    // Forged of Shadow and Flame (25575) credits the invisible creature
+    // objective 40858 through spell 76225.  The objective references neither
+    // this GO nor an item, so the Twilight Arms Crate (203066) is absent from
+    // ObjectMgr's quest-object cache and must be handled before that lookup.
+    if (GetEntry() == 203066 &&
+        target->GetQuestStatus(25575) == QUEST_STATUS_INCOMPLETE)
+        return true;
+
     if (target->HasQuestForGO(GetEntry()))
         return true;
 
@@ -2703,6 +2711,7 @@ void GameObject::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* t
                         break;
                     case GAMEOBJECT_TYPE_CHEST:
                     case GAMEOBJECT_TYPE_GOOBER:
+                    case GAMEOBJECT_TYPE_SPELLCASTER:
                         if (ActivateToQuest(target))
                             dynFlags |= GO_DYNFLAG_LO_ACTIVATE | GO_DYNFLAG_LO_SPARKLE;
                         else if (targetIsGM)
