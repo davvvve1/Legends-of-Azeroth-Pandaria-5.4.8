@@ -171,6 +171,9 @@ class npc_neptulon : public CreatureScript
             npc_neptulonAI(Creature* creature) : ScriptedAI(creature), summons(me)
             {
                 instance = creature->GetInstanceScript();
+                // Neptulon drives the entire Ozumat encounter. Keep his grid active
+                // while players move between the arena entrances and the add waves.
+                me->setActive(true);
                 me->SetReactState(REACT_PASSIVE);
             }
 
@@ -216,6 +219,11 @@ class npc_neptulon : public CreatureScript
                 }
                 else if (action == ACTION_NEPTULON_START)
                 {
+                    // The area-trigger intro schedules EVENT_INTRO_2, which sets
+                    // bActive to false when it finishes. If the player selected the
+                    // gossip option during those seven seconds, that stale event
+                    // stopped the newly-started encounter before its first wave.
+                    events.Reset();
                     bActive = true;
                     phase = PHASE_OZUMAT_DEFENSE;
                     Talk(SAY_INTRO_3_1);
