@@ -159,7 +159,8 @@ float RsHalionCombustionMultiplier::GetValue(Action* action)
     if (RsIsAoeDamageAction(action))
         return 0.0f;
 
-    if (dynamic_cast<MovementAction*>(action) && !dynamic_cast<RsHalionCombustionAction*>(action))
+    if (dynamic_cast<MovementAction*>(action) && !dynamic_cast<RsHalionCombustionAction*>(action) &&
+        !dynamic_cast<RsHalionFireAction*>(action))
         return 0.0f;
 
     return 1.0f;
@@ -184,7 +185,7 @@ float RsHalionMeteorMultiplier::GetValue(Action* action)
         return 1.0f;
 
     if (dynamic_cast<MovementAction*>(action) && !dynamic_cast<RsHalionMeteorAction*>(action) &&
-        !dynamic_cast<RsHalionEnterPortalAction*>(action))
+        !dynamic_cast<RsHalionEnterPortalAction*>(action) && !dynamic_cast<RsHalionFireAction*>(action))
         return 0.0f;
 
     return 1.0f;

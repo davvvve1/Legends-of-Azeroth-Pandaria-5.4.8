@@ -20,6 +20,25 @@
 #include <utility>
 #include <vector>
 
+bool RsHalionFireAction::Execute(Event )
+{
+    if (RsHalionInTwilight(bot))
+        return false;
+
+    std::vector<Unit*> fires;
+    RsHalionCollectMeteorFire(bot, fires);
+    if (!RsHalionInMeteorFire(bot, fires))
+        return false;
+
+    float moveX = 0.0f;
+    float moveY = 0.0f;
+    if (!RsHalionFindFireEscape(bot, fires, moveX, moveY))
+        return false;
+
+    return MoveTo(bot->GetMapId(), moveX, moveY, bot->GetPositionZ(), false, false, false, true,
+                  MovementPriority::MOVEMENT_FORCED, true, false);
+}
+
 bool RsHalionTankPositionAction::Execute(Event )
 {
     if (RsHalionBossTank(botAI) != bot)
@@ -311,11 +330,12 @@ bool RsHalionAddTankAction::Execute(Event )
 
 bool RsHalionEnterPortalAction::Execute(Event )
 {
-    if (PlayerBotSpec::IsMainTank(bot))
+    if (PlayerBotSpec::IsMainTank(bot) && RsHalionFirstCrosser(botAI) != bot)
         return false;
 
     Unit* physBoss = RsHalionAnyPhysicalBoss(botAI);
     bool const phase3 = physBoss != nullptr && !physBoss->HealthAbovePct(50);
+    bool const crossingStarted = RsHalionCrossingStarted(bot);
 
     bool p3TwilightExit = false;
     if (RsHalionInTwilight(bot))
@@ -333,7 +353,7 @@ bool RsHalionEnterPortalAction::Execute(Event )
 
         p3TwilightExit = true;
     }
-    else if (RsHalionPortalHeldForAdds(botAI))
+    else if (!crossingStarted && RsHalionPortalHeldForAdds(botAI))
     {
         if (RsHalionFirstCrosser(botAI) == bot)
         {
@@ -374,15 +394,21 @@ bool RsHalionEnterPortalAction::Execute(Event )
     if (!isFirstCrosser && !p3TwilightExit && !phase3)
     {
         Player* firstCrosser = RsHalionFirstCrosser(botAI);
-        if (!firstCrosser || !RsHalionInTwilight(firstCrosser))
+        bool const firstCrosserInside = firstCrosser && RsHalionInTwilight(firstCrosser);
+        if (!firstCrosserInside && !crossingStarted)
             return false;
 
-        uint32& seen = RubySanctumHelpers::RsState(bot->GetInstanceId()).portalSeen[bot->GetGUID()];
-        if (seen == 0)
-            seen = getMSTime();
+        // Preserve the normal one-second tank lead.  If the master crossed
+        // first, skip the delay so the assigned support group catches up.
+        if (firstCrosserInside)
+        {
+            uint32& seen = RubySanctumHelpers::RsState(bot->GetInstanceId()).portalSeen[bot->GetGUID()];
+            if (seen == 0)
+                seen = getMSTime();
 
-        if (GetMSTimeDiffToNow(seen) < 1000)
-            return false;
+            if (GetMSTimeDiffToNow(seen) < 1000)
+                return false;
+        }
     }
 
     float const distToPortal = bot->GetExactDist2d(portal->GetPositionX(), portal->GetPositionY());
@@ -456,6 +482,17 @@ bool RsHalionEnterPortalAction::Execute(Event )
 
     if (p3TwilightExit)
         bot->RemoveAura(SPELL_TWILIGHT_REALM);
+    else if (!RsHalionInTwilight(bot))
+    {
+        // Some imported portal templates still carry the unused WDB spell.
+        // The encounter's authoritative portal script applies this same aura;
+        // use it directly if GameObject::Use did not do so.
+        bot->CastSpell(bot, SPELL_TWILIGHT_REALM, true);
+    }
+
+    TC_LOG_INFO("server", "RS Halion portal used bot=%s instance=%u entry=%u twilight=%u exit=%u",
+        bot->GetName().c_str(), bot->GetInstanceId(), portal->GetEntry(), uint32(RsHalionInTwilight(bot)),
+        uint32(p3TwilightExit));
 
     if (!p3TwilightExit && !phase3)
     {

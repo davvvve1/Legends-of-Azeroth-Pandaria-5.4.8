@@ -19,6 +19,7 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
+#include "GameObjectAI.h"
 #include "Vehicle.h"
 #include "CombatAI.h"
 #include "Random.h"
@@ -109,7 +110,13 @@ enum ZoneKunLaiSummitSpellData
     SPELL_COSMETIC_EXPLOSION                = 46419,
 
     SPELL_THE_BURLAP_GRIND_BEGIN_RIDE       = 117621,
-    SPELL_HEAVY_HANDED                      = 117675
+    SPELL_HEAVY_HANDED                      = 117675,
+
+    // The Leader Hozen
+    SPELL_PERMANENT_FEIGN_DEATH             = 29266,
+    SPELL_ANGRY_MONKEY                      = 118072,
+    SPELL_TOSSING_BANANAS                   = 118061,
+    SPELL_GOING_APE                         = 120213
 };
 
 enum ZoneKunLaiSummitEvents
@@ -169,7 +176,13 @@ enum ZoneKunLaiSummitEvents
     EVENT_SLING_DERK,
     EVENT_POKE_YOU,
 
-    EVENT_AGONIZING_STRIKE
+    EVENT_AGONIZING_STRIKE,
+
+    EVENT_LEADER_HOZEN_SCARE,
+    EVENT_LEADER_HOZEN_BOSS,
+    EVENT_LEADER_HOZEN_SLING,
+    EVENT_LEADER_HOZEN_BANANAS,
+    EVENT_LEADER_HOZEN_GOING_APE
 };
 
 enum ZoneKunLaiSummitCreatures
@@ -198,12 +211,39 @@ enum ZoneKunLaiSummitCreatures
     NPC_ESCAPED_YAK                         = 59319,
     NPC_MUSKPAW_JR_YAK_WASH                = 59354,
     NPC_MISHI_FLIGHT_VEHICLE                = 66386,
+    NPC_BAN_BEARHEART_READY_CREDIT          = 61819,
     NPC_BAN_BEARHEART_GUARDIAN              = 62227,
+    NPC_BANS_BALLOON                        = 62217,
+    NPC_BANS_BALLOON_RIDE_CREDIT            = 63603,
     NPC_URBATAAR                            = 59483,
     NPC_EASTERN_OIL_RIG                     = 60096,
     NPC_SOUTHERN_OIL_RIG                    = 60098,
     NPC_WESTERN_OIL_RIG                     = 60099
 };
+
+enum LeaderHozenData
+{
+    QUEST_THE_LEADER_HOZEN                  = 30612,
+    NPC_CHOMP_CHOMP                         = 59419,
+    NPC_TASSLE                              = 59661,
+    NPC_OOK_OF_DOOK                         = 60188,
+    NPC_OOK_OF_DOOK_SPECTATOR               = 60598,
+    POINT_TASSLE_ARENA                      = 1,
+    ACTION_START_OOK_OF_DOOK                = 1
+};
+
+enum UnmaskingTheYaungolData
+{
+    QUEST_UNMASKING_THE_YAUNGOL            = 30690,
+    NPC_KOBAI                              = 61303,
+    NPC_MALEVOLENT_FURY                    = 61333,
+    NPC_STEAL_MASK_CREDIT                  = 61336,
+    SPELL_BLINDING_RAGE                    = 118863,
+    SPELL_STEAL_MASK                       = 118984,
+    SPELL_ADD_STEAL_MASK                   = 118985
+};
+
+Position const tassleArenaPosition = { 2970.75f, 1971.76f, 642.637f, 5.45652f };
 
 enum ZoneKunLaiSummitQuests
 {
@@ -224,7 +264,8 @@ enum ZoneKunLaiSummitQuests
     QUEST_INTO_THE_MONASTERY_ALLIANCE       = 31031,
     QUEST_FARMHAND_FREEDOM                  = 30571,
     QUEST_CHALLENGE_ACCEPTED                = 30514,
-    QUEST_FREE_THE_DISSENTERS               = 30967
+    QUEST_FREE_THE_DISSENTERS               = 30967,
+    QUEST_WHERE_ARE_MY_REINFORCEMENTS       = 30993
 };
 
 enum ZoneKunLaiSummitItems
@@ -1484,6 +1525,272 @@ class npc_shado_pan_guardian_monastery : public CreatureScript
 
             return true;
         }
+};
+
+class go_blinding_rage_trap : public GameObjectScript
+{
+public:
+    go_blinding_rage_trap() : GameObjectScript("go_blinding_rage_trap") { }
+
+    struct go_blinding_rage_trapAI : public GameObjectAI
+    {
+        go_blinding_rage_trapAI(GameObject* gameObject) : GameObjectAI(gameObject) { }
+
+        uint32 checkTimer = 200;
+        bool triggered = false;
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (triggered)
+                return;
+
+            if (checkTimer > diff)
+            {
+                checkTimer -= diff;
+                return;
+            }
+            checkTimer = 200;
+
+            Player* player = me->GetOwner() ? me->GetOwner()->ToPlayer() : nullptr;
+            if (!player || player->GetQuestStatus(QUEST_UNMASKING_THE_YAUNGOL) != QUEST_STATUS_INCOMPLETE ||
+                player->GetQuestObjectiveCounter(251650))
+                return;
+
+            Creature* kobai = me->FindNearestCreature(NPC_KOBAI, 6.0f, true);
+            if (!kobai || kobai->HasAura(SPELL_BLINDING_RAGE))
+                return;
+
+            triggered = true;
+            kobai->CombatStop(true);
+            kobai->getHostileRefManager().deleteReferences();
+            kobai->SetReactState(REACT_PASSIVE);
+            kobai->SetControlled(true, UNIT_STATE_STUNNED);
+            me->CastSpell(kobai, SPELL_BLINDING_RAGE);
+
+            // Aura 118985 exposes Steal Mask (118984) on ExtraActionButton1.
+            player->CastSpell(player, SPELL_ADD_STEAL_MASK, true);
+
+            ObjectGuid playerGuid = player->GetGUID();
+            kobai->m_Events.Schedule(20 * 1000, [kobai, playerGuid]()
+            {
+                if (!kobai->IsAlive() || !kobai->HasAura(SPELL_BLINDING_RAGE))
+                    return;
+
+                kobai->RemoveAurasDueToSpell(SPELL_BLINDING_RAGE);
+                kobai->SetControlled(false, UNIT_STATE_STUNNED);
+                kobai->SetReactState(REACT_AGGRESSIVE);
+                if (Player* trapper = ObjectAccessor::GetPlayer(*kobai, playerGuid))
+                {
+                    trapper->RemoveAurasDueToSpell(SPELL_ADD_STEAL_MASK);
+                    if (trapper->IsAlive())
+                        kobai->AI()->AttackStart(trapper);
+                }
+            });
+
+            me->SetLootState(GO_JUST_DEACTIVATED);
+        }
+    };
+
+    GameObjectAI* GetAI(GameObject* go) const override
+    {
+        return new go_blinding_rage_trapAI(go);
+    }
+};
+
+class spell_unmasking_yaungol_steal_mask : public SpellScript
+{
+    PrepareSpellScript(spell_unmasking_yaungol_steal_mask);
+
+    void HandleStealMask(SpellEffIndex /*effectIndex*/)
+    {
+        Player* player = GetCaster()->ToPlayer();
+        Creature* kobai = GetHitCreature();
+        if (!player || !kobai || kobai->GetEntry() != NPC_KOBAI ||
+            !kobai->HasAura(SPELL_BLINDING_RAGE) ||
+            player->GetQuestStatus(QUEST_UNMASKING_THE_YAUNGOL) != QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestObjectiveCounter(251650))
+            return;
+
+        player->KilledMonsterCredit(NPC_STEAL_MASK_CREDIT);
+        player->RemoveAurasDueToSpell(SPELL_ADD_STEAL_MASK);
+
+        kobai->RemoveAurasDueToSpell(SPELL_BLINDING_RAGE);
+        kobai->SetControlled(false, UNIT_STATE_STUNNED);
+        kobai->CombatStop(true);
+        kobai->SetReactState(REACT_PASSIVE);
+
+        Position spawnPosition = kobai->GetPosition();
+        if (Creature* fury = player->SummonCreature(NPC_MALEVOLENT_FURY,
+            spawnPosition, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN,
+            5 * MINUTE * IN_MILLISECONDS, 0, player->GetGUID()))
+        {
+            fury->SetFaction(14);
+            fury->SetReactState(REACT_AGGRESSIVE);
+            fury->AI()->AttackStart(player);
+        }
+
+        kobai->SetRespawnDelay(30);
+        kobai->DespawnOrUnsummon(500);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(
+            spell_unmasking_yaungol_steal_mask::HandleStealMask,
+            EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+namespace BansBalloon
+{
+    Position const FlightPath[] =
+    {
+        { 3225.0f, 2707.0f, 615.0f, 0.0f },
+        { 3295.0f, 2695.0f, 665.0f, 0.0f },
+        { 3375.0f, 2678.0f, 715.0f, 0.0f },
+        { 3450.0f, 2660.0f, 755.0f, 0.0f },
+        { 3515.0f, 2643.0f, 775.0f, 0.0f },
+        { 3552.0f, 2633.0f, 759.0f, 0.0f }
+    };
+
+    Position const Start = { 3180.68f, 2715.01f, 583.93f, 2.397f };
+    Position const Landing = { 3551.5f, 2634.0f, 756.1f, 3.525f };
+}
+
+struct npc_bans_balloon : public VehicleAI
+{
+    npc_bans_balloon(Creature* creature) : VehicleAI(creature) { }
+
+    ObjectGuid passengerGuid;
+    uint32 launchDelay = 0;
+    uint8 pathPoint = 0;
+    bool flying = false;
+    bool landed = false;
+
+    // The first vehicle seat charms its base. Keep the scripted flight AI.
+    void OnCharmed(bool /*apply*/) override { }
+
+    void Reset() override
+    {
+        passengerGuid.Clear();
+        launchDelay = 0;
+        pathPoint = 0;
+        flying = false;
+        landed = false;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetCanFly(true);
+        me->SetDisableGravity(true);
+        me->SetWalk(false);
+        me->SetSpeed(MOVE_FLIGHT, 2.5f);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+    }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+    {
+        Player* player = passenger->ToPlayer();
+        if (!player)
+            return;
+
+        if (apply)
+        {
+            // Entry 62217 is also used by an unrelated balloon elsewhere.
+            // Only the Winter's Blossom spawn may run quest 30993.
+            if (me->GetExactDist2d(BansBalloon::Start) > 80.0f ||
+                player->GetQuestStatus(QUEST_WHERE_ARE_MY_REINFORCEMENTS) != QUEST_STATUS_INCOMPLETE)
+            {
+                player->ExitVehicle();
+                return;
+            }
+
+            passengerGuid = player->GetGUID();
+            // Also repairs characters that accepted the quest before this
+            // update and therefore never received the ready-to-leave credit.
+            player->KilledMonsterCredit(NPC_BAN_BEARHEART_READY_CREDIT);
+            player->SetClientControl(me, false);
+            launchDelay = 500;
+            return;
+        }
+
+        if (player->GetGUID() != passengerGuid || landed)
+            return;
+
+        // A manual early exit must never leave the player falling in the
+        // mountains. Return them to the boarding point and reset the balloon.
+        ObjectGuid guid = player->GetGUID();
+        player->m_Events.Schedule(100, [guid]()
+        {
+            if (Player* rider = ObjectAccessor::FindPlayer(guid))
+                if (rider->IsAlive() && rider->GetMapId() == 870 && !rider->GetVehicle())
+                    rider->NearTeleportTo(BansBalloon::Start.GetPositionX(),
+                        BansBalloon::Start.GetPositionY(), BansBalloon::Start.GetPositionZ(),
+                        BansBalloon::Start.GetOrientation());
+        });
+        me->SetRespawnDelay(5);
+        me->DespawnOrUnsummon(200);
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != POINT_MOTION_TYPE || !flying || id != pathPoint + 1)
+            return;
+
+        ++pathPoint;
+        if (pathPoint < std::size(BansBalloon::FlightPath))
+        {
+            me->GetMotionMaster()->MovePoint(pathPoint + 1,
+                BansBalloon::FlightPath[pathPoint], false);
+            return;
+        }
+
+        landed = true;
+        if (Player* player = ObjectAccessor::GetPlayer(*me, passengerGuid))
+        {
+            if (player->GetQuestStatus(QUEST_WHERE_ARE_MY_REINFORCEMENTS) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_BANS_BALLOON_RIDE_CREDIT);
+
+            if (player->GetVehicleBase() == me)
+                player->ExitVehicle();
+
+            ObjectGuid guid = player->GetGUID();
+            player->m_Events.Schedule(100, [guid]()
+            {
+                if (Player* rider = ObjectAccessor::FindPlayer(guid))
+                    if (rider->IsAlive() && rider->GetMapId() == 870 && !rider->GetVehicle())
+                        rider->NearTeleportTo(BansBalloon::Landing.GetPositionX(),
+                            BansBalloon::Landing.GetPositionY(), BansBalloon::Landing.GetPositionZ(),
+                            BansBalloon::Landing.GetOrientation());
+            });
+        }
+
+        me->SetRespawnDelay(5);
+        me->DespawnOrUnsummon(500);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!launchDelay || flying)
+            return;
+
+        if (launchDelay > diff)
+        {
+            launchDelay -= diff;
+            return;
+        }
+
+        launchDelay = 0;
+        Player* player = ObjectAccessor::GetPlayer(*me, passengerGuid);
+        if (!player || player->GetVehicleBase() != me ||
+            player->GetQuestStatus(QUEST_WHERE_ARE_MY_REINFORCEMENTS) != QUEST_STATUS_INCOMPLETE)
+        {
+            if (player && player->GetVehicleBase() == me)
+                player->ExitVehicle();
+            return;
+        }
+
+        flying = true;
+        pathPoint = 0;
+        me->GetMotionMaster()->MovePoint(1, BansBalloon::FlightPath[0], false);
+    }
 };
 
 class npc_lorewalker_cho_bashon : public CreatureScript
@@ -2825,6 +3132,287 @@ struct npc_broketooth_leaper : public hozen_grind_baseAI
     }
 };
 
+// Quest 30612 - The Leader Hozen
+// Tassle starts the missing arena sequence when a quest player approaches.
+struct npc_tassle_leader_hozen : public ScriptedAI
+{
+    npc_tassle_leader_hozen(Creature* creature) : ScriptedAI(creature) { }
+
+    EventMap events;
+    ObjectGuid playerGUID;
+    bool eventStarted = false;
+
+    void Reset() override
+    {
+        events.Reset();
+        playerGUID.Clear();
+        eventStarted = false;
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (eventStarted || !who || who->GetTypeId() != TYPEID_PLAYER || !me->IsWithinDistInMap(who, 8.0f))
+            return;
+
+        Player* player = who->ToPlayer();
+        if (player->GetQuestStatus(QUEST_THE_LEADER_HOZEN) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        Creature* boss = me->FindNearestCreature(NPC_OOK_OF_DOOK, 80.0f, true);
+        Creature* chomp = me->FindNearestCreature(NPC_CHOMP_CHOMP, 80.0f, true);
+        if (!boss || boss->IsVisible() || !chomp)
+            return;
+
+        eventStarted = true;
+        playerGUID = player->GetGUID();
+
+        if (me->GetEntry() == NPC_TASSLE)
+            me->GetMotionMaster()->MovePoint(POINT_TASSLE_ARENA, tassleArenaPosition);
+        else
+            events.ScheduleEvent(EVENT_LEADER_HOZEN_SCARE, 500);
+    }
+
+    void MovementInform(uint32 type, uint32 pointId) override
+    {
+        if (type == POINT_MOTION_TYPE && pointId == POINT_TASSLE_ARENA)
+            events.ScheduleEvent(EVENT_LEADER_HOZEN_SCARE, 500);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        events.Update(diff);
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_LEADER_HOZEN_SCARE:
+                {
+                    if (Creature* chomp = me->FindNearestCreature(NPC_CHOMP_CHOMP, 60.0f, true))
+                    {
+                        std::list<Player*> players;
+                        GetPlayerListInGrid(players, me, 60.0f);
+                        for (Player* player : players)
+                            if (player->GetQuestStatus(QUEST_THE_LEADER_HOZEN) == QUEST_STATUS_INCOMPLETE)
+                                player->KilledMonsterCredit(NPC_CHOMP_CHOMP);
+
+                        chomp->GetMotionMaster()->MoveFleeing(me, 4000);
+                        chomp->SetRespawnDelay(60);
+                        chomp->DespawnOrUnsummon(4000);
+                    }
+
+                    events.ScheduleEvent(EVENT_LEADER_HOZEN_BOSS, 2500);
+                    break;
+                }
+                case EVENT_LEADER_HOZEN_BOSS:
+                {
+                    if (Creature* boss = me->FindNearestCreature(NPC_OOK_OF_DOOK, 80.0f, true))
+                    {
+                        boss->AI()->SetGUID(playerGUID);
+                        boss->AI()->DoAction(ACTION_START_OOK_OF_DOOK);
+                    }
+
+                    me->GetMotionMaster()->MoveTargetedHome();
+                    eventStarted = false;
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+};
+
+// Hidden combat copy of Ook of Dook. The rooftop copy remains as the event
+// actor until Tassle drives Chomp Chomp away.
+struct npc_ook_of_dook_leader_hozen : public ScriptedAI
+{
+    npc_ook_of_dook_leader_hozen(Creature* creature) : ScriptedAI(creature) { }
+
+    EventMap events;
+    ObjectGuid playerGUID;
+    bool active = false;
+
+    void Reset() override
+    {
+        events.Reset();
+        playerGUID.Clear();
+        active = false;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetVisible(false);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
+
+        if (Creature* spectator = me->FindNearestCreature(NPC_OOK_OF_DOOK_SPECTATOR, 40.0f, true))
+            spectator->SetVisible(true);
+    }
+
+    void SetGUID(ObjectGuid guid, int32 /*type*/) override
+    {
+        playerGUID = guid;
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action != ACTION_START_OOK_OF_DOOK || active)
+            return;
+
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGUID);
+        if (!player || player->GetQuestStatus(QUEST_THE_LEADER_HOZEN) != QUEST_STATUS_INCOMPLETE)
+            player = me->SelectNearestPlayer(80.0f);
+
+        if (!player)
+            return;
+
+        active = true;
+        me->RemoveAurasDueToSpell(SPELL_PERMANENT_FEIGN_DEATH);
+        me->SetFullHealth();
+        me->SetVisible(true);
+        me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
+        me->SetFaction(16);
+        me->SetReactState(REACT_AGGRESSIVE);
+
+        if (Creature* spectator = me->FindNearestCreature(NPC_OOK_OF_DOOK_SPECTATOR, 40.0f, true))
+            spectator->SetVisible(false);
+
+        DoCast(me, SPELL_ANGRY_MONKEY, true);
+        AttackStart(player);
+        events.ScheduleEvent(EVENT_LEADER_HOZEN_SLING, 2000);
+        events.ScheduleEvent(EVENT_LEADER_HOZEN_BANANAS, 7000);
+        events.ScheduleEvent(EVENT_LEADER_HOZEN_GOING_APE, 12000);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (Creature* spectator = me->FindNearestCreature(NPC_OOK_OF_DOOK_SPECTATOR, 40.0f, true))
+            spectator->SetVisible(true);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!active || !UpdateVictim())
+            return;
+
+        events.Update(diff);
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_LEADER_HOZEN_SLING:
+                    DoCastVictim(SPELL_SLING_DERK);
+                    events.ScheduleEvent(EVENT_LEADER_HOZEN_SLING, 5000);
+                    break;
+                case EVENT_LEADER_HOZEN_BANANAS:
+                    DoCastVictim(SPELL_TOSSING_BANANAS);
+                    events.ScheduleEvent(EVENT_LEADER_HOZEN_BANANAS, 10000);
+                    break;
+                case EVENT_LEADER_HOZEN_GOING_APE:
+                    DoCast(me, SPELL_GOING_APE);
+                    events.ScheduleEvent(EVENT_LEADER_HOZEN_GOING_APE, 18000);
+                    break;
+                default:
+                    break;
+            }
+            break;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+namespace HoledUp
+{
+    enum Quests
+    {
+        QUEST_HOLED_UP_1 = 30673,
+        QUEST_HOLED_UP_2 = 30680,
+        QUEST_HOLED_UP_3 = 30681,
+        QUEST_HOLED_UP_4 = 30682
+    };
+
+    enum Survivors
+    {
+        NPC_SYA_ZHONG             = 60178,
+        NPC_JIN_WARMKEG           = 60187,
+        NPC_YA_FIREBOUGH          = 60189,
+        NPC_OLD_LADY_FUNG         = 60190,
+        NPC_JIN_WARMKEG_FOLLOWER  = 60229,
+        NPC_YA_FIREBOUGH_FOLLOWER = 60234,
+        NPC_OLD_LADY_FOLLOWER     = 60235,
+        NPC_SYA_ZHONG_FOLLOWER    = 60236
+    };
+
+    uint32 GetActiveQuest(Player* player)
+    {
+        uint32 const quests[] = { QUEST_HOLED_UP_1, QUEST_HOLED_UP_2, QUEST_HOLED_UP_3, QUEST_HOLED_UP_4 };
+        for (uint32 questId : quests)
+            if (player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+                return questId;
+
+        return 0;
+    }
+
+    uint32 GetFollowerEntry(uint32 survivorEntry)
+    {
+        switch (survivorEntry)
+        {
+            case NPC_SYA_ZHONG:     return NPC_SYA_ZHONG_FOLLOWER;
+            case NPC_JIN_WARMKEG:   return NPC_JIN_WARMKEG_FOLLOWER;
+            case NPC_YA_FIREBOUGH:  return NPC_YA_FIREBOUGH_FOLLOWER;
+            case NPC_OLD_LADY_FUNG: return NPC_OLD_LADY_FOLLOWER;
+            default:                return 0;
+        }
+    }
+
+    void Rescue(Player* player, Creature* survivor)
+    {
+        uint32 questId = GetActiveQuest(player);
+        if (!questId || player->GetReqKillOrCastCurrentCount(questId, survivor->GetEntry()))
+            return;
+
+        player->KilledMonsterCredit(survivor->GetEntry());
+
+        uint32 followerEntry = GetFollowerEntry(survivor->GetEntry());
+        if (!followerEntry)
+            return;
+
+        if (TempSummon* follower = player->SummonCreature(followerEntry, survivor->GetPosition(),
+            TEMPSUMMON_TIMED_DESPAWN, 10 * MINUTE * IN_MILLISECONDS))
+        {
+            follower->SetReactState(REACT_PASSIVE);
+            follower->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_NPC);
+            follower->GetMotionMaster()->MoveFollow(player, 2.5f, frand(0.0f, 2.0f * M_PI));
+        }
+    }
+}
+
+class npc_holed_up_survivor : public CreatureScript
+{
+public:
+    npc_holed_up_survivor() : CreatureScript("npc_holed_up_survivor") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        HoledUp::Rescue(player, creature);
+        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
+    {
+        if (quest && quest->GetQuestId() == HoledUp::QUEST_HOLED_UP_4)
+            HoledUp::Rescue(player, creature);
+
+        return true;
+    }
+};
+
 void AddSC_kun_lai_summit()
 {
     new creature_script<npc_nessos_the_oracle>("npc_nessos_the_oracle");
@@ -2848,6 +3436,9 @@ void AddSC_kun_lai_summit()
     new npc_inkgill_dissenter();
     new npc_shado_pan_sentinel();
     new npc_shado_pan_guardian_monastery();
+    new go_blinding_rage_trap();
+    new spell_script<spell_unmasking_yaungol_steal_mask>("spell_unmasking_yaungol_steal_mask");
+    new creature_script<npc_bans_balloon>("npc_bans_balloon");
     new npc_lorewalker_cho_bashon();
     new npc_mishi_staying_connected();
     new creature_script<npc_lorewalker_cho_bashon_summoned>("npc_lorewalker_cho_bashon_summoned");
@@ -2873,4 +3464,7 @@ void AddSC_kun_lai_summit()
     new creature_script<npc_ooking_shaman>("npc_ooking_shaman");
     new creature_script<npc_silverback_piker>("npc_silverback_piker");
     new creature_script<npc_broketooth_leaper>("npc_broketooth_leaper");
+    new creature_script<npc_tassle_leader_hozen>("npc_tassle_leader_hozen");
+    new creature_script<npc_ook_of_dook_leader_hozen>("npc_ook_of_dook_leader_hozen");
+    new npc_holed_up_survivor();
 }

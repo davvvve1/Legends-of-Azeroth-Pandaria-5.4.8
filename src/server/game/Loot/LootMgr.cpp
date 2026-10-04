@@ -112,7 +112,8 @@ class LootTemplate::LootGroup                               // A set of loot def
         LootStoreItemList ExplicitlyChanced;                // Entries with chances defined in DB
         LootStoreItemList EqualChanced;                     // Zero chances - every entry takes the same chance
 
-        LootStoreItem const* Roll(Loot& loot, uint32 lootmode, Player* player, bool guaranteed = false) const;
+        LootStoreItem const* Roll(Loot& loot, uint32 lootmode, Player* player,
+            bool guaranteed = false, float chanceMultiplier = 1.0f) const;
 
         // This class must never be copied - storing pointers
         LootGroup(LootGroup const&);
@@ -300,22 +301,23 @@ void LootStore::ReportNotExistedId(uint32 id) const
 
 // Checks if the entry (quest, non-quest, reference) takes it's chance (at loot generation)
 // RATE_DROP_ITEMS is no longer used for all types of entries
-bool LootStoreItem::Roll(bool rate) const
+bool LootStoreItem::Roll(bool rate, float chanceMultiplier) const
 {
-    if (chance >= 100.0f)
+    float effectiveChance = chance * std::max(0.0f, chanceMultiplier);
+    if (effectiveChance >= 100.0f)
         return true;
 
     if (mincountOrRef < 0)                                   // reference case
-        return roll_chance_f(chance* (rate ? sWorld->getRate(RATE_DROP_ITEM_REFERENCED) : 1.0f));
+        return roll_chance_f(effectiveChance * (rate ? sWorld->getRate(RATE_DROP_ITEM_REFERENCED) : 1.0f));
 
     if (type == LOOT_ITEM_TYPE_ITEM)
     {
         ItemTemplate const* pProto = sObjectMgr->GetItemTemplate(itemid);
         float qualityModifier = pProto && rate ? sWorld->getRate(qualityToRate[pProto->Quality]) : 1.0f;
-        return roll_chance_f(chance * qualityModifier);
+        return roll_chance_f(effectiveChance * qualityModifier);
     }
     else if (type == LOOT_ITEM_TYPE_CURRENCY)
-        return roll_chance_f(chance);
+        return roll_chance_f(effectiveChance);
 
     return false;
 }
@@ -683,11 +685,18 @@ bool Loot::FillLoot(Object* source, uint32 lootId, LootStore const& store, Playe
 
     uint32 lootmode = 1 << difficulty;
     
-    // Only creature corpse loot inside AQ40 gets guaranteed drops. Shared
-    // reference templates retain their random item selection.
-    LootRollPolicy policy = source && source->GetTypeId() == TYPEID_UNIT &&
-        source->ToCreature()->GetMapId() == 531 && &store == &LootTemplates_Creature
-        ? LootRollPolicy::AllDirectItems : LootRollPolicy::Normal;
+    // AQ40 retains its existing guaranteed-direct-item rule. Other raid
+    // bosses receive a five-times chance multiplier and two group selections.
+    LootRollPolicy policy = LootRollPolicy::Normal;
+    if (source && source->GetTypeId() == TYPEID_UNIT &&
+        &store == &LootTemplates_Creature)
+    {
+        Creature* creature = source->ToCreature();
+        if (creature->GetMapId() == 531)
+            policy = LootRollPolicy::AllDirectItems;
+        else if (creature->GetMap()->IsRaid() && creature->IsDungeonBoss())
+            policy = LootRollPolicy::BoostedRaidBoss;
+    }
     tab->Process(*this, store.IsRatesAllowed(), lootmode, 0, lootOwner, policy);
 
     if (GetSource() && GetSource()->GetTypeId() == TYPEID_UNIT)
@@ -725,7 +734,8 @@ bool Loot::FillLoot(Object* source, uint32 lootId, LootStore const& store, Playe
         for (auto&& looter : looters)
         {
             if (looter != lootOwner)
-                tab->Process(*this, store.IsRatesAllowed(), lootmode, 0, looter);
+                tab->Process(*this, store.IsRatesAllowed(), lootmode, 0,
+                    looter, policy);
             FillNotNormalLootFor(looter, true);
         }
     }
@@ -1844,7 +1854,8 @@ void LootTemplate::LootGroup::AddEntry(LootStoreItem* item)
 }
 
 // Rolls an item from the group, returns NULL if all miss their chances
-LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint32 lootmode, Player* player, bool guaranteed) const
+LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint32 lootmode,
+    Player* player, bool guaranteed, float chanceMultiplier) const
 {
     // 1) Fuck floats
     const int32 precision = 10000;
@@ -1853,6 +1864,20 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint32 lootmode, 
 
     LootStoreItemList possibleLoot = ExplicitlyChanced;
     possibleLoot.remove_if(LootGroupInvalidSelector(loot, lootmode, player));
+
+    chanceMultiplier = std::max(0.0f, chanceMultiplier);
+
+    // Scaling a complete group beyond 100% must not bias entries near the
+    // beginning of the list. Expand the roll interval with the scaled sum so
+    // the group becomes guaranteed while retaining its relative weights.
+    if (!guaranteed && chanceMultiplier != 1.0f)
+    {
+        float scaledTotal = 0.0f;
+        for (LootStoreItem const* item : possibleLoot)
+            scaledTotal += item->chance * chanceMultiplier;
+        if (scaledTotal > maxRoll)
+            maxRoll = scaledTotal;
+    }
 
     bool guaranteedLoot = false;
     // Assume this is how we determine bosses
@@ -1865,7 +1890,8 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint32 lootmode, 
 
         // Poor man's check, but whatever
         guaranteedLoot = std::abs(sum - 100.0f) < 1.0f;
-        if (guaranteedLoot && possibleLoot.size() < ExplicitlyChanced.size())
+        if (guaranteedLoot && chanceMultiplier == 1.0f &&
+            possibleLoot.size() < ExplicitlyChanced.size())
         {
             for (auto&& itr : ExplicitlyChanced)
                 if (std::find(possibleLoot.begin(), possibleLoot.end(), itr) == possibleLoot.end())
@@ -1895,14 +1921,15 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint32 lootmode, 
         for (LootStoreItemList::const_iterator itr = possibleLoot.begin(); itr != possibleLoot.end(); ++itr)   // check each explicitly chanced entry in the template and modify its chance based on quality.
         {
             LootStoreItem* item = *itr;
-            if (item->chance >= 100.0f)
+            float effectiveChance = item->chance * chanceMultiplier;
+            if (chanceMultiplier == 1.0f && item->chance >= 100.0f)
                 return item;
 
             // Still error but at least we tried
             // e.g.: Someone wants 3 items to be rolled, and sets 33.3333 chance per item, but 333333 * 3 = 999999 and if we roll 1000000
             // 1000000 - 333333 - 333333 - 333333 = 1 still > 0 (same with floats, 100.0f - 33.3333333 - 33.3333333 - 33.3333333 will be like something > 0 depends on how many '3' after point chance has id DB) 
             // ceil, on the other hand, returns 333334 and even with 1000000 roll, it will be 1000000 - 333334 - 333334 - 333334 = -2
-            roll -= int32(std::ceil(item->chance * precision));
+            roll -= int32(std::ceil(effectiveChance * precision));
             if (roll <= 0)
                 return item;
         }
@@ -1968,7 +1995,12 @@ void LootTemplate::LootGroup::Process(Loot& loot, uint32 lootmode, Player* playe
         return;
     }
 
-    if (LootStoreItem const* item = Roll(loot, lootmode, player, policy != LootRollPolicy::Normal))
+    bool guaranteed = policy != LootRollPolicy::Normal &&
+        policy != LootRollPolicy::BoostedRaidBoss;
+    float chanceMultiplier = policy == LootRollPolicy::BoostedRaidBoss ?
+        5.0f : 1.0f;
+    if (LootStoreItem const* item = Roll(loot, lootmode, player,
+        guaranteed, chanceMultiplier))
         loot.AddItem(*item, player);
 }
 
@@ -2108,7 +2140,9 @@ void LootTemplate::Process(Loot& loot, bool rate, uint32 lootmode, uint8 groupId
         if (!Groups[groupId - 1])
             return;
 
-        Groups[groupId - 1]->Process(loot, lootmode, player, policy);
+        uint8 groupRolls = policy == LootRollPolicy::BoostedRaidBoss ? 2 : 1;
+        for (uint8 roll = 0; roll < groupRolls; ++roll)
+            Groups[groupId - 1]->Process(loot, lootmode, player, policy);
         return;
     }
 
@@ -2119,7 +2153,11 @@ void LootTemplate::Process(Loot& loot, bool rate, uint32 lootmode, uint8 groupId
         if (item->lootmode && !(item->lootmode & lootmode))
             continue;
 
-        if (policy == LootRollPolicy::Normal && !item->Roll(rate))
+        float chanceMultiplier = policy == LootRollPolicy::BoostedRaidBoss ?
+            5.0f : 1.0f;
+        if ((policy == LootRollPolicy::Normal ||
+            policy == LootRollPolicy::BoostedRaidBoss) &&
+            !item->Roll(rate, chanceMultiplier))
             continue;                                           // Bad luck for the entry
 
         if (item->mincountOrRef < 0 && item->type == LOOT_ITEM_TYPE_ITEM) // References processing
@@ -2131,16 +2169,19 @@ void LootTemplate::Process(Loot& loot, bool rate, uint32 lootmode, uint8 groupId
             uint32 maxcount = uint32(float(item->maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
                 Referenced->Process(loot, rate, lootmode, item->group, player,
-                    policy == LootRollPolicy::Normal ? policy : LootRollPolicy::GuaranteedGroups);
+                    policy == LootRollPolicy::AllDirectItems ?
+                        LootRollPolicy::GuaranteedGroups : policy);
         }
         else                                                    // Plain entries (not a reference, not grouped)
             loot.AddItem(*item, player);                        // Chance is already checked, just add
     }
 
     // Now processing groups
+    uint8 groupRolls = policy == LootRollPolicy::BoostedRaidBoss ? 2 : 1;
     for (LootGroups::const_iterator i = Groups.begin(); i != Groups.end(); ++i)
         if (LootGroup* group = *i)
-            group->Process(loot, lootmode, player, policy);
+            for (uint8 roll = 0; roll < groupRolls; ++roll)
+                group->Process(loot, lootmode, player, policy);
 }
 
 // True if template includes at least 1 quest drop entry

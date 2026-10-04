@@ -166,6 +166,13 @@ bool AuctionBotSeller::Initialize()
         if (prototype->GetQuality() >= MAX_AUCTION_QUALITY)
             continue;
 
+        // Equipment is intentionally player-supplied. Never seed weapons or
+        // armor from AHBot, even if an older installed config still assigns
+        // these classes a non-zero priority.
+        if (prototype->GetClass() == ITEM_CLASS_WEAPON ||
+            prototype->GetClass() == ITEM_CLASS_ARMOR)
+            continue;
+
         // Bags: only sell the single largest bag of each bag subclass.
         // This removes all smaller duplicate bag variants from the AH.
         if (prototype->GetClass() == ITEM_CLASS_CONTAINER)
@@ -473,9 +480,10 @@ void AuctionBotSeller::LoadItemsQuantity(SellerConfiguration& config)
 
             uint32 weightedAmount = std::lroundf(classPrio / float(totalPrioPerQuality[j]) * qualityAmount);
 
-            // Keep a target of 50 auctions for every item in the custom pool.
+            // Keep a target of 50 auctions for every enabled item class in the
+            // custom pool. A zero class priority must remain a hard disable.
             // Example: 200 allowed item entries => target 10,000 auctions.
-            if (!_itemPool[j][i].empty())
+            if (!_itemPool[j][i].empty() && classPrio)
                 weightedAmount = static_cast<uint32>(_itemPool[j][i].size()) * 50;
 
             config.SetItemsAmountPerClass(AuctionQuality(j), ItemClass(i), weightedAmount);

@@ -285,6 +285,40 @@ inline bool RsHalionP3TwilightAssigned(Player* bot)
     if (PlayerBotSpec::IsTank(bot))
         return true;
 
+    // Small scaled raids may only have the physical main tank.  Keep one
+    // damage bot in Twilight as a virtual second tank instead of letting the
+    // whole raid wait forever for an off-tank that does not exist.
+    if (Group* group = bot->GetGroup())
+    {
+        bool hasOffTank = false;
+        Player* virtualTank = nullptr;
+        Player* fallback = nullptr;
+        for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+        {
+            Player* member = itr->GetSource();
+            if (!member || !member->IsAlive() || PlayerBotSpec::IsMainTank(member))
+                continue;
+
+            if (PlayerBotSpec::IsTank(member))
+            {
+                hasOffTank = true;
+                break;
+            }
+
+            if (!GET_PLAYERBOT_AI(member))
+                continue;
+
+            if (!fallback || member->GetGUID() < fallback->GetGUID())
+                fallback = member;
+            if (!PlayerBotSpec::IsHeal(member) &&
+                (!virtualTank || member->GetGUID() < virtualTank->GetGUID()))
+                virtualTank = member;
+        }
+
+        if (!hasOffTank && (virtualTank ? virtualTank : fallback) == bot)
+            return true;
+    }
+
     std::map<ObjectGuid, bool>& assignment = RubySanctumHelpers::RsState(bot->GetInstanceId()).p3TwilightAssignment;
     ObjectGuid const selfGuid = bot->GetGUID();
 
@@ -657,6 +691,63 @@ inline void RsHalionCollectHazardPools(Unit* from, std::vector<Unit*>& pools)
     }
 }
 
+inline constexpr float RS_HALION_FIRE_DANGER = 8.0f;
+inline constexpr float RS_HALION_FIRE_ESCAPE_STEP = 11.0f;
+inline constexpr float RS_HALION_ARENA_SAFE_RADIUS = 43.0f;
+
+inline void RsHalionCollectMeteorFire(Unit* from, std::vector<Unit*>& fires)
+{
+    for (uint32 const entry : {NPC_METEOR_STRIKE_NORTH, NPC_METEOR_STRIKE_EAST,
+                               NPC_METEOR_STRIKE_WEST, NPC_METEOR_STRIKE_SOUTH,
+                               NPC_METEOR_STRIKE_FLAME})
+    {
+        std::list<Creature*> found;
+        from->GetCreatureListWithEntryInGrid(found, entry, 100.0f);
+        for (Creature* fire : found)
+            if (fire && fire->IsAlive())
+                fires.push_back(fire);
+    }
+}
+
+inline bool RsHalionInMeteorFire(Player* bot, std::vector<Unit*> const& fires)
+{
+    for (Unit* fire : fires)
+        if (bot->GetExactDist2d(fire) <= RS_HALION_FIRE_DANGER)
+            return true;
+    return false;
+}
+
+inline bool RsHalionFindFireEscape(Player* bot, std::vector<Unit*> const& fires, float& outX, float& outY)
+{
+    float bestScore = -1.0f;
+    for (uint8 i = 0; i < 16; ++i)
+    {
+        float const angle = 2.0f * static_cast<float>(M_PI) * float(i) / 16.0f;
+        float const x = bot->GetPositionX() + std::cos(angle) * RS_HALION_FIRE_ESCAPE_STEP;
+        float const y = bot->GetPositionY() + std::sin(angle) * RS_HALION_FIRE_ESCAPE_STEP;
+
+        float const centerDx = x - RS_HALION_CENTER_POSITION.GetPositionX();
+        float const centerDy = y - RS_HALION_CENTER_POSITION.GetPositionY();
+        if (std::sqrt(centerDx * centerDx + centerDy * centerDy) > RS_HALION_ARENA_SAFE_RADIUS)
+            continue;
+        if (!bot->IsWithinLOS(x, y, bot->GetPositionZ()))
+            continue;
+
+        float nearest = std::numeric_limits<float>::max();
+        for (Unit* fire : fires)
+            nearest = std::min(nearest, fire->GetExactDist2d(x, y));
+
+        if (nearest <= RS_HALION_FIRE_DANGER || nearest <= bestScore)
+            continue;
+
+        bestScore = nearest;
+        outX = x;
+        outY = y;
+    }
+
+    return bestScore > 0.0f;
+}
+
 inline bool RsHalionSpotClearOfPools(std::vector<Unit*> const& pools, float px, float py)
 {
     for (Unit* pool : pools)
@@ -756,6 +847,23 @@ inline bool RsHalionAnyAddAlive(PlayerbotAI* botAI)
     return RsFindTarget(botAI, RsHalionIsAdd) != nullptr;
 }
 
+inline bool RsHalionCrossingStarted(Player* bot)
+{
+    Group* group = bot ? bot->GetGroup() : nullptr;
+    if (!group)
+        return false;
+
+    for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+    {
+        Player* member = itr->GetSource();
+        if (member && member->IsAlive() && member->GetInstanceId() == bot->GetInstanceId() &&
+            RsHalionInTwilight(member))
+            return true;
+    }
+
+    return false;
+}
+
 inline constexpr uint32 RS_HALION_PORTAL_ADD_CLEAR_MS = 5000;
 
 inline bool RsHalionPortalHeldForAdds(PlayerbotAI* botAI)
@@ -774,14 +882,11 @@ inline bool RsHalionPortalHeldForAdds(PlayerbotAI* botAI)
     if (RsHalionAnyAddAlive(botAI))
         return true;
 
-    RubySanctumHelpers::PortalAddGate& gate = state.portalAddGate;
-    uint32 const now = getMSTime();
-
-    if (gate.armTime == 0)
-        gate.armTime = now;
-
-    uint32 const since = std::max(gate.armTime, gate.lastAddAliveTime);
-    return getMSTimeDiff(since, now) < RS_HALION_PORTAL_ADD_CLEAR_MS;
+    // Do not impose a blind five-second pause merely because the portal
+    // appeared.  Only wait when an add was actually observed alive.
+    RubySanctumHelpers::PortalAddGate const& gate = state.portalAddGate;
+    return gate.lastAddAliveTime != 0 &&
+           GetMSTimeDiffToNow(gate.lastAddAliveTime) < RS_HALION_PORTAL_ADD_CLEAR_MS;
 }
 
 inline uint32 RsHalionPortalAddHoldRemainingMs(PlayerbotAI* botAI)
@@ -800,16 +905,86 @@ inline uint32 RsHalionPortalAddHoldRemainingMs(PlayerbotAI* botAI)
 }
 
 inline bool RsHalionCutterShouldMove(uint32 instanceId);
+inline Player* RsHalionFirstCrosser(PlayerbotAI* botAI);
+
+inline bool RsHalionP2TwilightHealerAssigned(Player* bot)
+{
+    if (!PlayerBotSpec::IsHeal(bot, true))
+        return true;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return true;
+
+    RubySanctumHelpers::RsInstanceState& state =
+        RubySanctumHelpers::RsState(bot->GetInstanceId());
+
+    // Keep one stable healer reservation for the whole pull. Recomputing a
+    // half-list independently while members die or cross can make every
+    // surviving healer decide that the other one was selected.
+    if (!state.p2TwilightHealerGuid.IsEmpty())
+    {
+        for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+        {
+            Player* member = itr->GetSource();
+            if (member && member->GetGUID() == state.p2TwilightHealerGuid && member->IsAlive() &&
+                member->GetInstanceId() == bot->GetInstanceId() && GET_PLAYERBOT_AI(member) &&
+                PlayerBotSpec::IsHeal(member, true))
+                return member == bot;
+        }
+
+        state.p2TwilightHealerGuid.Clear();
+    }
+
+    std::vector<Player*> healers;
+    for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+    {
+        Player* member = itr->GetSource();
+        if (!member || !member->IsAlive() || member->GetInstanceId() != bot->GetInstanceId() ||
+            !GET_PLAYERBOT_AI(member) || !PlayerBotSpec::IsHeal(member, true))
+            continue;
+
+        healers.push_back(member);
+    }
+
+    if (healers.empty())
+        return false;
+
+    std::sort(healers.begin(), healers.end(), [](Player* left, Player* right)
+    {
+        return left->GetGUID() < right->GetGUID();
+    });
+
+    Player* selected = healers.back();
+    state.p2TwilightHealerGuid = selected->GetGUID();
+    TC_LOG_INFO("server", "RS Halion P2 Twilight healer reserved bot=%s instance=%u healers=%u",
+        selected->GetName().c_str(), bot->GetInstanceId(), uint32(healers.size()));
+
+    return selected == bot;
+}
 
 inline bool RsHalionEnteringTwilight(PlayerbotAI* botAI, Player* bot)
 {
-    if (PlayerBotSpec::IsMainTank(bot) || RsHalionInTwilight(bot))
+    if (RsHalionInTwilight(bot))
+        return false;
+
+    // Full raids send an off-tank first.  In a scaled raid with only one
+    // tank, that main tank must lead phase 2; sending a DPS in first leaves
+    // it alone on an active Halion and kills the first half of the raid.
+    if (PlayerBotSpec::IsMainTank(bot) && RsHalionFirstCrosser(botAI) != bot)
         return false;
 
     Unit* physBoss = RsHalionAnyPhysicalBoss(botAI);
     bool const phase3 = physBoss != nullptr && !physBoss->HealthAbovePct(50);
     if (phase3 && !RsHalionP3TwilightAssigned(bot))
         return false;
+    if (!phase3 && !RsHalionP2TwilightHealerAssigned(bot))
+        return false;
+
+    // If the human master entered before the scheduled bot tank, recover
+    // immediately instead of leaving the master and half the raid alone.
+    if (RsHalionCrossingStarted(bot))
+        return RsHalionFindPortal(botAI) != nullptr;
 
     if (RsHalionPortalHeldForAdds(botAI))
         return false;
@@ -859,7 +1034,28 @@ inline Player* RsHalionTwilightTankUncached(PlayerbotAI* botAI)
         return (PlayerBotSpec::IsTank(bot) && bot->IsAlive() && RsHalionInTwilight(bot)) ? bot : nullptr;
     }
 
-    return RsHalionPickTank(group, [](Player* member) { return RsHalionInTwilight(member); });
+    if (Player* tank = RsHalionPickTank(group, [](Player* member) { return RsHalionInTwilight(member); }))
+        return tank;
+
+    // Player-count scaling can produce a raid with only one tank, who must
+    // remain in the physical realm.  Promote the deterministic first DPS bot
+    // already inside Twilight so phase 2/3 still has a tank target.
+    Player* virtualTank = nullptr;
+    Player* fallback = nullptr;
+    for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+    {
+        Player* member = itr->GetSource();
+        if (!member || !member->IsAlive() || !RsHalionInTwilight(member) || !GET_PLAYERBOT_AI(member))
+            continue;
+
+        if (!fallback || member->GetGUID() < fallback->GetGUID())
+            fallback = member;
+        if (!PlayerBotSpec::IsHeal(member) &&
+            (!virtualTank || member->GetGUID() < virtualTank->GetGUID()))
+            virtualTank = member;
+    }
+
+    return virtualTank ? virtualTank : fallback;
 }
 
 inline Player* RsHalionTwilightTank(PlayerbotAI* botAI)
@@ -890,10 +1086,34 @@ inline Player* RsHalionFirstCrosser(PlayerbotAI* botAI)
     if (!group)
     {
         Player* bot = botAI->GetBot();
-        return (PlayerBotSpec::IsTank(bot) && bot->IsAlive() && !PlayerBotSpec::IsMainTank(bot)) ? bot : nullptr;
+        return (PlayerBotSpec::IsTank(bot) && bot->IsAlive()) ? bot : nullptr;
     }
 
-    return RsHalionPickTank(group, [](Player* member) { return !PlayerBotSpec::IsMainTank(member); });
+    if (Player* offTank = RsHalionPickTank(group,
+        [](Player* member) { return !PlayerBotSpec::IsMainTank(member); }))
+        return offTank;
+
+    // No off-tank exists at low player-count scaling.  Let the real main
+    // tank establish phase-2 threat before healers and damage dealers follow.
+    if (Player* mainTank = RsHalionPickTank(group, [](Player* /*member*/) { return true; }))
+        return mainTank;
+
+    Player* virtualTank = nullptr;
+    Player* fallback = nullptr;
+    for (GroupReference* itr = group->GetFirstMember(); itr; itr = itr->next())
+    {
+        Player* member = itr->GetSource();
+        if (!member || !member->IsAlive() || PlayerBotSpec::IsMainTank(member) || !GET_PLAYERBOT_AI(member))
+            continue;
+
+        if (!fallback || member->GetGUID() < fallback->GetGUID())
+            fallback = member;
+        if (!PlayerBotSpec::IsHeal(member) &&
+            (!virtualTank || member->GetGUID() < virtualTank->GetGUID()))
+            virtualTank = member;
+    }
+
+    return virtualTank ? virtualTank : fallback;
 }
 
 inline Player* RsHalionLiveMainTank(PlayerbotAI* botAI)
@@ -1110,7 +1330,9 @@ inline constexpr float RS_HALION_CUTTER_LEADER_FAR = 8.0f;
 
 inline constexpr uint32 RS_HALION_CUTTER_CYCLE_MS = 29000;
 inline constexpr uint32 RS_HALION_CUTTER_LEAD_MS = 5000;
-inline constexpr uint32 RS_HALION_FIRST_SHOOT_MS = 21000;
+// The local Halion controller schedules the first shot 29 seconds after
+// entering phase two, then repeats it every 29 seconds.
+inline constexpr uint32 RS_HALION_FIRST_SHOOT_MS = 29000;
 
 inline bool RsHalionCutterShouldMove(uint32 instanceId)
 {
@@ -1185,6 +1407,148 @@ inline bool RsHalionCollectOrbPairs(Unit* boss, std::vector<std::pair<Unit*, Uni
         pairs.emplace_back(east, west);
 
     return !pairs.empty();
+}
+
+// This core has no AllCreatureScript hook, so keep the shared Halion state in
+// sync from the objects the raid bots can see.  The movement code depends on
+// this state for cutter timing, corporeality throttling and portal decisions.
+inline void RsHalionObserveEncounter(PlayerbotAI* botAI)
+{
+    Player* bot = botAI ? botAI->GetBot() : nullptr;
+    if (!bot || bot->GetMapId() != RS_MAP_RUBY_SANCTUM)
+        return;
+
+    Unit* physical = RsFindTarget(botAI,
+        [](Unit* unit) { return unit->GetEntry() == NPC_HALION; });
+    Unit* twilight = RsFindTarget(botAI,
+        [](Unit* unit) { return unit->GetEntry() == NPC_TWILIGHT_HALION; });
+    Unit* visibleBoss = twilight ? twilight : physical;
+    if (!visibleBoss)
+        return;
+
+    uint32 const now = getMSTime();
+    RubySanctumHelpers::RsInstanceState& state =
+        RubySanctumHelpers::RsState(bot->GetInstanceId());
+
+    state.bossHealth.pct = static_cast<uint8>(visibleBoss->GetHealthPct());
+    state.bossHealth.stamp = now;
+
+    bool const phase2 = state.bossHealth.pct > 50 && state.bossHealth.pct <= 75;
+    if (phase2 && RsHalionCrossingStarted(bot))
+    {
+        if (state.p2CrossingStartedAt == 0)
+            state.p2CrossingStartedAt = now;
+
+        // Normal navigation gets a short head start. If any assigned bot is
+        // still outside after that, execute the same portal use server-side;
+        // this prevents healing/casting/pathing from stranding the P2 group.
+        if (!RsHalionInTwilight(bot) &&
+            getMSTimeDiff(state.p2CrossingStartedAt, now) >= 1200 &&
+            RsHalionEnteringTwilight(botAI, bot))
+        {
+            uint32& lastGrant = state.p2PortalRescueGrant[bot->GetGUID()];
+            if (lastGrant == 0 || getMSTimeDiff(lastGrant, now) >= 1000)
+            {
+                lastGrant = now;
+                bot->CastStop();
+                bot->GetMotionMaster()->Clear();
+                bot->StopMoving();
+
+                if (GameObject* portal = RsHalionFindPortal(botAI))
+                    portal->Use(bot);
+                if (!RsHalionInTwilight(bot))
+                    bot->CastSpell(bot, SPELL_TWILIGHT_REALM, true);
+
+                TC_LOG_INFO("server", "RS Halion P2 portal rescue bot=%s instance=%u healer=%u twilight=%u",
+                    bot->GetName().c_str(), bot->GetInstanceId(), uint32(PlayerBotSpec::IsHeal(bot, true)),
+                    uint32(RsHalionInTwilight(bot)));
+            }
+        }
+    }
+
+    auto observeCorporeality = [now](Unit* boss,
+        uint8& index, uint32& stamp)
+    {
+        if (!boss)
+            return;
+
+        for (uint8 i = 0;
+             i < std::size(RubySanctumHelpers::HALION_CORPOREALITY_AURAS);
+             ++i)
+        {
+            if (!boss->HasAura(
+                    RubySanctumHelpers::HALION_CORPOREALITY_AURAS[i]))
+                continue;
+
+            index = i;
+            stamp = now;
+            return;
+        }
+    };
+
+    if (physical)
+    {
+        state.halionCorporeality.physicalGuid = physical->GetGUID();
+        observeCorporeality(physical,
+            state.halionCorporeality.physicalIndex,
+            state.halionCorporeality.physicalStamp);
+
+        if (RsHalionAnyAddAlive(botAI))
+            state.portalAddGate.lastAddAliveTime = now;
+    }
+
+    if (!twilight || !twilight->IsInCombat())
+        return;
+
+    observeCorporeality(twilight,
+        state.halionCorporeality.twilightIndex,
+        state.halionCorporeality.twilightStamp);
+
+    RubySanctumHelpers::CutterTiming& timing = state.cutterTiming;
+    if (!timing.bossGuid.IsEmpty() &&
+        timing.bossGuid != twilight->GetGUID())
+        timing = RubySanctumHelpers::CutterTiming();
+    timing.bossGuid = twilight->GetGUID();
+    if (timing.encounterStart == 0)
+        timing.encounterStart = now;
+
+    std::vector<std::pair<Unit*, Unit*>> pairs;
+    if (!RsHalionCollectOrbPairs(twilight, pairs))
+        return;
+
+    Unit* firstOrb = pairs.front().first;
+    float const angle = std::atan2(
+        firstOrb->GetPositionY() - twilight->GetPositionY(),
+        firstOrb->GetPositionX() - twilight->GetPositionX());
+    if (timing.hasOrbAngle)
+    {
+        float const delta = RsAngleDiff(angle, timing.lastOrbAngle);
+        if (std::fabs(delta) > 0.0005f)
+            timing.spinSign = delta > 0.0f ? 1.0f : -1.0f;
+    }
+    timing.lastOrbAngle = angle;
+    timing.hasOrbAngle = true;
+
+    bool active = false;
+    for (auto const& pair : pairs)
+    {
+        if (pair.first->HasAura(SPELL_TWILIGHT_PULSE_PERIODIC) ||
+            pair.second->HasAura(SPELL_TWILIGHT_PULSE_PERIODIC))
+        {
+            active = true;
+            break;
+        }
+    }
+
+    if (active && !timing.active)
+        timing.lastShootTime = now;
+
+    if (active != timing.active)
+        TC_LOG_INFO("server",
+            "RS Halion cutter observed instance=%u active=%u",
+            bot->GetInstanceId(), uint32(active));
+
+    timing.active = active;
 }
 
 inline constexpr float RS_HALION_P2_MELEE_DIST = 18.0f;
@@ -1263,6 +1627,13 @@ class RsHalionTankPositionAction : public AttackAction
 {
 public:
     RsHalionTankPositionAction(PlayerbotAI* botAI) : AttackAction(botAI, "rs halion tank position") {}
+    bool Execute(Event event) override;
+};
+
+class RsHalionFireAction : public MovementAction
+{
+public:
+    RsHalionFireAction(PlayerbotAI* botAI) : MovementAction(botAI, "rs halion fire") {}
     bool Execute(Event event) override;
 };
 

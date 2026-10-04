@@ -95,6 +95,17 @@ uint32 GetMaximumManagedUpgradeId(uint32 itemId)
 
     return upgradeId;
 }
+
+uint32 GetGemEnchantment(uint32 itemId)
+{
+    ItemTemplate const* gem = sObjectMgr->GetItemTemplate(itemId);
+    if (!gem)
+        return 0;
+
+    GemPropertiesEntry const* properties =
+        sGemPropertiesStore.LookupEntry(gem->GemProperties);
+    return properties ? properties->spellitemenchantement : 0;
+}
 }
   
 BotFactory::BotFactory(Player* bot, uint32 level, uint32 itemQuality, uint32 gearScoreLimit)
@@ -1327,6 +1338,7 @@ void BotFactory::InitEquipmentForSpec()
     if (!bot->InBattleground() && !bot->InArena())
     {
         InitManagedEquipmentForSpec(0, ManagedLoadoutMode::Pve);
+        InitManagedEnhancements(ManagedLoadoutMode::Pve);
         return;
     }
     // The first pass repairs the main hand. A protection build which arrived
@@ -1491,10 +1503,6 @@ uint32 BotFactory::InitManagedEnhancements(ManagedLoadoutMode mode)
     if (!bot || bot->GetSpecialization() == SPEC_NONE)
         return 0;
 
-    // This enhancement profile contains level-90 MoP gems and enchants.
-    if (mode == ManagedLoadoutMode::Pve && bot->GetLevel() < 90)
-        return 0;
-
     Specializations const specialization = bot->GetSpecialization();
     bool const healer = PlayerBotSpec::IsHeal(bot, true);
     bool const tank = AiFactory::GetPlayerRoles(bot) == BOT_ROLE_TANK;
@@ -1508,29 +1516,84 @@ uint32 BotFactory::InitManagedEnhancements(ManagedLoadoutMode mode)
         specialization == SPEC_DRUID_BALANCE ||
         specialization == SPEC_SHAMAN_ELEMENTAL;
 
-    // MoP SpellItemEnchantment.dbc IDs.  Gems are represented by the
-    // enchantment carried by the corresponding gem item.
-    uint32 const primaryGem = intellect ? 4644u : (agility ? 4643u : 4646u);
+    bool const mopProfile = bot->GetLevel() >= 90;
+
+    // MoP uses the established optimized colour profile. Older characters
+    // receive an expansion-appropriate primary-stat gem in every ordinary
+    // socket; using the gem item's DBC property keeps the stored value an
+    // actual socket enchant rather than an item id.
+    uint32 primaryGem = 0;
+    uint32 yellowGem = 0;
+    uint32 blueGem = 0;
+    uint32 shaTouchedGem = 0;
+    uint32 metaGemItem = 0;
+    if (mopProfile)
+    {
+        primaryGem = intellect ? 4644u : (agility ? 4643u : 4646u);
+        yellowGem = mode == ManagedLoadoutMode::Pvp ? 4651u :
+            (intellect ? (healer ? 4623u : 4619u) :
+                (agility ? 4609u : 4620u));
+        blueGem = mode == ManagedLoadoutMode::Pvp ? 4588u :
+            (intellect ? (healer ? 4589u : 4633u) :
+                (agility ? 4631u : 4635u));
+        shaTouchedGem = intellect ? 4998u :
+            (agility ? 4996u : 4997u);
+        metaGemItem = tank ? 76895u :
+            (healer ? 76888u :
+                (intellect ? 76885u : (agility ? 76884u : 76886u)));
+    }
+    else
+    {
+        uint32 primaryGemItem = 0;
+        uint32 yellowGemItem = 0;
+        uint32 blueGemItem = 0;
+        if (bot->GetLevel() >= 85)
+        {
+            primaryGemItem = intellect ? 71881u :
+                (agility ? 71879u : 71883u);
+            yellowGemItem = 71876u; // Quick Lightstone
+            blueGemItem = 71820u;   // Solid Deepholm Iolite
+            metaGemItem = tank ? 52294u :
+                (healer ? 52296u :
+                    (intellect ? 68780u :
+                        (agility ? 68778u : 68779u)));
+        }
+        else if (bot->GetLevel() >= 80)
+        {
+            primaryGemItem = intellect ? 40113u :
+                (agility ? 40112u : 40111u);
+            yellowGemItem = 40128u; // Quick King's Amber
+            blueGemItem = 40119u;   // Solid Majestic Zircon
+            metaGemItem = tank ? 41380u : 41333u;
+        }
+        else if (bot->GetLevel() >= 70)
+        {
+            primaryGemItem = intellect ? 32195u :
+                (agility ? 32194u : 32193u);
+            yellowGemItem = 35761u; // Quick Lionseye
+            blueGemItem = 32200u;   // Solid Empyrean Sapphire
+            metaGemItem = 35503u;
+        }
+        else
+        {
+            primaryGemItem = intellect ? 23094u :
+                (agility ? 23097u : 23095u);
+            yellowGemItem = 23114u; // Smooth Golden Draenite
+            blueGemItem = 23118u;   // Solid Azure Moonstone
+            metaGemItem = 35503u;
+        }
+
+        primaryGem = GetGemEnchantment(primaryGemItem);
+        yellowGem = GetGemEnchantment(yellowGemItem);
+        blueGem = GetGemEnchantment(blueGemItem);
+    }
+
     // Match every ordinary socket colour so the item's socket bonus activates.
     // Orange/purple hybrids retain the build's primary stat while contributing
     // a useful secondary stat. PvP uses the genuine MoP yellow resilience and
     // blue PvP Power gems instead of the older mismatched enchant IDs.
-    uint32 const yellowGem = mode == ManagedLoadoutMode::Pvp ? 4651u :
-        (intellect ? (healer ? 4623u : 4619u) :
-            (agility ? 4609u : 4620u));
-    uint32 const blueGem = mode == ManagedLoadoutMode::Pvp ? 4588u :
-        (intellect ? (healer ? 4589u : 4633u) :
-            (agility ? 4631u : 4635u));
-    uint32 const shaTouchedGem = intellect ? 4998u :
-        (agility ? 4996u : 4997u);
-    uint32 const metaGemItem = tank ? 76895u :
-        (healer ? 76888u :
-            (intellect ? 76885u : (agility ? 76884u : 76886u)));
     uint32 metaGemEnchant = 0;
-    if (ItemTemplate const* metaGem = sObjectMgr->GetItemTemplate(metaGemItem))
-        if (GemPropertiesEntry const* properties =
-                sGemPropertiesStore.LookupEntry(metaGem->GemProperties))
-            metaGemEnchant = properties->spellitemenchantement;
+    metaGemEnchant = GetGemEnchantment(metaGemItem);
     uint32 changed = 0;
     Item* changedMetaItem = nullptr;
     EnchantmentSlot changedMetaSlot = SOCK_ENCHANTMENT_SLOT;
@@ -1612,7 +1675,11 @@ uint32 BotFactory::InitManagedEnhancements(ManagedLoadoutMode mode)
 
             uint32 gem = primaryGem;
             if (color == SOCKET_COLOR_HYDRAULIC)
+            {
+                if (!shaTouchedGem)
+                    continue;
                 gem = shaTouchedGem;
+            }
             else if (color == SOCKET_COLOR_YELLOW)
                 gem = yellowGem;
             else if (color == SOCKET_COLOR_BLUE)
@@ -1622,7 +1689,8 @@ uint32 BotFactory::InitManagedEnhancements(ManagedLoadoutMode mode)
         }
 
         uint32 permanentEnchant = 0;
-        switch (equipmentSlot)
+        if (mopProfile)
+            switch (equipmentSlot)
         {
             case EQUIPMENT_SLOT_SHOULDERS:
                 permanentEnchant = tank ? 4805u :

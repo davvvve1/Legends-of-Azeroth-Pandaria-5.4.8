@@ -19,7 +19,12 @@ template<class T> auto SelectRandomContainerElement(T const& list) { return list
 }}
 struct World { float getRate(int) { return 1; } } world;
 World* sWorld = &world;
-struct Map { bool IsDungeon() { return true; } } map;
+struct Map
+{
+    bool raid = false;
+    bool IsDungeon() { return true; }
+    bool IsRaid() { return raid; }
+} map;
 struct Player { Map* GetMap() { return &map; } } player;
 struct LootStoreItem
 {
@@ -31,7 +36,10 @@ struct LootStoreItem
     uint8 group = 0;
     int type = 0;
     bool needs_quest = false;
-    bool Roll(bool) const { return chance >= 100; }
+    bool Roll(bool, float multiplier = 1.0f) const
+    {
+        return chance * multiplier >= 100;
+    }
 };
 using LootStoreItemList = std::list<LootStoreItem*>;
 struct Loot
@@ -57,7 +65,8 @@ struct LootTemplate
     struct LootGroup
     {
         LootStoreItemList ExplicitlyChanced, EqualChanced;
-        LootStoreItem const* Roll(Loot&, uint32, Player*, bool = false) const;
+        LootStoreItem const* Roll(Loot&, uint32, Player*, bool = false,
+            float = 1.0f) const;
         void Process(Loot&, uint32, Player*, LootRollPolicy = LootRollPolicy::Normal) const;
     };
     using LootGroups = std::vector<LootGroup*>;
@@ -79,17 +88,28 @@ constexpr int TYPEID_UNIT = 3;
 struct Object
 {
     int type, mapId;
+    bool raid = false, boss = false;
+    Map objectMap;
     int GetTypeId() const { return type; }
     Object* ToCreature() { return this; }
     int GetMapId() const { return mapId; }
+    Map* GetMap() { objectMap.raid = raid; return &objectMap; }
+    bool IsDungeonBoss() const { return boss; }
 };
+using Creature = Object;
 struct LootStore {} LootTemplates_Creature, otherStore;
 #include "methods.inc"
 int main()
 {
-    Object aq40{TYPEID_UNIT, 531}, aq20{TYPEID_UNIT, 509}, chest{5, 531};
+    Object aq40{TYPEID_UNIT, 531, false, false, {}},
+        aq20{TYPEID_UNIT, 509, false, false, {}};
+    Object raidBoss{TYPEID_UNIT, 724, true, true, {}};
+    Object raidTrash{TYPEID_UNIT, 724, true, false, {}};
+    Object chest{5, 531, false, false, {}};
     assert(SelectPolicy(&aq40, LootTemplates_Creature) == LootRollPolicy::AllDirectItems);
     assert(SelectPolicy(&aq20, LootTemplates_Creature) == LootRollPolicy::Normal);
+    assert(SelectPolicy(&raidBoss, LootTemplates_Creature) == LootRollPolicy::BoostedRaidBoss);
+    assert(SelectPolicy(&raidTrash, LootTemplates_Creature) == LootRollPolicy::Normal);
     assert(SelectPolicy(&chest, LootTemplates_Creature) == LootRollPolicy::Normal);
     assert(SelectPolicy(nullptr, LootTemplates_Creature) == LootRollPolicy::Normal);
     assert(SelectPolicy(&aq40, otherStore) == LootRollPolicy::Normal);
@@ -111,6 +131,11 @@ int main()
     assert(loot.items.size() == 3); // All items, except the wrong loot mode.
     direct.Process(loot, 1, &player, LootRollPolicy::AllDirectItems);
     assert(loot.items.size() == 3); // Duplicate filtering remains active.
+    loot.items.clear();
+    LootStoreItem boostedA{30, 50}, boostedB{31, 50};
+    LootTemplate boosted{{}, {new LootTemplate::LootGroup{{&boostedA, &boostedB}, {}}}};
+    boosted.Process(loot, true, 1, 0, &player, LootRollPolicy::BoostedRaidBoss);
+    assert(loot.items.size() == 2); // Raid bosses draw twice without duplicating an item.
     loot.items.clear();
     LootTemplate::LootGroup mixed{{&a}, {&c}};
     mixed.Process(loot, 1, &player, LootRollPolicy::GuaranteedGroups);

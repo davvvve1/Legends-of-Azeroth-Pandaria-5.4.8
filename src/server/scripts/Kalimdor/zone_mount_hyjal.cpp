@@ -19,6 +19,7 @@
 #include "Vehicle.h"
 #include "AchievementMgr.h"
 #include "CombatAI.h"
+#include "PhaseMgr.h"
 #include "Random.h"
 
 enum Spells
@@ -39,6 +40,7 @@ enum Spells
 enum eQuests
 {
     QUEST_THROUGH_THE_DREAM = 25325,
+    QUEST_RETURN_TO_NORDRASSIL = 25578,
     QUEST_THE_NORDRASSIL_SUMMIT = 29326,
 };
 
@@ -974,6 +976,33 @@ class spell_weakening : public SpellScriptLoader
     public:
         spell_weakening() : SpellScriptLoader("spell_weakening") { }
 
+        class spell_weakening_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_weakening_SpellScript);
+
+            void HandleBeforeCast()
+            {
+                Unit* target = GetExplTargetUnit();
+                Player* player = GetCaster()->ToPlayer();
+                if (!player || !target || target->GetEntry() != NPC_BARON_GEDDON)
+                    return;
+
+                // Using the Flameseer's Staff on a hostile target can make the
+                // client start Auto Shot first.  Auto Shot then interrupts the
+                // staff's channel, making the quest appear to require removing
+                // the ranged weapon.  Cancel both the server-side repeat spell
+                // and the client's forced attack before the channel starts.
+                player->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
+                player->AttackStop();
+                player->SendAttackSwingCancelAttack();
+            }
+
+            void Register() override
+            {
+                BeforeCast += SpellCastFn(spell_weakening_SpellScript::HandleBeforeCast);
+            }
+        };
+
         class spell_weakening_AuraScript : public AuraScript
         {
             PrepareAuraScript(spell_weakening_AuraScript);
@@ -1004,6 +1033,11 @@ class spell_weakening : public SpellScriptLoader
         AuraScript* GetAuraScript() const override
         {
             return new spell_weakening_AuraScript();
+        }
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_weakening_SpellScript();
         }
 };
 
@@ -1090,6 +1124,27 @@ class spell_twilight_firelance_equipped : public AuraScript
 };
 
 // AreaTrigger 5876
+static void UpdateThroughTheDreamPhase(Player* player)
+{
+    QuestStatus dreamStatus = player->GetQuestStatus(QUEST_THROUGH_THE_DREAM);
+
+    if (dreamStatus == QUEST_STATUS_INCOMPLETE || dreamStatus == QUEST_STATUS_COMPLETE)
+    {
+        player->GetPhaseMgr().SetCustomPhase(0);
+        if (!player->HasAura(SPELL_EMERALD_DREAM_EFF))
+            player->CastSpell(player, SPELL_EMERALD_DREAM_EFF, true);
+        return;
+    }
+
+    player->RemoveAurasDueToSpell(SPELL_EMERALD_DREAM_EFF);
+
+    // The quest is over, so clear both the visual aura and any custom phase.
+    // Alysra is spawned in both the normal and dream masks by the world SQL,
+    // allowing Return to Nordrassil to remain available without phasing the
+    // player away from the rest of Mount Hyjal.
+    player->GetPhaseMgr().SetCustomPhase(0);
+}
+
 class AreaTrigger_at_hyjal_alysra : public AreaTriggerScript
 {
     public:
@@ -1102,19 +1157,81 @@ class AreaTrigger_at_hyjal_alysra : public AreaTriggerScript
             if (status == QUEST_STATUS_INCOMPLETE)
                 player->CompleteQuest(QUEST_THROUGH_THE_DREAM);
 
-            // Leave the Emerald Dream when exiting the Barrow Dens.
-            // Also repairs players who already completed/rewarded the quest
-            // but still have the permanent Emerald Dream aura.
-            if (status == QUEST_STATUS_INCOMPLETE ||
-                status == QUEST_STATUS_COMPLETE ||
-                status == QUEST_STATUS_REWARDED)
-            {
-                player->RemoveAurasDueToSpell(SPELL_EMERALD_DREAM_EFF);
-                player->SetPhaseMask(1, true);
-            }
+            UpdateThroughTheDreamPhase(player);
 
             return false;
         }
+};
+
+class player_through_the_dream_phase : public PlayerScript
+{
+public:
+    player_through_the_dream_phase() : PlayerScript("player_through_the_dream_phase") { }
+
+    void OnLogin(Player* player) override
+    {
+        UpdateThroughTheDreamPhase(player);
+    }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        UpdateForQuest(player, quest);
+    }
+
+    void OnQuestAbandoned(Player* player, Quest const* quest) override
+    {
+        UpdateForQuest(player, quest);
+    }
+
+    void OnQuestCompleted(Player* player, Quest const* quest) override
+    {
+        UpdateForQuest(player, quest);
+    }
+
+    void OnQuestFailed(Player* player, Quest const* quest) override
+    {
+        UpdateForQuest(player, quest);
+    }
+
+    void OnQuestRewarded(Player* player, Quest const* quest) override
+    {
+        UpdateForQuest(player, quest);
+    }
+
+private:
+    static void UpdateForQuest(Player* player, Quest const* quest)
+    {
+        if (quest && (quest->GetQuestId() == QUEST_THROUGH_THE_DREAM ||
+            quest->GetQuestId() == QUEST_RETURN_TO_NORDRASSIL))
+            UpdateThroughTheDreamPhase(player);
+    }
+};
+
+// Hyjal Wardens are contested guards. Player-owned pets inherit PvP flags,
+// which can make the generic guard AI aggro the pet even while its owner is a
+// valid friendly target. Ignore pets during passive line-of-sight acquisition;
+// the normal AttackedBy path remains intact so wardens can still defend
+// themselves when a player or pet actually attacks them.
+struct npc_hyjal_warden_pet_safe : public ScriptedAI
+{
+    npc_hyjal_warden_pet_safe(Creature* creature) : ScriptedAI(creature) { }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (who && who->GetTypeId() != TYPEID_PLAYER &&
+            who->GetCharmerOrOwnerPlayerOrPlayerItself())
+            return;
+
+        ScriptedAI::MoveInLineOfSight(who);
+    }
+
+    void UpdateAI(uint32 /*diff*/) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
 };
 
 void AddSC_mount_hyjal()
@@ -1134,6 +1251,8 @@ void AddSC_mount_hyjal()
     new npc_baron_geddon();
     new creature_script<npc_hyjal_aronus>("npc_hyjal_aronus");
     new creature_script<npc_hyjal_aronus_ride>("npc_hyjal_aronus_ride");
+    new creature_script<npc_hyjal_warden_pet_safe>("npc_hyjal_warden_pet_safe");
+    new player_through_the_dream_phase();
 
     new at_king_of_the_spider_hill();
     new spell_sethrias_roost_squad_aura();

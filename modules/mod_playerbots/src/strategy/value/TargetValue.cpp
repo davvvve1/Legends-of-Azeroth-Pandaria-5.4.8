@@ -12,6 +12,36 @@
 #include "RtiTargetValue.h"
 #include "ScriptedCreature.h"
 #include "ThreatManager.h"
+#include <algorithm>
+#include <cctype>
+
+Unit* FindTargetValue::Calculate()
+{
+    if (qualifier.empty())
+        return nullptr;
+
+    auto lowerName = [](std::string name)
+    {
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char character) { return std::tolower(character); });
+        return name;
+    };
+
+    std::string const wantedName = lowerName(qualifier);
+    auto* targets = botAI->GetAiObjectContext()->GetValue<GuidVector>(
+        "possible targets no los");
+    if (!targets)
+        return nullptr;
+
+    for (ObjectGuid const guid : targets->Get())
+    {
+        Unit* unit = botAI->GetUnit(guid);
+        if (unit && unit->IsAlive() && lowerName(unit->GetName()) == wantedName)
+            return unit;
+    }
+
+    return nullptr;
+}
 
 Unit* FindTargetStrategy::GetResult()
 {

@@ -77,8 +77,11 @@ namespace RubySanctumHelpers
         uint32 addBuffLastApply = 0;
         uint32 halionRootLastScan = 0;
         uint32 portalCountdownLastShown = 0;
+        uint32 p2CrossingStartedAt = 0;
+        ObjectGuid p2TwilightHealerGuid;
         std::map<ObjectGuid, bool> p3TwilightAssignment;
         std::map<ObjectGuid, uint32> portalSeen;
+        std::unordered_map<ObjectGuid, uint32> p2PortalRescueGrant;
         std::unordered_map<ObjectGuid, uint32> breathTwilightGrant;
         std::unordered_map<ObjectGuid, uint32> breathPhysicalGrant;
         std::unordered_map<ObjectGuid, uint32> p3RescueGrant;

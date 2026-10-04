@@ -7098,6 +7098,9 @@ float Player::CalculateReputationGain(ReputationSource source, uint32 creatureOr
     if (source != REPUTATION_SOURCE_SPELL && GetsRecruitAFriendBonus(false))
         percent *= 1.0f + sWorld->getRate(RATE_REPUTATION_RECRUIT_A_FRIEND_BONUS);
 
+    if (rep > 0 && GetReputationMgr().HasBonusReputation(faction))
+        percent *= 2.0f;
+
     return CalculatePct(val, percent);
 }
 
@@ -20888,6 +20891,10 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
         if (!mapEntry)
             return false;
 
+        // Non-raid dungeons use only their configured player-level limits.
+        // Attunement items, quests and achievements remain enforced for raids.
+        bool const levelOnlyDungeon = mapEntry->IsDungeon() && !mapEntry->IsRaid();
+
         if (!sWorld->getBoolConfig(CONFIG_INSTANCE_IGNORE_LEVEL))
         {
             if (ar->levelMin && GetLevel() < ar->levelMin)
@@ -20897,25 +20904,25 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
         }
 
         uint32 missingItem = 0;
-        if (ar->item)
+        if (!levelOnlyDungeon && ar->item)
         {
             if (!HasItemCount(ar->item) &&
                 (!ar->item2 || !HasItemCount(ar->item2)))
                 missingItem = ar->item;
         }
-        else if (ar->item2 && !HasItemCount(ar->item2))
+        else if (!levelOnlyDungeon && ar->item2 && !HasItemCount(ar->item2))
             missingItem = ar->item2;
 
-        if (DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, target_map, this))
+        if (!levelOnlyDungeon && DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, target_map, this))
         {
             SendTransferAborted(target_map, TRANSFER_ABORT_MAP_NOT_ALLOWED);
             return false;
         }
 
         uint32 missingQuest = 0;
-        if (GetTeam() == ALLIANCE && ar->quest_A && !GetQuestRewardStatus(ar->quest_A))
+        if (!levelOnlyDungeon && GetTeam() == ALLIANCE && ar->quest_A && !GetQuestRewardStatus(ar->quest_A))
             missingQuest = ar->quest_A;
-        else if (GetTeam() == HORDE && ar->quest_H && !GetQuestRewardStatus(ar->quest_H))
+        else if (!levelOnlyDungeon && GetTeam() == HORDE && ar->quest_H && !GetQuestRewardStatus(ar->quest_H))
             missingQuest = ar->quest_H;
 
         uint32 missingAchievement = 0;
@@ -20924,7 +20931,7 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
         if (leaderGuid != GetGUID())
             leader = ObjectAccessor::FindConnectedPlayer(leaderGuid);
 
-        if (ar->achievement)
+        if (!levelOnlyDungeon && ar->achievement)
             if (!leader || !leader->HasAchieved(ar->achievement))
                 missingAchievement = ar->achievement;
 

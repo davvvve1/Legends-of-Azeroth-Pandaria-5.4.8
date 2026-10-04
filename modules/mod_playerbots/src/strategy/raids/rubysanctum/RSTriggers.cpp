@@ -117,6 +117,8 @@ bool RsZarithrianTankTrigger::IsActive()
 
 bool RsHalionTankPositionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionInTwilight(bot))
         return false;
 
@@ -129,6 +131,8 @@ bool RsHalionTankPositionTrigger::IsActive()
 
 bool RsHalionAvoidConesTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionInTwilight(bot))
         return false;
 
@@ -141,6 +145,8 @@ bool RsHalionAvoidConesTrigger::IsActive()
 
 bool RsHalionCombustionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionInTwilight(bot))
         return false;
 
@@ -157,6 +163,8 @@ bool RsHalionCombustionTrigger::IsActive()
 
 bool RsHalionMeteorTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionInTwilight(bot))
         return false;
 
@@ -173,8 +181,22 @@ bool RsHalionMeteorTrigger::IsActive()
     return RsHalionMeteorShouldRally(bot);
 }
 
+bool RsHalionFireTrigger::IsActive()
+{
+    RsHalionObserveEncounter(botAI);
+
+    if (RsHalionInTwilight(bot))
+        return false;
+
+    std::vector<Unit*> fires;
+    RsHalionCollectMeteorFire(bot, fires);
+    return RsHalionInMeteorFire(bot, fires);
+}
+
 bool RsHalionAddsTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionInTwilight(bot))
         return false;
 
@@ -192,6 +214,8 @@ bool RsHalionAddsTrigger::IsActive()
 
 bool RsHalionAddTankTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (!RsHalionEngaged(botAI))
         return false;
 
@@ -200,6 +224,8 @@ bool RsHalionAddTankTrigger::IsActive()
 
 bool RsHalionStartPositionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     Unit* boss = RsHalionPhase1Boss(botAI);
     if (!boss || !boss->HealthAbovePct(98) || !boss->IsInCombat())
         return false;
@@ -209,6 +235,8 @@ bool RsHalionStartPositionTrigger::IsActive()
 
 bool RsHalionEnterPortalTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     bool const inTwilight = RsHalionInTwilight(bot);
 
     if (inTwilight)
@@ -217,11 +245,13 @@ bool RsHalionEnterPortalTrigger::IsActive()
     if (RsHalionEnteringTwilight(botAI, bot))
         return true;
 
-    return !PlayerBotSpec::IsMainTank(bot) && RsHalionPortalHeldForAdds(botAI);
+    return RsHalionFirstCrosser(botAI) == bot && RsHalionPortalHeldForAdds(botAI);
 }
 
 bool RsHalionP2TankPositionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (RsHalionTwilightTank(botAI) != bot || !RsHalionInTwilight(bot))
         return false;
 
@@ -230,6 +260,8 @@ bool RsHalionP2TankPositionTrigger::IsActive()
 
 bool RsHalionP2AvoidConesTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (!RsHalionInTwilight(bot))
         return false;
 
@@ -241,6 +273,8 @@ bool RsHalionP2AvoidConesTrigger::IsActive()
 
 bool RsHalionConsumptionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (!RsHalionInTwilight(bot))
         return false;
 
@@ -252,6 +286,8 @@ bool RsHalionConsumptionTrigger::IsActive()
 
 bool RsHalionCutterTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (!RsHalionInTwilight(bot))
         return false;
 
@@ -264,6 +300,8 @@ bool RsHalionCutterTrigger::IsActive()
 
 bool RsHalionHealConsumptionTrigger::IsActive()
 {
+    RsHalionObserveEncounter(botAI);
+
     if (!botAI->IsHeal(bot) || !RsHalionInTwilight(bot))
         return false;
 

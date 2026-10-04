@@ -18,6 +18,7 @@
 #include "WorldPacketActionContext.h"
 #include "WorldPacketTriggerContext.h"
 #include "OculusStrategy.h"
+#include "VortexPinnacleStrategy.h"
 #include "raids/RaidStrategyContext.h"
 #include "raids/aq20/RaidAq20ActionContext.h"
 #include "raids/aq20/RaidAq20TriggerContext.h"
@@ -55,11 +56,13 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     strategyContexts.Add(new MovementStrategyContext());
     strategyContexts.Add(new AssistStrategyContext());
     strategyContexts.Add(new OculusBot::OculusStrategyContext());
+    strategyContexts.Add(new VortexPinnacleBot::VortexPinnacleStrategyContext());
     strategyContexts.Add(new RaidStrategyContext());
 
     actionContexts.Add(new ActionContext());
     actionContexts.Add(new WorldPacketActionContext());
     actionContexts.Add(new OculusBot::OculusActionContext());
+    actionContexts.Add(new VortexPinnacleBot::VortexPinnacleActionContext());
     actionContexts.Add(new RaidAq20ActionContext());
     actionContexts.Add(new RaidMcActionContext());
     actionContexts.Add(new RaidBwlActionContext());
@@ -79,6 +82,7 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     triggerContexts.Add(new WorldPacketTriggerContext());
     triggerContexts.Add(new PveRotationTriggerContext());
     triggerContexts.Add(new OculusBot::OculusTriggerContext());
+    triggerContexts.Add(new VortexPinnacleBot::VortexPinnacleTriggerContext());
     triggerContexts.Add(new RaidAq20TriggerContext());
     triggerContexts.Add(new RaidMcTriggerContext());
     triggerContexts.Add(new RaidBwlTriggerContext());

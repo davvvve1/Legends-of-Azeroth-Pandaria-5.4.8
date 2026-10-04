@@ -1198,6 +1198,7 @@ void Creature::SelectLevel(const CreatureTemplate* cinfo)
             maxdmg = difficultyInfo->MaxDamage;
             minrangedmg = difficultyInfo->MinRangeDamage;
             maxrangedmg = difficultyInfo->MaxRangeDamage;
+            attackpower = difficultyInfo->AttackPower;
             rangedattackpower = difficultyInfo->RangedAttackPower;
         }
     }

@@ -772,8 +772,11 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& recvData)
         return;
     }
 
-    // check if creature is a wild battle pet
-    if (!sBattlePetSpawnMgr->GetWildBattlePet(wildBattlePet))
+    bool isTrainerBattle = PetBattle::IsTrainer(wildBattlePet->GetEntry());
+
+    // Check that the creature is either a populated wild pet or a supported
+    // trainer. Trainer teams are built from their original three-pet rosters.
+    if (!isTrainerBattle && !sBattlePetSpawnMgr->GetWildBattlePet(wildBattlePet))
     {
         TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_WILD - Player %u(%s) tried to initiate a wild pet battle but creature %u isn't a wild battle pet!",
             GetPlayer()->GetGUID().GetCounter(), GetPlayer()->GetName().c_str(), wildBattlePet->GetGUID().GetCounter());
@@ -830,7 +833,8 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& recvData)
     wildBattlePet->SetTarget(GetPlayer()->GetGUID());
     wildBattlePet->SetControlled(true, UNIT_STATE_ROOT);
 
-    sBattlePetSpawnMgr->EnteredBattle(wildBattlePet);
+    if (!isTrainerBattle)
+        sBattlePetSpawnMgr->EnteredBattle(wildBattlePet);
 
     petBattleRequest.Type = PET_BATTLE_TYPE_PVE;
     petBattleRequest.Challenger = GetPlayer();

@@ -36,6 +36,11 @@ enum CreatureIdsRS
     NPC_HALION                          = 39863,
     NPC_TWILIGHT_HALION                 = 40142,
     NPC_METEOR_STRIKE_MARK              = 40029,
+    NPC_METEOR_STRIKE_NORTH             = 40041,
+    NPC_METEOR_STRIKE_EAST              = 40042,
+    NPC_METEOR_STRIKE_WEST              = 40043,
+    NPC_METEOR_STRIKE_SOUTH             = 40044,
+    NPC_METEOR_STRIKE_FLAME             = 40055,
     NPC_COMBUSTION                      = 40001,
     NPC_LIVING_INFERNO                  = 40681,
     NPC_LIVING_EMBER                    = 40683,
@@ -193,6 +198,13 @@ class RsHalionMeteorTrigger : public Trigger
 {
 public:
     RsHalionMeteorTrigger(PlayerbotAI* botAI) : Trigger(botAI, "rs halion meteor") {}
+    bool IsActive() override;
+};
+
+class RsHalionFireTrigger : public Trigger
+{
+public:
+    RsHalionFireTrigger(PlayerbotAI* botAI) : Trigger(botAI, "rs halion fire") {}
     bool IsActive() override;
 };
 

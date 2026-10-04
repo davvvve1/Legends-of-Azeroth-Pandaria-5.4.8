@@ -20,7 +20,7 @@ def function(signature):
 
 policy_start = header.index('enum class LootRollPolicy')
 policy = header[policy_start:header.index('};', policy_start) + 2]
-selection_start = source.index('    LootRollPolicy policy = source &&')
+selection_start = source.index('    LootRollPolicy policy = LootRollPolicy::Normal;')
 selection_end = source.index('    tab->Process(', selection_start)
 selection = ('LootRollPolicy SelectPolicy(Object* source, LootStore const& store) {\n'
              + source[selection_start:selection_end] + 'return policy; }\n')

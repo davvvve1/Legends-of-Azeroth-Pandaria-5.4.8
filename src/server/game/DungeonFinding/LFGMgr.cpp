@@ -438,7 +438,19 @@ void LFGMgr::InitializeLockedDungeons(Player* player, uint8 level /* = 0 */)
             continue;
 
         uint32 lockStatus = 0;
-        if (dungeon->faction >= 0 && player->GetTeamId() != !dungeon->faction)
+
+        // Normal and heroic dungeons are gated only by their native player
+        // level range. Item level, expansion, faction, season and attunement
+        // requirements must not prevent an otherwise level-eligible player
+        // from selecting or entering a dungeon through Dungeon Finder.
+        if (dungeon->category == LFG_CATEGORY_DUNGEON)
+        {
+            if (dungeon->minlevel > level)
+                lockStatus = LFG_LOCKSTATUS_TOO_LOW_LEVEL;
+            else if (dungeon->maxlevel && dungeon->maxlevel < level)
+                lockStatus = LFG_LOCKSTATUS_TOO_HIGH_LEVEL;
+        }
+        else if (dungeon->faction >= 0 && player->GetTeamId() != !dungeon->faction)
             lockStatus = LFG_LOCKSTATUS_INCOMPATIBLE_FACTION;
         else if (DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, dungeon->map, player, dungeon->difficulty))
             lockStatus = LFG_LOCKSTATUS_RAID_LOCKED;
@@ -503,7 +515,11 @@ void LFGMgr::InitializeLockedDungeons(Player* player, uint8 level /* = 0 */)
                 else if (ar->item2 && !player->HasItemCount(ar->item2))
                     lockStatus = LFG_LOCKSTATUS_MISSING_ITEM;
         }
-        if (dungeon->difficulty != RAID_DIFFICULTY_25MAN_LFR && dungeon->difficulty != SCENARIO_DIFFICULTY_NORMAL && dungeon->difficulty > DUNGEON_DIFFICULTY_NORMAL && player->GetBoundInstance(dungeon->map, Difficulty(dungeon->difficulty)))
+        if (dungeon->category != LFG_CATEGORY_DUNGEON &&
+            dungeon->difficulty != RAID_DIFFICULTY_25MAN_LFR &&
+            dungeon->difficulty != SCENARIO_DIFFICULTY_NORMAL &&
+            dungeon->difficulty > DUNGEON_DIFFICULTY_NORMAL &&
+            player->GetBoundInstance(dungeon->map, Difficulty(dungeon->difficulty)))
             lockStatus = LFG_LOCKSTATUS_RAID_LOCKED;
 
         /* @todo VoA closed if WG is not under team control (LFG_LOCKSTATUS_RAID_LOCKED)

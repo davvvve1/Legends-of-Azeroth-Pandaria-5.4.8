@@ -30,6 +30,7 @@ public:
         creators["rs halion avoid cones"] = &RaidRsActionContext::rs_halion_avoid_cones;
         creators["rs halion combustion"] = &RaidRsActionContext::rs_halion_combustion;
         creators["rs halion meteor"] = &RaidRsActionContext::rs_halion_meteor;
+        creators["rs halion fire"] = &RaidRsActionContext::rs_halion_fire;
         creators["rs halion adds"] = &RaidRsActionContext::rs_halion_adds;
         creators["rs halion add tank"] = &RaidRsActionContext::rs_halion_add_tank;
         creators["rs halion start position"] = &RaidRsActionContext::rs_halion_start_position;
@@ -60,6 +61,7 @@ private:
     static Action* rs_halion_avoid_cones(PlayerbotAI* ai) { return new RsHalionAvoidConesAction(ai); }
     static Action* rs_halion_combustion(PlayerbotAI* ai) { return new RsHalionCombustionAction(ai); }
     static Action* rs_halion_meteor(PlayerbotAI* ai) { return new RsHalionMeteorAction(ai); }
+    static Action* rs_halion_fire(PlayerbotAI* ai) { return new RsHalionFireAction(ai); }
     static Action* rs_halion_adds(PlayerbotAI* ai) { return new RsHalionAddsAction(ai); }
     static Action* rs_halion_add_tank(PlayerbotAI* ai) { return new RsHalionAddTankAction(ai); }
     static Action* rs_halion_start_position(PlayerbotAI* ai) { return new RsHalionStartPositionAction(ai); }

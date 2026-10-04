@@ -40,6 +40,8 @@ void RaidRsStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction::array(0, new NextAction("rs halion combustion", ACTION_RAID + 7), nullptr)));
     triggers.push_back(new TriggerNode("rs halion meteor",
         NextAction::array(0, new NextAction("rs halion meteor", ACTION_RAID + 7), nullptr)));
+    triggers.push_back(new TriggerNode("rs halion fire",
+        NextAction::array(0, new NextAction("rs halion fire", ACTION_RAID + 10), nullptr)));
     triggers.push_back(new TriggerNode("rs halion tank position",
         NextAction::array(0, new NextAction("rs halion tank position", ACTION_RAID + 6), new NextAction("attack rti target", ACTION_RAID + 5), nullptr)));
     triggers.push_back(new TriggerNode("rs halion avoid cones",
@@ -51,7 +53,10 @@ void RaidRsStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction::array(0, new NextAction("rs halion add tank", ACTION_RAID + 6), nullptr)));
 
     triggers.push_back(new TriggerNode("rs halion enter portal",
-        NextAction::array(0, new NextAction("rs halion enter portal", ACTION_RAID + 8), nullptr)));
+        // Realm assignment must win over emergency healing. Otherwise the
+        // selected Twilight healer keeps casting in the physical realm and
+        // both healers appear to have been assigned to stay outside.
+        NextAction::array(0, new NextAction("rs halion enter portal", ACTION_EMERGENCY + 10), nullptr)));
     triggers.push_back(new TriggerNode("rs halion cutter",
         NextAction::array(0, new NextAction("rs halion cutter", ACTION_RAID + 8), nullptr)));
     triggers.push_back(new TriggerNode("rs halion consumption",
