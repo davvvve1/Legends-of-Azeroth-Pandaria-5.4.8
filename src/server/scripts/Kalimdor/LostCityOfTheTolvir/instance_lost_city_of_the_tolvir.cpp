@@ -100,6 +100,10 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
                 if (go->GetEntry() == SIAMAT_PLATFORM)
                 {
                     go->setActive(true);
+                    // This gameobject supplies the physical floor beneath
+                    // Siamat. A destroyed state disables its collision and
+                    // makes creatures, pets and players fall through it.
+                    go->SetDestructibleState(GO_DESTRUCTIBLE_INTACT, NULL, true);
                     uiSiamatPlatformGUID = go->GetGUID();
                 }
             }
@@ -107,10 +111,7 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
             void SiamatFree()
             {
                 if (GameObject* platform = instance->GetGameObject(uiSiamatPlatformGUID))
-                {
-                    platform->RemoveFlag(GAMEOBJECT_FIELD_FLAGS, GO_FLAG_DAMAGED);
-                    platform->SetFlag(GAMEOBJECT_FIELD_FLAGS, GO_FLAG_DESTROYED);
-                }
+                    platform->SetDestructibleState(GO_DESTRUCTIBLE_INTACT, NULL, true);
 
                 for (int i = 0; i < 6; ++i)
                     if (Creature* tunnel = instance->GetCreature(uiTunnelGUID[i]))
