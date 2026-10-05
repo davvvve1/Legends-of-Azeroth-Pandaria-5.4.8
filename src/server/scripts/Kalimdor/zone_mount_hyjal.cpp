@@ -292,18 +292,33 @@ class npc_marion_wormswing : public CreatureScript
         }
 };
 
-/* class go_harpy_signal_fire : public GameObjectScript
+class go_harpy_signal_fire : public GameObjectScript
 {
     public:
         go_harpy_signal_fire() : GameObjectScript("go_harpy_signal_fire") { }
 
         bool OnGossipHello(Player* player, GameObject* go) override
         {
-            if (!go->FindNearestCreature(41112, 100.0f) && player->GetQuestStatus(25731) == QUEST_STATUS_INCOMPLETE)
-                go->SummonCreature(41112, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 60000);
-            return false;
+            if (player->GetQuestStatus(25731) != QUEST_STATUS_INCOMPLETE)
+                return false;
+
+            Creature* marion = go->FindNearestCreature(41112, 100.0f, true);
+            if (!marion)
+                marion = go->SummonCreature(41112, player->GetPositionX(), player->GetPositionY(),
+                    player->GetPositionZ(), player->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 60000);
+
+            if (!marion)
+                return true;
+
+            player->CastSpell(player, 79203, true); // Smoked Out
+            go->UseDoorOrButton();
+
+            if (!marion->IsInCombat())
+                marion->AI()->AttackStart(player);
+
+            return true;
         }
-}; */
+};
 
 enum TrampolineSpells
 {
@@ -1241,7 +1256,7 @@ void AddSC_mount_hyjal()
     new npc_garr_firesworn();
     // new npc_lycanthoth();
     new npc_marion_wormswing();
-    // new go_harpy_signal_fire();
+    new go_harpy_signal_fire();
     new npc_soft_target();
     new npc_angry_little_squirrel();
     new npc_wings_of_aviana();
