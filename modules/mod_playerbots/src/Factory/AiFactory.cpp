@@ -253,6 +253,7 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     // their instances. Keeping the strategies loaded also makes them survive
     // teleports and engine resets in this older playerbot branch.
     engine->addStrategy("wotlk-occ", false);
+    engine->addStrategy("cata-brc", false);
     engine->addStrategy("cata-vp", false);
     if (player->InBattleground() && player->GetBattleground() && !player->GetBattleground()->IsArena())
         engine->addStrategy("battleground", false);

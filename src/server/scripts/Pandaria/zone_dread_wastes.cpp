@@ -50,6 +50,8 @@ enum eQuests
     QUEST_DISSECTOR_WAKENS = 31606,
 };
 
+constexpr uint32 DISSECTOR_WAKE_TIME = 60 * IN_MILLISECONDS;
+
 enum eCreatures
 {
     NPC_IMPERIAL_VIZIER_ZORLOK_QUEST = 66791,
@@ -4011,7 +4013,7 @@ public:
                 return;
 
             playerGUID = guid;
-            wakeTimer = 30000;
+            wakeTimer = DISSECTOR_WAKE_TIME;
             eventActive = true;
         }
 
