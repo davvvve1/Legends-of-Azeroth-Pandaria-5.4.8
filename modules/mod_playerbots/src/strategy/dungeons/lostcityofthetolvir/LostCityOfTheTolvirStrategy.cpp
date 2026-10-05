@@ -8,10 +8,49 @@ namespace LostCityOfTheTolvirBot
 {
 namespace
 {
+Position const WindTunnelRecoveryPosition =
+    { -10887.7f, -1447.7f, 2.25f, 4.75f };
+
 Creature* FindCreature(Player* bot, uint32 entry, float range)
 {
     Creature* creature = bot->FindNearestCreature(entry, range, true);
     return creature && creature->IsAlive() ? creature : nullptr;
+}
+
+Creature* FindUsableWindTunnel(Player* bot)
+{
+    Creature* tunnel = FindCreature(bot, NPC_WIND_TUNNEL, 220.0f);
+    return tunnel && tunnel->IsVisible() &&
+        tunnel->HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK) ?
+        tunnel : nullptr;
+}
+
+bool IsWindTunnelVehicle(Player* bot)
+{
+    Unit* vehicle = bot->GetVehicleBase();
+    return vehicle && (vehicle->GetEntry() == NPC_WIND_TUNNEL ||
+        vehicle->GetEntry() == NPC_WIND_TUNNEL_LANDING);
+}
+
+bool NeedsSiamatLift(PlayerbotAI* botAI)
+{
+    Player* bot = botAI->GetBot();
+    if (bot->GetMapId() != MAP_LOST_CITY_OF_THE_TOLVIR || !bot->IsAlive() ||
+        IsWindTunnelVehicle(bot) || bot->GetPositionZ() > 27.0f)
+        return false;
+
+    Player* master = botAI->GetMaster();
+    bool const masterOnPlatform = master &&
+        master->GetMapId() == MAP_LOST_CITY_OF_THE_TOLVIR &&
+        master->GetPositionZ() > 27.0f;
+    Creature* siamat = FindCreature(bot, NPC_SIAMAT, 350.0f);
+    bool const encounterStarted = siamat && siamat->IsInCombat();
+    if (!masterOnPlatform && !encounterStarted)
+        return false;
+
+    // A bot below the map cannot find or path back to a tunnel. The action
+    // first returns it to a real tunnel on the lower floor, then clicks it.
+    return bot->GetPositionZ() < -40.0f || FindUsableWindTunnel(bot);
 }
 
 Unit* SelectPriorityTarget(PlayerbotAI* botAI)
@@ -56,10 +95,22 @@ Creature* FindNearbyHazard(Player* bot)
 
 void LostCityOfTheTolvirStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    triggers.push_back(new TriggerNode("lct use wind tunnel",
+        NextAction::array(0, new NextAction("lct use wind tunnel", ACTION_MOVE + 20), nullptr)));
     triggers.push_back(new TriggerNode("lct avoid hazard",
         NextAction::array(0, new NextAction("lct avoid hazard", ACTION_MOVE + 10), nullptr)));
     triggers.push_back(new TriggerNode("lct priority target",
         NextAction::array(0, new NextAction("lct attack priority target", ACTION_RAID + 5), nullptr)));
+}
+
+void LostCityOfTheTolvirStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
+{
+    multipliers.push_back(new LostCityOfTheTolvirMultiplier(botAI));
+}
+
+bool WindTunnelTrigger::IsActive()
+{
+    return NeedsSiamatLift(botAI);
 }
 
 bool PriorityTargetTrigger::IsActive()
@@ -85,14 +136,58 @@ bool AvoidHazardAction::Execute(Event /*event*/)
     return hazard && MoveAway(hazard, 12.0f);
 }
 
+bool UseWindTunnelAction::Execute(Event /*event*/)
+{
+    if (bot->GetPositionZ() < -40.0f)
+    {
+        bot->CombatStopWithPets(true);
+        bot->AttackStop();
+        return bot->TeleportTo(MAP_LOST_CITY_OF_THE_TOLVIR,
+            WindTunnelRecoveryPosition.GetPositionX(),
+            WindTunnelRecoveryPosition.GetPositionY(),
+            WindTunnelRecoveryPosition.GetPositionZ(),
+            WindTunnelRecoveryPosition.GetOrientation());
+    }
+
+    Creature* tunnel = FindUsableWindTunnel(bot);
+    if (!tunnel)
+        return false;
+
+    if (bot->GetDistance(tunnel) > INTERACTION_DISTANCE)
+        return MoveTo(tunnel, 2.0f, MovementPriority::MOVEMENT_FORCED);
+
+    botAI->RemoveShapeshift();
+    bot->AttackStop();
+    bot->GetMotionMaster()->Clear();
+    bot->StopMoving();
+    bot->SetFacingToObject(tunnel);
+    return tunnel->HandleSpellClick(bot);
+}
+
+float LostCityOfTheTolvirMultiplier::GetValue(Action* action)
+{
+    if (bot->GetMapId() != MAP_LOST_CITY_OF_THE_TOLVIR)
+        return 1.0f;
+
+    if (IsWindTunnelVehicle(bot))
+        return dynamic_cast<MovementAction*>(action) ? 0.0f : 1.0f;
+
+    if (!NeedsSiamatLift(botAI) || dynamic_cast<UseWindTunnelAction*>(action))
+        return 1.0f;
+
+    return dynamic_cast<MovementAction*>(action) ? 0.0f : 1.0f;
+}
+
 LostCityOfTheTolvirTriggerContext::LostCityOfTheTolvirTriggerContext()
 {
+    creators["lct use wind tunnel"] = [](PlayerbotAI* ai) -> Trigger* { return new WindTunnelTrigger(ai); };
     creators["lct priority target"] = [](PlayerbotAI* ai) -> Trigger* { return new PriorityTargetTrigger(ai); };
     creators["lct avoid hazard"] = [](PlayerbotAI* ai) -> Trigger* { return new HazardTrigger(ai); };
 }
 
 LostCityOfTheTolvirActionContext::LostCityOfTheTolvirActionContext()
 {
+    creators["lct use wind tunnel"] = [](PlayerbotAI* ai) -> Action* { return new UseWindTunnelAction(ai); };
     creators["lct attack priority target"] = [](PlayerbotAI* ai) -> Action* { return new AttackPriorityTargetAction(ai); };
     creators["lct avoid hazard"] = [](PlayerbotAI* ai) -> Action* { return new AvoidHazardAction(ai); };
 }

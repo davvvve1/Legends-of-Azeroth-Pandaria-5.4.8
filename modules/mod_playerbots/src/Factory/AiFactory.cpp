@@ -602,6 +602,7 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
     }
     nonCombatEngine->addStrategy("say hello");
     nonCombatEngine->addStrategy("wotlk-occ", false);
+    nonCombatEngine->addStrategy("cata-lct", false);
     nonCombatEngine->addStrategy("cata-vp", false);
 }
 
