@@ -1,7 +1,8 @@
 -- Breaking the Bonds (25514): the second Rod of Subjugation sent SetData to
 -- bunny GUID 284444, but that bunny has no receiver event, so the click did
--- not grant objective 40545 or start the Twilight Dominator encounter.
--- Mirror the working first rod while using the second rod's result spell.
+-- not grant objective 40545. Cast only the second rod's credit spell here:
+-- 75625 attempts to summon vehicle 39835 at an invalid spell destination in
+-- this client data and makes Vehicle::InstallAccessory assert.
 UPDATE `gameobject_template`
 SET `AIName` = 'SmartGameObjectAI',
     `ScriptName` = ''
@@ -20,7 +21,4 @@ INSERT INTO `smart_scripts`
 VALUES
 (202955,1,0,0,64,0,100,0,0,0,0,0,0,
  11,75616,2,0,0,0,0,7,0,0,0,0,0,0,0,0,
- 'Second Rod of Subjugation - On Use - Cast second rod result on player'),
-(202955,1,1,0,64,0,100,0,0,0,0,0,0,
- 85,75625,2,0,0,0,0,7,0,0,0,0,0,0,0,0,
- 'Second Rod of Subjugation - On Use - Player summons Twilight Dominator');
+ 'Second Rod of Subjugation - On Use - Cast second rod result on player');
