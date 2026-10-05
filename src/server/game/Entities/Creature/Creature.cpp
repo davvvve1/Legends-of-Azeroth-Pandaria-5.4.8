@@ -1483,7 +1483,11 @@ bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap)
         if (CanFly())
         {
             float tz = map->GetHeight(GetPhaseMask(), data->posX, data->posY, data->posZ, false);
-            if (data->posZ - tz > 0.1f)
+            // GetHeight returns an invalid-height sentinel when no terrain is
+            // available below an airborne spawn. Never relocate a dead flying
+            // creature to that sentinel: vehicle accessories are initialized
+            // during grid loading and would otherwise be summoned off-map.
+            if (tz > INVALID_HEIGHT && data->posZ - tz > 0.1f)
                 Relocate(data->posX, data->posY, tz);
         }
     }

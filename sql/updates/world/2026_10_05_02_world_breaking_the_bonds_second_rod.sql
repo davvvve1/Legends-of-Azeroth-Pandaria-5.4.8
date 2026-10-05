@@ -1,8 +1,7 @@
 -- Breaking the Bonds (25514): the second Rod of Subjugation sent SetData to
 -- bunny GUID 284444, but that bunny has no receiver event, so the click did
--- not grant objective 40545. Cast only the second rod's credit spell here:
--- 75625 attempts to summon vehicle 39835 at an invalid spell destination in
--- this client data and makes Vehicle::InstallAccessory assert.
+-- not grant objective 40545. Cast only the second rod's result spell; the
+-- encounter summon is not required for quest progress.
 UPDATE `gameobject_template`
 SET `AIName` = 'SmartGameObjectAI',
     `ScriptName` = ''

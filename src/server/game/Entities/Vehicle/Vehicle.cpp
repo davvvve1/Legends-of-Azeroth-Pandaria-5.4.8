@@ -472,7 +472,14 @@ void Vehicle::InstallAccessory(uint32 entry, int8 seatId, bool minion, uint8 typ
         entry, (int32)seatId);
 
     TempSummon* accessory = _me->SummonCreature(entry, *_me, TempSummonType(type), summonTime);
-    ASSERT(accessory);
+    if (!accessory)
+    {
+        TC_LOG_ERROR("entities.vehicle", "Vehicle (GuidLow: %u, DB GUID: %u, Entry: %u) failed to install accessory "
+            "(Entry: %u) on seat %d because the accessory could not be summoned.", _me->GetGUID().GetCounter(),
+            (_me->GetTypeId() == TYPEID_UNIT ? _me->ToCreature()->GetDBTableGUIDLow() : _me->GetGUID().GetCounter()),
+            GetCreatureEntry(), entry, (int32)seatId);
+        return;
+    }
 
     if (minion)
         accessory->AddUnitTypeMask(UNIT_MASK_ACCESSORY);
