@@ -579,6 +579,12 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
             player->VehicleSpellInitialize();
     }
 
+    // VehicleAIBase normally removes spell-click and despawns an abandoned
+    // vehicle after five seconds.  These Guardians are also the player's only
+    // way back from the lower Hatchery ledges, so keep a dismounted Guardian
+    // available for re-boarding until its summon naturally expires.
+    void OnCharmed(bool /*apply*/) override { }
+
     void UpdateAI(uint32 diff) override
     {
         VehicleAI::UpdateAI(diff);
