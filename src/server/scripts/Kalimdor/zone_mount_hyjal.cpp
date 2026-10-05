@@ -508,8 +508,6 @@ enum AvianasGuardianData
     NPC_GUARDIAN_LAUNCHER_VIGILANCE = 40723,
 
     SPELL_TWILIGHT_FIRELANCE_EQUIPPED = 74180,
-    SPELL_SUMMON_GUARDIAN_WAVE_TWO    = 75935,
-    SPELL_SUMMON_GUARDIAN_VIGILANCE   = 75943,
     SPELL_GUARDIAN_LAUNCHER_INVIS     = 70621,
 };
 
@@ -529,24 +527,17 @@ struct npc_avianas_guardian_launcher : public ScriptedAI
 
         uint32 guardianEntry = me->GetEntry() == NPC_GUARDIAN_LAUNCHER_WAVE_TWO
             ? NPC_AVIANAS_GUARDIAN_WAVE_TWO : NPC_AVIANAS_GUARDIAN_VIGILANCE;
-        uint32 summonSpell = me->GetEntry() == NPC_GUARDIAN_LAUNCHER_WAVE_TWO
-            ? SPELL_SUMMON_GUARDIAN_WAVE_TWO : SPELL_SUMMON_GUARDIAN_VIGILANCE;
 
-        player->CastSpell(player, summonSpell, true);
-
-        std::list<Creature*> guardians;
-        player->GetCreatureListWithEntryInGrid(guardians, guardianEntry, 15.0f);
-        for (Creature* guardian : guardians)
-        {
-            TempSummon* summon = guardian->ToTempSummon();
-            if (!summon || summon->GetSummonerGUID() != player->GetGUID())
-                continue;
-
-            player->EnterVehicle(guardian, 0);
-            me->CastSpell(me, SPELL_GUARDIAN_LAUNCHER_INVIS, true);
-            result = true;
+        // The original summon spells have a fixed duration and can expire as
+        // soon as the player dismounts during Wave One/Two.  Keep lifecycle
+        // control in the vehicle AI so the Guardian remains recoverable.
+        TempSummon* guardian = player->SummonCreature(guardianEntry, *player, TEMPSUMMON_MANUAL_DESPAWN);
+        if (!guardian)
             return;
-        }
+
+        player->EnterVehicle(guardian, 0);
+        me->CastSpell(me, SPELL_GUARDIAN_LAUNCHER_INVIS, true);
+        result = true;
     }
 
     void UpdateAI(uint32 /*diff*/) override { }
@@ -563,6 +554,7 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
     {
         VehicleAI::Reset();
         collisionTimer = 100;
+        emptyVehicleTimer = 0;
         EnableFlight();
     }
 
@@ -574,8 +566,12 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
     void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
     {
         if (!apply)
+        {
+            emptyVehicleTimer = 2 * MINUTE * IN_MILLISECONDS;
             return;
+        }
 
+        emptyVehicleTimer = 0;
         EnableFlight();
         if (Player* player = passenger->ToPlayer())
             player->VehicleSpellInitialize();
@@ -590,6 +586,17 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
     void UpdateAI(uint32 diff) override
     {
         VehicleAI::UpdateAI(diff);
+
+        if (emptyVehicleTimer)
+        {
+            if (emptyVehicleTimer <= diff)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            emptyVehicleTimer -= diff;
+        }
 
         if (collisionTimer > diff)
         {
@@ -628,6 +635,7 @@ private:
     }
 
     uint32 collisionTimer;
+    uint32 emptyVehicleTimer;
 };
 
 enum FlamewakerSentinelEnums
