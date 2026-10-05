@@ -254,6 +254,9 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     // teleports and engine resets in this older playerbot branch.
     engine->addStrategy("wotlk-occ", false);
     engine->addStrategy("cata-brc", false);
+    engine->addStrategy("cata-gb", false);
+    engine->addStrategy("cata-hoo", false);
+    engine->addStrategy("cata-lct", false);
     engine->addStrategy("cata-vp", false);
     if (player->InBattleground() && player->GetBattleground() && !player->GetBattleground()->IsArena())
         engine->addStrategy("battleground", false);
