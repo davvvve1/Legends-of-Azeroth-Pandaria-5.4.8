@@ -20895,11 +20895,24 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
         // Attunement items, quests and achievements remain enforced for raids.
         bool const levelOnlyDungeon = mapEntry->IsDungeon() && !mapEntry->IsRaid();
 
+        // Headless playerbots are selected as group companions and can be a
+        // few levels behind their human leader.  Let them follow into a
+        // dungeon when that leader satisfies its level range; never weaken
+        // the requirement for a real player or for an under-level leader.
+        Player* leader = this;
+        ObjectGuid leaderGuid = GetGroup() ? GetGroup()->GetLeaderGUID() : GetGUID();
+        if (leaderGuid != GetGUID())
+            leader = ObjectAccessor::FindConnectedPlayer(leaderGuid);
+
+        bool const useHumanLeaderLevel = GetSession() && GetSession()->IsBot() &&
+            leader && leader != this && leader->GetSession() && !leader->GetSession()->IsBot();
+        uint8 const accessLevel = useHumanLeaderLevel ? leader->GetLevel() : GetLevel();
+
         if (!sWorld->getBoolConfig(CONFIG_INSTANCE_IGNORE_LEVEL))
         {
-            if (ar->levelMin && GetLevel() < ar->levelMin)
+            if (ar->levelMin && accessLevel < ar->levelMin)
                 LevelMin = ar->levelMin;
-            if (ar->levelMax && GetLevel() > ar->levelMax)
+            if (ar->levelMax && accessLevel > ar->levelMax)
                 LevelMax = ar->levelMax;
         }
 
@@ -20926,11 +20939,6 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
             missingQuest = ar->quest_H;
 
         uint32 missingAchievement = 0;
-        Player* leader = this;
-        ObjectGuid leaderGuid = GetGroup() ? GetGroup()->GetLeaderGUID() : GetGUID();
-        if (leaderGuid != GetGUID())
-            leader = ObjectAccessor::FindConnectedPlayer(leaderGuid);
-
         if (!levelOnlyDungeon && ar->achievement)
             if (!leader || !leader->HasAchieved(ar->achievement))
                 missingAchievement = ar->achievement;
