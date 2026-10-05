@@ -477,6 +477,105 @@ class npc_wings_of_aviana : public CreatureScript
         }
 };
 
+enum AvianasGuardianData
+{
+    NPC_AVIANAS_GUARDIAN_WAVE_TWO  = 39710,
+    NPC_TWILIGHT_FIREBIRD          = 40650,
+    NPC_TWILIGHT_LANCER            = 40660,
+    NPC_AVIANAS_GUARDIAN_VIGILANCE = 40719,
+    NPC_GUARDIAN_LAUNCHER_WAVE_TWO = 40720,
+    NPC_GUARDIAN_LAUNCHER_VIGILANCE = 40723,
+
+    SPELL_TWILIGHT_FIRELANCE_EQUIPPED = 74180,
+    SPELL_SUMMON_GUARDIAN_WAVE_TWO    = 75935,
+    SPELL_SUMMON_GUARDIAN_VIGILANCE   = 75943,
+    SPELL_GUARDIAN_LAUNCHER_INVIS     = 70621,
+};
+
+// The launcher used to summon a guardian through SmartAI and then search from
+// the launcher for that guardian in a five-yard radius.  The summon is owned by
+// the player and can appear outside that search radius, leaving the player on
+// the ground.  Resolve the player-owned summon directly and board it here.
+struct npc_avianas_guardian_launcher : public ScriptedAI
+{
+    npc_avianas_guardian_launcher(Creature* creature) : ScriptedAI(creature) { }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        Player* player = clicker ? clicker->ToPlayer() : nullptr;
+        if (!player || !player->HasAura(SPELL_TWILIGHT_FIRELANCE_EQUIPPED) || player->GetVehicle())
+            return;
+
+        uint32 guardianEntry = me->GetEntry() == NPC_GUARDIAN_LAUNCHER_WAVE_TWO
+            ? NPC_AVIANAS_GUARDIAN_WAVE_TWO : NPC_AVIANAS_GUARDIAN_VIGILANCE;
+        uint32 summonSpell = me->GetEntry() == NPC_GUARDIAN_LAUNCHER_WAVE_TWO
+            ? SPELL_SUMMON_GUARDIAN_WAVE_TWO : SPELL_SUMMON_GUARDIAN_VIGILANCE;
+
+        player->CastSpell(player, summonSpell, true);
+
+        std::list<Creature*> guardians;
+        player->GetCreatureListWithEntryInGrid(guardians, guardianEntry, 15.0f);
+        for (Creature* guardian : guardians)
+        {
+            TempSummon* summon = guardian->ToTempSummon();
+            if (!summon || summon->GetSummonerGUID() != player->GetGUID())
+                continue;
+
+            player->EnterVehicle(guardian, 0);
+            me->CastSpell(me, SPELL_GUARDIAN_LAUNCHER_INVIS, true);
+            result = true;
+            return;
+        }
+    }
+
+    void UpdateAI(uint32 /*diff*/) override { }
+};
+
+// Credit must go to the player riding the guardian, not to the guardian unit
+// that enters the lancer's line of sight.  This serves both Wave Two (25544)
+// and Vigilance on Wings (29177), which share the same lancer objective.
+struct npc_avianas_guardian_vehicle : public VehicleAI
+{
+    npc_avianas_guardian_vehicle(Creature* creature) : VehicleAI(creature) { }
+
+    void Reset() override
+    {
+        collisionTimer = 100;
+    }
+
+    void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool apply) override
+    {
+        if (!apply)
+            me->DespawnOrUnsummon(100);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (collisionTimer > diff)
+        {
+            collisionTimer -= diff;
+            return;
+        }
+
+        collisionTimer = 100;
+
+        Vehicle* vehicle = me->GetVehicleKit();
+        Player* player = vehicle && vehicle->GetPassenger(0) ? vehicle->GetPassenger(0)->ToPlayer() : nullptr;
+        if (!player || !player->HasAura(SPELL_TWILIGHT_FIRELANCE_EQUIPPED))
+            return;
+
+        Creature* firebird = me->FindNearestCreature(NPC_TWILIGHT_FIREBIRD, 4.0f, true);
+        if (!firebird)
+            return;
+
+        player->KilledMonsterCredit(NPC_TWILIGHT_LANCER, ObjectGuid::Empty);
+        firebird->DespawnOrUnsummon();
+    }
+
+private:
+    uint32 collisionTimer;
+};
+
 enum FlamewakerSentinelEnums
 {
     SPELL_GRABBED           = 98169,
@@ -1260,6 +1359,8 @@ void AddSC_mount_hyjal()
     new npc_soft_target();
     new npc_angry_little_squirrel();
     new npc_wings_of_aviana();
+    new creature_script<npc_avianas_guardian_launcher>("npc_avianas_guardian_launcher");
+    new creature_script<npc_avianas_guardian_vehicle>("npc_avianas_guardian_vehicle");
     new npc_flamewaker_sentinel();
     new npc_flame_lieutenant();
     new npc_morthis_whisperwing();
