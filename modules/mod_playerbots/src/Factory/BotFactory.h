@@ -42,7 +42,7 @@ public:
     void InitGlyphs();
     void InitManagedTalentsAndGlyphs(ManagedLoadoutMode mode);
 private:
-    void UpgradePveEquipment(uint32 minimumItemLevel);
+    void UpgradePveEquipment();
     void InitTalentsTreeForMode(bool reset,
                                 ManagedLoadoutMode mode,
                                 bool ignorePremadeProfile);

@@ -1335,6 +1335,14 @@ void BotFactory::InitMissingEquipment()
 void BotFactory::InitEquipmentForSpec()
 {
     bot->DurabilityRepairAll(false, 1.0f, false);
+    ManagedLoadoutMode const mode = bot->InBattleground() || bot->InArena() ?
+        ManagedLoadoutMode::Pvp : ManagedLoadoutMode::Pve;
+
+    // Every bot receives glyphs, not only bots temporarily staged by LFG.
+    // Fill every slot unlocked at the current level while preserving any
+    // existing player-selected talents and glyphs on persistent companions.
+    InitGlyphsForMode(mode);
+
     if (!bot->InBattleground() && !bot->InArena())
     {
         InitManagedEquipmentForSpec(0, ManagedLoadoutMode::Pve);
@@ -1350,6 +1358,7 @@ void BotFactory::InitEquipmentForSpec()
     // levels, or can repeatedly return the same invalid legacy weapon. Finish
     // with the deterministic path so every logged-in bot has a usable set.
     NormalizeManagedWeaponSet(0, false, false);
+    InitManagedEnhancements(ManagedLoadoutMode::Pvp);
 }
 
 void BotFactory::RepairEquipmentProficiencies()
@@ -1388,22 +1397,21 @@ void BotFactory::InitManagedEquipmentForSpec(uint32 minimumItemLevel,
         true, pveOnly);
     NormalizeManagedWeaponSet(minimumItemLevel, true, pveOnly);
     if (pveOnly)
-        UpgradePveEquipment(minimumItemLevel);
+        UpgradePveEquipment();
     bot->DurabilityRepairAll(false, 1.0f, false);
 }
 
-void BotFactory::UpgradePveEquipment(uint32 minimumItemLevel)
+void BotFactory::UpgradePveEquipment()
 {
     ItemTemplateContainer const* templates = sObjectMgr->GetItemTemplateStore();
     if (!templates)
         return;
 
     // Search the complete template store, not the random leveling cache.
-    // First satisfy the queue's item-level floor, then prefer quality and
-    // item level.  Cataclysm leveling gear is often rare ilvl 305-318 while
-    // the highest usable epic is ICC ilvl 277-284.  Preferring rarity before
-    // the admission floor downgraded freshly prepared bots and made every
-    // Grim Batol candidate fail LFG validation.
+    // Highest usable item level wins at every character level; quality is
+    // only a tie breaker. Cataclysm leveling gear is often rare ilvl 305-318
+    // while the highest usable epic is ICC ilvl 277-284, so preferring rarity
+    // first can both weaken the bot and make it fail dungeon admission.
     auto eligible = [&](EquipmentSlots slot, ItemTemplate const* proto)
     {
         return proto && !proto->Duration && proto->Bonding != BIND_QUEST &&
@@ -1435,14 +1443,9 @@ void BotFactory::UpgradePveEquipment(uint32 minimumItemLevel)
             uint16 destination = 0;
             auto better = [&](ItemTemplate const* proto)
             {
-                bool const candidateMeetsFloor = !minimumItemLevel ||
-                    proto->ItemLevel >= minimumItemLevel;
-                bool const bestMeetsFloor = best && (!minimumItemLevel ||
-                    best->ItemLevel >= minimumItemLevel);
-                if (candidateMeetsFloor != bestMeetsFloor)
-                    return candidateMeetsFloor;
-                return !best || proto->Quality > best->Quality ||
-                    (proto->Quality == best->Quality && proto->ItemLevel > best->ItemLevel);
+                return !best || proto->ItemLevel > best->ItemLevel ||
+                    (proto->ItemLevel == best->ItemLevel &&
+                        proto->Quality > best->Quality);
             };
 
             // Reuse a real bag item before considering generated copies.
