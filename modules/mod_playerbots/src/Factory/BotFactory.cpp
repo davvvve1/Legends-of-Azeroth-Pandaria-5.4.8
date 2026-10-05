@@ -1397,21 +1397,21 @@ void BotFactory::InitManagedEquipmentForSpec(uint32 minimumItemLevel,
         true, pveOnly);
     NormalizeManagedWeaponSet(minimumItemLevel, true, pveOnly);
     if (pveOnly)
-        UpgradePveEquipment();
+        UpgradePveEquipment(minimumItemLevel);
     bot->DurabilityRepairAll(false, 1.0f, false);
 }
 
-void BotFactory::UpgradePveEquipment()
+void BotFactory::UpgradePveEquipment(uint32 minimumItemLevel)
 {
     ItemTemplateContainer const* templates = sObjectMgr->GetItemTemplateStore();
     if (!templates)
         return;
 
     // Search the complete template store, not the random leveling cache.
-    // Highest usable item level wins at every character level; quality is
-    // only a tie breaker. Cataclysm leveling gear is often rare ilvl 305-318
-    // while the highest usable epic is ICC ilvl 277-284, so preferring rarity
-    // first can both weaken the bot and make it fail dungeon admission.
+    // Never trade away a dungeon admission floor for colour. Among items
+    // which satisfy that floor, prefer epic gear and then the highest usable
+    // item level. With no admission floor this gives every ordinary PvE bot
+    // the strongest epic set available at its current level.
     auto eligible = [&](EquipmentSlots slot, ItemTemplate const* proto)
     {
         return proto && !proto->Duration && proto->Bonding != BIND_QUEST &&
@@ -1443,7 +1443,22 @@ void BotFactory::UpgradePveEquipment()
             uint16 destination = 0;
             auto better = [&](ItemTemplate const* proto)
             {
-                return !best || proto->ItemLevel > best->ItemLevel ||
+                if (!best)
+                    return true;
+
+                bool const candidateMeetsFloor = !minimumItemLevel ||
+                    proto->ItemLevel >= minimumItemLevel;
+                bool const bestMeetsFloor = !minimumItemLevel ||
+                    best->ItemLevel >= minimumItemLevel;
+                if (candidateMeetsFloor != bestMeetsFloor)
+                    return candidateMeetsFloor;
+
+                bool const candidateEpic = proto->Quality == ITEM_QUALITY_EPIC;
+                bool const bestEpic = best->Quality == ITEM_QUALITY_EPIC;
+                if (candidateEpic != bestEpic)
+                    return candidateEpic;
+
+                return proto->ItemLevel > best->ItemLevel ||
                     (proto->ItemLevel == best->ItemLevel &&
                         proto->Quality > best->Quality);
             };
