@@ -320,6 +320,25 @@ class go_harpy_signal_fire : public GameObjectScript
         }
 };
 
+// Twilight Armor Plate 203197, 203198 - A Gap in Their Armor (25758)
+class go_twilight_armor_plate : public GameObjectScript
+{
+    public:
+        go_twilight_armor_plate() : GameObjectScript("go_twilight_armor_plate") { }
+
+        bool OnGossipHello(Player* player, GameObject* go) override
+        {
+            if (player->GetQuestStatus(25758) != QUEST_STATUS_INCOMPLETE ||
+                player->HasItemCount(55809, 8, true))
+                return true;
+
+            if (player->AddItem(55809, 1))
+                go->SetLootState(GO_JUST_DEACTIVATED);
+
+            return true;
+        }
+};
+
 enum TrampolineSpells
 {
     TRAMPOLINE_BOUNCE_1             = 79024,
@@ -1376,6 +1395,7 @@ void AddSC_mount_hyjal()
     // new npc_lycanthoth();
     new npc_marion_wormswing();
     new go_harpy_signal_fire();
+    new go_twilight_armor_plate();
     new npc_soft_target();
     new npc_angry_little_squirrel();
     new npc_wings_of_aviana();
