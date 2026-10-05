@@ -499,6 +499,8 @@ class npc_wings_of_aviana : public CreatureScript
 enum AvianasGuardianData
 {
     NPC_AVIANAS_GUARDIAN_WAVE_TWO  = 39710,
+    NPC_TWILIGHT_BUZZARD           = 39833,
+    NPC_TWILIGHT_KNIGHT_RIDER      = 39835,
     NPC_TWILIGHT_FIREBIRD          = 40650,
     NPC_TWILIGHT_LANCER            = 40660,
     NPC_AVIANAS_GUARDIAN_VIGILANCE = 40719,
@@ -601,6 +603,13 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
         Player* player = vehicle && vehicle->GetPassenger(0) ? vehicle->GetPassenger(0)->ToPlayer() : nullptr;
         if (!player || !player->HasAura(SPELL_TWILIGHT_FIRELANCE_EQUIPPED))
             return;
+
+        if (Creature* buzzard = me->FindNearestCreature(NPC_TWILIGHT_BUZZARD, 4.0f, true))
+        {
+            player->KilledMonsterCredit(NPC_TWILIGHT_KNIGHT_RIDER, ObjectGuid::Empty);
+            buzzard->DespawnOrUnsummon();
+            return;
+        }
 
         Creature* firebird = me->FindNearestCreature(NPC_TWILIGHT_FIREBIRD, 4.0f, true);
         if (!firebird)
