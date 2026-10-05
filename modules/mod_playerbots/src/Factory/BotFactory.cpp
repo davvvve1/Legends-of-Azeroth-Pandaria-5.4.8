@@ -1388,19 +1388,22 @@ void BotFactory::InitManagedEquipmentForSpec(uint32 minimumItemLevel,
         true, pveOnly);
     NormalizeManagedWeaponSet(minimumItemLevel, true, pveOnly);
     if (pveOnly)
-        UpgradePveEquipment();
+        UpgradePveEquipment(minimumItemLevel);
     bot->DurabilityRepairAll(false, 1.0f, false);
 }
 
-void BotFactory::UpgradePveEquipment()
+void BotFactory::UpgradePveEquipment(uint32 minimumItemLevel)
 {
     ItemTemplateContainer const* templates = sObjectMgr->GetItemTemplateStore();
     if (!templates)
         return;
 
     // Search the complete template store, not the random leveling cache.
-    // Epic first, then the highest ilvl usable by this level and spec; use
-    // rare/uncommon gear only when no compatible epic exists for a slot.
+    // First satisfy the queue's item-level floor, then prefer quality and
+    // item level.  Cataclysm leveling gear is often rare ilvl 305-318 while
+    // the highest usable epic is ICC ilvl 277-284.  Preferring rarity before
+    // the admission floor downgraded freshly prepared bots and made every
+    // Grim Batol candidate fail LFG validation.
     auto eligible = [&](EquipmentSlots slot, ItemTemplate const* proto)
     {
         return proto && !proto->Duration && proto->Bonding != BIND_QUEST &&
@@ -1432,6 +1435,12 @@ void BotFactory::UpgradePveEquipment()
             uint16 destination = 0;
             auto better = [&](ItemTemplate const* proto)
             {
+                bool const candidateMeetsFloor = !minimumItemLevel ||
+                    proto->ItemLevel >= minimumItemLevel;
+                bool const bestMeetsFloor = best && (!minimumItemLevel ||
+                    best->ItemLevel >= minimumItemLevel);
+                if (candidateMeetsFloor != bestMeetsFloor)
+                    return candidateMeetsFloor;
                 return !best || proto->Quality > best->Quality ||
                     (proto->Quality == best->Quality && proto->ItemLevel > best->ItemLevel);
             };
