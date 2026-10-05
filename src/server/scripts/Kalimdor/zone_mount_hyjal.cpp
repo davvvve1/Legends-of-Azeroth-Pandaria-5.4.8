@@ -540,17 +540,30 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
 
     void Reset() override
     {
+        VehicleAI::Reset();
         collisionTimer = 100;
+        EnableFlight();
     }
 
-    void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool apply) override
+    void IsSummonedBy(Unit* /*summoner*/) override
+    {
+        EnableFlight();
+    }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
     {
         if (!apply)
-            me->DespawnOrUnsummon(100);
+            return;
+
+        EnableFlight();
+        if (Player* player = passenger->ToPlayer())
+            player->VehicleSpellInitialize();
     }
 
     void UpdateAI(uint32 diff) override
     {
+        VehicleAI::UpdateAI(diff);
+
         if (collisionTimer > diff)
         {
             collisionTimer -= diff;
@@ -573,6 +586,13 @@ struct npc_avianas_guardian_vehicle : public VehicleAI
     }
 
 private:
+    void EnableFlight()
+    {
+        me->SetCanFly(true);
+        me->SetDisableGravity(true);
+        me->SetSpeed(MOVE_FLIGHT, me->GetSpeedRate(MOVE_RUN));
+    }
+
     uint32 collisionTimer;
 };
 
