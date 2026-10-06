@@ -40,8 +40,141 @@ enum Spells
 enum eQuests
 {
     QUEST_THROUGH_THE_DREAM = 25325,
+    QUEST_OH_DEER = 25392,
+    QUEST_AESSINAS_MIRACLE = 25372,
     QUEST_RETURN_TO_NORDRASSIL = 25578,
     QUEST_THE_NORDRASSIL_SUMMIT = 29326,
+};
+
+enum OhDeer
+{
+    NPC_MYLUNE = 39930,
+    NPC_MYLUNE_REGROWTH = 52671,
+    NPC_INJURED_FAWN_CREDIT = 40031,
+};
+
+class npc_hyjal_injured_fawn : public CreatureScript
+{
+public:
+    npc_hyjal_injured_fawn() : CreatureScript("npc_hyjal_injured_fawn") { }
+
+    struct npc_hyjal_injured_fawnAI : public ScriptedAI
+    {
+        npc_hyjal_injured_fawnAI(Creature* creature) : ScriptedAI(creature) { }
+
+        ObjectGuid ownerGuid;
+        uint32 checkTimer;
+
+        void Reset() override
+        {
+            ownerGuid.Clear();
+            checkTimer = 500;
+            me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        }
+
+        void OnSpellClick(Unit* clicker, bool& result) override
+        {
+            Player* player = clicker ? clicker->ToPlayer() : nullptr;
+            if (!player || !ownerGuid.IsEmpty() ||
+                player->GetQuestStatus(QUEST_OH_DEER) != QUEST_STATUS_INCOMPLETE)
+            {
+                result = false;
+                return;
+            }
+
+            ownerGuid = player->GetGUID();
+            me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+            me->SetStandState(UNIT_STAND_STATE_STAND);
+            me->SetReactState(REACT_PASSIVE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_NPC);
+            me->SetSpeed(MOVE_RUN, 3.0f, true);
+            me->GetMotionMaster()->MoveFollow(player, 1.5f, PET_FOLLOW_ANGLE);
+            result = true;
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (ownerGuid.IsEmpty())
+                return;
+
+            if (checkTimer > diff)
+            {
+                checkTimer -= diff;
+                return;
+            }
+            checkTimer = 500;
+
+            Player* player = ObjectAccessor::GetPlayer(*me, ownerGuid);
+            if (!player || !player->IsInWorld() || player->GetMap() != me->GetMap() ||
+                player->GetQuestStatus(QUEST_OH_DEER) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            Creature* mylune = me->FindNearestCreature(NPC_MYLUNE, 20.0f, true);
+            if (!mylune)
+                mylune = me->FindNearestCreature(NPC_MYLUNE_REGROWTH, 20.0f, true);
+
+            if (mylune && player->IsWithinDistInMap(mylune, 25.0f))
+            {
+                player->KilledMonsterCredit(NPC_INJURED_FAWN_CREDIT);
+                me->DespawnOrUnsummon(500);
+                return;
+            }
+
+            // Recover followers that fall behind a fast ground/flying mount.
+            if (me->GetDistance(player) > 45.0f)
+                me->NearTeleportTo(player->GetPositionX(), player->GetPositionY(),
+                    player->GetPositionZ(), player->GetOrientation(), false);
+
+            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                me->GetMotionMaster()->MoveFollow(player, 1.5f, PET_FOLLOW_ANGLE);
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_hyjal_injured_fawnAI(creature);
+    }
+};
+
+enum AessinasMiracle
+{
+    NPC_AESSINA = 41406,
+};
+
+class npc_arch_druid_hamuul_aessinas_miracle : public CreatureScript
+{
+public:
+    npc_arch_druid_hamuul_aessinas_miracle() : CreatureScript("npc_arch_druid_hamuul_aessinas_miracle") { }
+
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_AESSINAS_MIRACLE)
+            player->CompleteQuest(QUEST_AESSINAS_MIRACLE, true);
+
+        return true;
+    }
+
+    bool OnQuestReward(Player* /*player*/, Creature* creature, Quest const* quest, uint32 /*opt*/) override
+    {
+        if (quest->GetQuestId() != QUEST_AESSINAS_MIRACLE)
+            return true;
+
+        // Both Hamuul versions at the Grove can complete this quest.  The
+        // original phase event is absent from the database, so show Aessina
+        // over the moonwell without leaving a permanent duplicate behind.
+        if (!creature->FindNearestCreature(NPC_AESSINA, 60.0f, true))
+            if (Creature* aessina = creature->SummonCreature(NPC_AESSINA, 4419.50f, -2097.00f, 1217.00f, 1.55f,
+                TEMPSUMMON_TIMED_DESPAWN, 45000))
+            {
+                aessina->SetDisableGravity(true);
+                aessina->SetHover(true);
+            }
+
+        return true;
+    }
 };
 
 enum NordrassilSummit
@@ -1412,6 +1545,8 @@ struct npc_hyjal_warden_pet_safe : public ScriptedAI
 
 void AddSC_mount_hyjal()
 {
+    new npc_hyjal_injured_fawn();
+    new npc_arch_druid_hamuul_aessinas_miracle();
     new npc_nordrassil_summit_thrall();
     new npc_garr();
     new npc_garr_firesworn();

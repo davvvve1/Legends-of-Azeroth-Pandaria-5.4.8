@@ -12,6 +12,115 @@
 
 namespace
 {
+enum class PlayerbotMountMode : uint8
+{
+    None,
+    Ground,
+    Flying,
+    Swimming
+};
+
+SpellEffectInfo const* GetMountedEffect(SpellInfo const* spellInfo)
+{
+    if (!spellInfo)
+        return nullptr;
+
+    for (SpellEffectInfo const& effect : spellInfo->Effects)
+        if (effect.ApplyAuraName == SPELL_AURA_MOUNTED)
+            return &effect;
+
+    return nullptr;
+}
+
+PlayerbotMountMode GetMountMode(Player* player, SpellInfo const* mountSpell)
+{
+    SpellEffectInfo const* mountedEffect = GetMountedEffect(mountSpell);
+    if (!player || !mountedEffect)
+        return PlayerbotMountMode::None;
+
+    MountCapabilityEntry const* capability =
+        player->GetMountCapability(uint32(mountedEffect->MiscValueB));
+    if (capability)
+    {
+        SpellInfo const* speedSpell =
+            sSpellMgr->GetSpellInfo(capability->SpeedModSpell);
+        if (speedSpell &&
+            speedSpell->HasAura(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED))
+            return PlayerbotMountMode::Flying;
+
+        if (capability->Flags & MOUNT_FLAG_CAN_SWIM)
+            return PlayerbotMountMode::Swimming;
+    }
+
+    if (mountSpell->HasAura(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) ||
+        mountSpell->HasAura(SPELL_AURA_FLY))
+        return PlayerbotMountMode::Flying;
+    if (mountSpell->HasAura(SPELL_AURA_MOD_INCREASE_SWIM_SPEED))
+        return PlayerbotMountMode::Swimming;
+
+    return PlayerbotMountMode::Ground;
+}
+
+SpellInfo const* GetActiveMountSpell(Player* player)
+{
+    if (!player)
+        return nullptr;
+
+    Unit::AuraEffectList const& mountAuras =
+        player->GetAuraEffectsByType(SPELL_AURA_MOUNTED);
+    return mountAuras.empty() ? nullptr : mountAuras.front()->GetSpellInfo();
+}
+
+std::vector<uint32> FindMatchingMountSpells(PlayerbotAI* botAI, Player* bot,
+    SpellInfo const* masterMount)
+{
+    SpellEffectInfo const* masterEffect = GetMountedEffect(masterMount);
+    if (!botAI || !bot || !masterEffect)
+        return {};
+
+    Player* master = botAI->GetMaster();
+    PlayerbotMountMode const masterMode = GetMountMode(master, masterMount);
+    std::vector<std::pair<uint32, uint32>> rankedSpells;
+
+    for (auto const& spellPair : bot->GetSpellMap())
+    {
+        PlayerSpell const* learned = spellPair.second;
+        if (!learned || learned->state == PLAYERSPELL_REMOVED || !learned->active)
+            continue;
+
+        SpellInfo const* candidate = sSpellMgr->GetSpellInfo(spellPair.first);
+        SpellEffectInfo const* candidateEffect = GetMountedEffect(candidate);
+        if (!candidate || candidate->IsPassive() || !candidateEffect)
+            continue;
+
+        PlayerbotMountMode const candidateMode = GetMountMode(bot, candidate);
+        uint32 score = 0;
+        if (candidate->Id == masterMount->Id)
+            score = 3000000;
+        else if (masterEffect->MiscValueB &&
+            candidateEffect->MiscValueB == masterEffect->MiscValueB)
+            score = 2000000;
+        else if (candidateMode != PlayerbotMountMode::None &&
+            candidateMode == masterMode)
+            score = 1000000;
+        else
+            continue;
+
+        // Prefer a newer variant when several owned mounts are otherwise an
+        // equally close match. Cast validation still decides whether the
+        // chosen spell is usable at the bot's current location.
+        score += std::min(candidate->Id, uint32(999999));
+        rankedSpells.emplace_back(score, candidate->Id);
+    }
+
+    std::sort(rankedSpells.rbegin(), rankedSpells.rend());
+    std::vector<uint32> matchingSpells;
+    matchingSpells.reserve(rankedSpells.size());
+    for (auto const& rankedSpell : rankedSpells)
+        matchingSpells.push_back(rankedSpell.second);
+    return matchingSpells;
+}
+
 bool IsPlayerbotPetThreatSpell(SpellInfo const* spellInfo)
 {
     if (!spellInfo)
@@ -29,6 +138,79 @@ bool IsPlayerbotPetThreatSpell(SpellInfo const* spellInfo)
     }
     return false;
 }
+}
+
+bool SyncMasterMountAction::isUseful()
+{
+    Player* master = botAI->GetMaster();
+    if (!master || !master->IsInWorld() || master->GetMap() != bot->GetMap() ||
+        !bot->IsAlive() || bot->IsInCombat() || bot->IsInFlight() ||
+        botAI->IsInVehicle())
+        return false;
+
+    SpellInfo const* masterMount = GetActiveMountSpell(master);
+    if (!masterMount)
+        return bot->IsMounted();
+
+    std::vector<uint32> const matchingSpells =
+        FindMatchingMountSpells(botAI, bot, masterMount);
+    if (matchingSpells.empty())
+        return false;
+
+    SpellInfo const* botMount = GetActiveMountSpell(bot);
+    if (!botMount)
+        return true;
+
+    return GetMountMode(bot, botMount) != GetMountMode(master, masterMount);
+}
+
+bool SyncMasterMountAction::Execute(Event /*event*/)
+{
+    Player* master = botAI->GetMaster();
+    if (!master || !master->IsInWorld() || master->GetMap() != bot->GetMap())
+        return false;
+
+    SpellInfo const* masterMount = GetActiveMountSpell(master);
+    if (!masterMount)
+    {
+        if (!bot->IsMounted())
+            return false;
+
+        bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+        if (bot->IsMounted())
+            bot->Dismount();
+        return true;
+    }
+
+    std::vector<uint32> const matchingSpells =
+        FindMatchingMountSpells(botAI, bot, masterMount);
+    if (matchingSpells.empty())
+        return false;
+
+    if (bot->IsMounted())
+    {
+        bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+        if (bot->IsMounted())
+            bot->Dismount();
+        return true;
+    }
+
+    bot->StopMoving();
+    botAI->RemoveShapeshift();
+    for (uint32 matchingSpell : matchingSpells)
+    {
+        if (!botAI->CanCastSpell(matchingSpell, bot) ||
+            !botAI->CastSpell(matchingSpell, bot))
+            continue;
+
+        TC_LOG_DEBUG("playerbots",
+            "Synced master mount: bot=%s master=%s masterSpell=%u botSpell=%u",
+            bot->GetName().c_str(), master->GetName().c_str(), masterMount->Id,
+            matchingSpell);
+        return true;
+    }
+
+    return false;
 }
 
 bool MeleeAction::isUseful()

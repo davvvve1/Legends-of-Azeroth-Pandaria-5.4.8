@@ -15,6 +15,8 @@ enum Ids : uint32
 {
     MAP_GRIM_BATOL = 670,
     NPC_GENERAL_UMBRISS = 39625,
+    NPC_BATTERED_RED_DRAKE = 39294,
+    SPELL_ENGULFING_FLAMES = 74039,
     NPC_FORGEMASTER_THRONGUS = 40177,
     NPC_DRAHGA_SHADOWBURNER = 40319,
     NPC_ERUDAX = 40484,
@@ -61,6 +63,20 @@ public:
     bool IsActive() override;
 };
 
+class MountBombingDrakeTrigger : public Trigger
+{
+public:
+    explicit MountBombingDrakeTrigger(PlayerbotAI* ai) : Trigger(ai, "gb mount bombing drake") { }
+    bool IsActive() override;
+};
+
+class BombFromDrakeTrigger : public Trigger
+{
+public:
+    explicit BombFromDrakeTrigger(PlayerbotAI* ai) : Trigger(ai, "gb bomb from drake") { }
+    bool IsActive() override;
+};
+
 class AttackPriorityTargetAction : public AttackAction
 {
 public:
@@ -79,6 +95,20 @@ class MoveToShadowGaleAction : public MovementAction
 {
 public:
     explicit MoveToShadowGaleAction(PlayerbotAI* ai) : MovementAction(ai, "gb move to shadow gale") { }
+    bool Execute(Event event) override;
+};
+
+class MountBombingDrakeAction : public MovementAction
+{
+public:
+    explicit MountBombingDrakeAction(PlayerbotAI* ai) : MovementAction(ai, "gb mount bombing drake") { }
+    bool Execute(Event event) override;
+};
+
+class BombFromDrakeAction : public Action
+{
+public:
+    explicit BombFromDrakeAction(PlayerbotAI* ai) : Action(ai, "gb bomb from drake") { }
     bool Execute(Event event) override;
 };
 

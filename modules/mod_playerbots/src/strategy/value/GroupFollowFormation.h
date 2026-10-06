@@ -13,10 +13,12 @@ struct Offset
 
 inline Offset GetOffset(bool tank, std::size_t slot)
 {
-    // Stable rows, three yards apart, with the first tank directly in front.
+    // Keep tanks far enough ahead to meet the next pack before the rest of
+    // the group, while healers and damage dealers remain behind the leader.
+    // Additional tanks retain stable three-yard rows behind the first tank.
     float const row = static_cast<float>(slot / 3) * 3.0f;
     float const sideways = static_cast<float>(static_cast<int>((slot + 1) % 3) - 1) * 3.0f;
-    return {tank ? 5.0f + row : -4.0f - row, sideways};
+    return {tank ? 8.0f + row : -4.0f - row, sideways};
 }
 }
 

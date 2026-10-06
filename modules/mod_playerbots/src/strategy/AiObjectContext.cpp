@@ -21,6 +21,7 @@
 #include "GrimBatolStrategy.h"
 #include "HallsOfOriginationStrategy.h"
 #include "LostCityOfTheTolvirStrategy.h"
+#include "dungeons/mop/MopInstanceStrategy.h"
 #include "OculusStrategy.h"
 #include "VortexPinnacleStrategy.h"
 #include "raids/RaidStrategyContext.h"
@@ -63,6 +64,7 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     strategyContexts.Add(new GrimBatolBot::GrimBatolStrategyContext());
     strategyContexts.Add(new HallsOfOriginationBot::HallsOfOriginationStrategyContext());
     strategyContexts.Add(new LostCityOfTheTolvirBot::LostCityOfTheTolvirStrategyContext());
+    strategyContexts.Add(new MopInstanceBot::MopInstanceStrategyContext());
     strategyContexts.Add(new OculusBot::OculusStrategyContext());
     strategyContexts.Add(new VortexPinnacleBot::VortexPinnacleStrategyContext());
     strategyContexts.Add(new RaidStrategyContext());
@@ -73,6 +75,7 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     actionContexts.Add(new GrimBatolBot::GrimBatolActionContext());
     actionContexts.Add(new HallsOfOriginationBot::HallsOfOriginationActionContext());
     actionContexts.Add(new LostCityOfTheTolvirBot::LostCityOfTheTolvirActionContext());
+    actionContexts.Add(new MopInstanceBot::MopInstanceActionContext());
     actionContexts.Add(new OculusBot::OculusActionContext());
     actionContexts.Add(new VortexPinnacleBot::VortexPinnacleActionContext());
     actionContexts.Add(new RaidAq20ActionContext());
@@ -97,6 +100,7 @@ AiObjectContext::AiObjectContext(PlayerbotAI* botAI) : PlayerbotAIAware(botAI)
     triggerContexts.Add(new GrimBatolBot::GrimBatolTriggerContext());
     triggerContexts.Add(new HallsOfOriginationBot::HallsOfOriginationTriggerContext());
     triggerContexts.Add(new LostCityOfTheTolvirBot::LostCityOfTheTolvirTriggerContext());
+    triggerContexts.Add(new MopInstanceBot::MopInstanceTriggerContext());
     triggerContexts.Add(new OculusBot::OculusTriggerContext());
     triggerContexts.Add(new VortexPinnacleBot::VortexPinnacleTriggerContext());
     triggerContexts.Add(new RaidAq20TriggerContext());

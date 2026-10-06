@@ -4106,14 +4106,18 @@ bool AvoidAoeAction::FindNearestHazard(Position& position, float& radius) const
 
         if (!GetPersistentSpellHazard(object, caster, spellId, hazardRadius))
         {
-            // Cataclysm and later encounters also implement pools as passive,
-            // unattackable creature emitters carrying a periodic area aura.
-            // They are not DynamicObjects/AreaTriggers and the old code could
-            // never see them (for example Blight of Ozumat).
+            // Many encounters implement pools as trigger/passive creature
+            // emitters carrying a periodic area aura. They are not
+            // DynamicObjects/AreaTriggers, and different scripts use either
+            // one, both, or neither of the usual unselectable/non-attackable
+            // flags. Accept non-combat emitters as well so the common variants
+            // all use the same global avoidance path.
             Creature* emitter = object->ToCreature();
             if (!emitter ||
-                !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) ||
-                !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+                (!emitter->IsTrigger() &&
+                 !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) &&
+                 !emitter->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE) &&
+                 emitter->GetReactState() != REACT_PASSIVE))
                 continue;
 
             for (auto const& auraPair : emitter->GetAppliedAuras())

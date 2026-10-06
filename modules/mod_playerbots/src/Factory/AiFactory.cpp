@@ -258,6 +258,7 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     engine->addStrategy("cata-hoo", false);
     engine->addStrategy("cata-lct", false);
     engine->addStrategy("cata-vp", false);
+    engine->addStrategy("mop-instance", false);
     if (player->InBattleground() && player->GetBattleground() && !player->GetBattleground()->IsArena())
         engine->addStrategy("battleground", false);
 
@@ -602,8 +603,10 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
     }
     nonCombatEngine->addStrategy("say hello");
     nonCombatEngine->addStrategy("wotlk-occ", false);
+    nonCombatEngine->addStrategy("cata-gb", false);
     nonCombatEngine->addStrategy("cata-lct", false);
     nonCombatEngine->addStrategy("cata-vp", false);
+    nonCombatEngine->addStrategy("mop-instance", false);
 }
 
 Engine* AiFactory::createNonCombatEngine(Player* player, PlayerbotAI* const facade, AiObjectContext* aiObjectContext)

@@ -45,16 +45,26 @@ class npc_raz_the_crazed : public CreatureScript
 
         struct npc_raz_the_crazedAI : public ScriptedAI
         {
-            npc_raz_the_crazedAI(Creature* creature) : ScriptedAI(creature) { }
+            npc_raz_the_crazedAI(Creature* creature)
+                : ScriptedAI(creature), baseRunSpeed(creature->GetSpeedRate(MOVE_RUN)) { }
 
             EventMap events, nonCombatEvents;
             uint32 wp;
             bool SecondEvent;
+            float const baseRunSpeed;
+
+            void ApplyRunSpeed()
+            {
+                // User-requested 100% increase. Keep this relative to the
+                // creature template so later database tuning is preserved.
+                me->SetSpeed(MOVE_RUN, baseRunSpeed * 2.0f, true);
+            }
 
             void InitializeAI() override
             {
                 wp = 0;
                 SecondEvent = false;
+                ApplyRunSpeed();
                 DoCast(me, SPELL_SHADOW_PRISON);
             }
 
@@ -62,6 +72,7 @@ class npc_raz_the_crazed : public CreatureScript
             {
                 events.Reset();
                 nonCombatEvents.Reset();
+                ApplyRunSpeed();
                 nonCombatEvents.ScheduleEvent(EVENT_MOVE, 1500);
             }
 

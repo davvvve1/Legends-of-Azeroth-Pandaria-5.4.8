@@ -28,4 +28,13 @@ public:
     virtual bool Execute(Event event) override;
 };
 
+class SyncMasterMountAction : public Action
+{
+public:
+    SyncMasterMountAction(PlayerbotAI* ai) : Action(ai, "sync master mount") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
 #endif

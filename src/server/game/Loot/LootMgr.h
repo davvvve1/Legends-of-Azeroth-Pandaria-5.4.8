@@ -158,6 +158,9 @@ public:
 
     uint32 Item;
     uint32 Group;
+    uint32 CountMin = 1;
+    uint32 CountMax = 1;
+    bool EliteBonus = true;
 
 private:
     std::vector<DropChance> m_chances;

@@ -6105,11 +6105,22 @@ bool Player::UpdateGatherSkill(uint32 skillId, uint32 skillValue, uint32 redLeve
             if (GameObject const* gobject = lootObject->ToGameObject())
             {
                 uint32 gain = Trinity::XP::BaseGain(GetLevel(), gobject->GetGOInfo()->chest.xpLevel, GetContentLevelsForMapAndZone(GetMapId(), GetZoneId()));
-                gain *= sWorld->getRate(RATE_XP_GATHER);
-                gain += GetXPRestBonus(gain);
+                gain *= sWorld->getRate(RATE_XP_GATHER, this);
 
                 int32 diff = gobject->GetGOInfo()->chest.xpLevel - GetLevel();
-                gain = diff > int32(sWorld->getIntConfig(CONFIG_XP_GATHER_LEVEL_DIFFERENCE)) ? 0 : gain;
+                if (diff > int32(sWorld->getIntConfig(CONFIG_XP_GATHER_LEVEL_DIFFERENCE)))
+                    gain = 0;
+
+                // Since 4.0.1, herbalism and mining use the same general XP
+                // bonuses as creature kills. This includes heirloom bonuses
+                // (SPELL_AURA_MOD_XP_PCT), applied before rested XP doubles
+                // the resulting amount.
+                Unit::AuraEffectList const& xpAuras = GetAuraEffectsByType(SPELL_AURA_MOD_XP_PCT);
+                for (Unit::AuraEffectList::const_iterator itr = xpAuras.begin(); itr != xpAuras.end(); ++itr)
+                    AddPct(gain, (*itr)->GetAmount());
+
+                if (gain)
+                    gain += GetXPRestBonus(gain);
                 GiveXP(gain, nullptr);
             }
             return UpdateSkillPro(skillId, SkillGainChance(skillValue, gray, green, yellow) * multiplicator, gathering_skill_gain);

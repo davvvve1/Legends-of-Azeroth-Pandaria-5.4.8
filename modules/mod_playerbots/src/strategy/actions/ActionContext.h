@@ -61,6 +61,7 @@ public:
 
         creators["toggle pet spell"] = &ActionContext::toggle_pet_spell;
         creators["pet attack"] = &ActionContext::pet_attack;
+        creators["sync master mount"] = &ActionContext::sync_master_mount;
 
         creators["reach spell"] = &ActionContext::ReachSpell;
         creators["reach melee"] = &ActionContext::ReachMelee;
@@ -106,6 +107,7 @@ private:
 
     static Action* toggle_pet_spell(PlayerbotAI* ai) { return new TogglePetSpellAutoCastAction(ai); }
     static Action* pet_attack(PlayerbotAI* ai) { return new PetAttackAction(ai); }
+    static Action* sync_master_mount(PlayerbotAI* ai) { return new SyncMasterMountAction(ai); }
 
     static Action* ReachSpell(PlayerbotAI* botAI) { return new ReachSpellAction(botAI); }
     static Action* ReachMelee(PlayerbotAI* botAI) { return new ReachMeleeAction(botAI); }

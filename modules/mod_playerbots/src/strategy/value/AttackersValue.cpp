@@ -9,6 +9,7 @@
 #include "GridObject.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
+#include "GroupPveCombat.h"
 #include "Playerbots.h"
 #include "ReputationMgr.h"
 #include "ServerFacade.h"
@@ -27,6 +28,19 @@ GuidVector AttackersValue::Calculate()
 
     if (Group* group = bot->GetGroup())
         AddAttackersOf(group, targets);
+
+    // The master's first ranged shot or cast may not have produced threat
+    // yet, and distance/LOS caches can therefore hide it from only some bots.
+    // Publish that exact attack target to every role in the group. Selection
+    // alone remains insufficient, which avoids accidental chain pulls.
+    if (Player* master = botAI->GetMaster())
+    {
+        Unit* candidates[] = { master->GetVictim(), master->GetSelectedUnit() };
+        for (Unit* target : candidates)
+            if (GroupPveCombat::IsActivelyAttacking(master, target) &&
+                IsValidTarget(target, bot))
+                targets.insert(target);
+    }
 
     RemoveNonThreating(targets);
 

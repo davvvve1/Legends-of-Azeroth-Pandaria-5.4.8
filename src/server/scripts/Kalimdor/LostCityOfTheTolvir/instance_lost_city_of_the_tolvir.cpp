@@ -16,6 +16,7 @@
 */
 
 #include "lost_city_of_the_tolvir.h"
+#include "Pet.h"
 #include "ScriptPCH.h"
 
 #define MAX_ENCOUNTER 5
@@ -24,6 +25,38 @@ enum eScriptText
 {
     YELL_FREE                    = 4,
 };
+
+namespace
+{
+constexpr float SiamatPlatformMinX = -11004.5f;
+constexpr float SiamatPlatformMaxX = -10897.4f;
+constexpr float SiamatPlatformMinY = -1449.6f;
+constexpr float SiamatPlatformMaxY = -1343.1f;
+constexpr float SiamatPlatformActivationZ = 27.0f;
+constexpr float SiamatPlatformFallZ = 30.0f;
+constexpr float SiamatPlatformRescueZ = 36.0f;
+
+bool IsInsideSiamatPlatform(WorldObject const* object)
+{
+    return object && object->GetPositionX() >= SiamatPlatformMinX &&
+        object->GetPositionX() <= SiamatPlatformMaxX &&
+        object->GetPositionY() >= SiamatPlatformMinY &&
+        object->GetPositionY() <= SiamatPlatformMaxY;
+}
+
+bool RescueFromSiamatPlatform(Unit* unit)
+{
+    if (!unit || !unit->IsAlive() || !IsInsideSiamatPlatform(unit) ||
+        unit->GetPositionZ() >= SiamatPlatformFallZ)
+        return false;
+
+    unit->GetMotionMaster()->Clear();
+    unit->StopMoving();
+    unit->NearTeleportTo(unit->GetPositionX(), unit->GetPositionY(),
+        SiamatPlatformRescueZ, unit->GetOrientation());
+    return true;
+}
+}
 
 class instance_lost_city_of_the_tolvir : public InstanceMapScript
 {
@@ -47,6 +80,7 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
                 uiHarbingerGUID = ObjectGuid::Empty;
                 uiSiamatPlatformGUID = ObjectGuid::Empty;
                 uiUpdateTimer = 7000;
+                uiPlatformSafetyTimer = 100;
                 BosesIsDone = false;
                 archaeologyQuestAura = 0;
             }
@@ -61,6 +95,10 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
             void OnCreatureCreate(Creature* creature) override
             {
                 bool siamatAvailable = (GetBossState(DATA_GENERAL_HUSAM)==DONE) && (GetBossState(DATA_LOCKMAW)==DONE) && (GetBossState(DATA_HIGH_PROPHET_BARIM)==DONE);
+
+                if (IsInsideSiamatPlatform(creature) &&
+                    creature->GetPositionZ() > SiamatPlatformActivationZ)
+                    platformCreatureGUIDs.insert(creature->GetGUID());
             
                 switch (creature->GetEntry())
                 {
@@ -78,6 +116,9 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
                         break;
                     case BOSS_SIAMAT:
                         uiSiamatGUID = creature->GetGUID();
+                        // Siamat always belongs on the upper platform, even if
+                        // a bad height was already selected before this hook.
+                        platformCreatureGUIDs.insert(creature->GetGUID());
                         if (siamatAvailable)
                             BosesIsDone = true;
                         break;
@@ -102,27 +143,23 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
                     go->setActive(true);
                     uiSiamatPlatformGUID = go->GetGUID();
 
-                    // Siamat's arena uses the destroyed display once the
-                    // first three encounters are complete, but that state
-                    // normally disables collision. Keep the correct display
-                    // and force its floor collision back on.
                     if (GetBossState(DATA_GENERAL_HUSAM) == DONE &&
                         GetBossState(DATA_LOCKMAW) == DONE &&
                         GetBossState(DATA_HIGH_PROPHET_BARIM) == DONE)
-                    {
-                        go->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED);
-                        go->EnableCollision(true);
-                    }
+                        OpenSiamatPlatform(go);
                 }
+            }
+
+            void OpenSiamatPlatform(GameObject* platform)
+            {
+                platform->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED);
+                platform->EnableCollision(true);
             }
 
             void SiamatFree()
             {
                 if (GameObject* platform = instance->GetGameObject(uiSiamatPlatformGUID))
-                {
-                    platform->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED);
-                    platform->EnableCollision(true);
-                }
+                    OpenSiamatPlatform(platform);
 
                 for (int i = 0; i < 6; ++i)
                     if (Creature* tunnel = instance->GetCreature(uiTunnelGUID[i]))
@@ -131,6 +168,44 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
 
             void Update(uint32 diff) override
             {
+                if (uiPlatformSafetyTimer <= diff)
+                {
+                    uiPlatformSafetyTimer = 100;
+
+                    for (auto const& reference : instance->GetPlayers())
+                        if (Player* player = reference.GetSource())
+                        {
+                            if (IsInsideSiamatPlatform(player) &&
+                                player->GetPositionZ() > SiamatPlatformActivationZ)
+                                platformPlayerGUIDs.insert(player->GetGUID());
+
+                            if (platformPlayerGUIDs.count(player->GetGUID()))
+                            {
+                                RescueFromSiamatPlatform(player);
+                                if (Pet* pet = player->GetPet())
+                                    if (RescueFromSiamatPlatform(pet) &&
+                                        !pet->GetVictim())
+                                        pet->GetMotionMaster()->MoveFollow(player,
+                                            PET_FOLLOW_DIST,
+                                            pet->GetFollowAngle());
+                            }
+                        }
+
+                    for (auto itr = platformCreatureGUIDs.begin();
+                        itr != platformCreatureGUIDs.end();)
+                    {
+                        if (Creature* creature = instance->GetCreature(*itr))
+                        {
+                            RescueFromSiamatPlatform(creature);
+                            ++itr;
+                        }
+                        else
+                            itr = platformCreatureGUIDs.erase(itr);
+                    }
+                }
+                else
+                    uiPlatformSafetyTimer -= diff;
+
                 if (BosesIsDone)
                 {
                     if (uiUpdateTimer <= diff)
@@ -270,9 +345,12 @@ class instance_lost_city_of_the_tolvir : public InstanceMapScript
             ObjectGuid uiSiamatGUID;
             ObjectGuid uiSiamatPlatformGUID;
             uint32 uiUpdateTimer;
+            uint32 uiPlatformSafetyTimer;
             uint32 archaeologyQuestAura;
             uint8 uiTunnelFlag;
             bool BosesIsDone;
+            std::set<ObjectGuid> platformPlayerGUIDs;
+            std::set<ObjectGuid> platformCreatureGUIDs;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

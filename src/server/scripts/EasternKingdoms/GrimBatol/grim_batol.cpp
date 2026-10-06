@@ -16,6 +16,9 @@
 */
 
 #include "ScriptPCH.h"
+#include "Group.h"
+#include "MoveSplineInit.h"
+#include "Vehicle.h"
 #include "grim_batol.h"
     
 enum Creatures
@@ -60,7 +63,35 @@ enum Creatures
     NPC_FARSEER_THOORANU             = 50385,
     NPC_VELASTRASZA                  = 50390,
     NPC_BALEFLAME                    = 50387,
+
+    NPC_BATTERED_RED_DRAKE           = 39294,
+    NPC_BATTERED_RED_DRAKE_SHORTCUT  = 42571,
+    NPC_TROGG_DWELLER_CREDIT         = 51182,
+    NPC_TWILIGHT_MINION_CREDIT       = 51184,
 };
+
+enum Quests
+{
+    QUEST_SOFTEN_THEM_UP             = 28852,
+};
+
+bool IsProtectedGrimBatolBoss(Creature const* creature)
+{
+    if (!creature)
+        return false;
+
+    switch (creature->GetEntry())
+    {
+        case NPC_GENERAL_UMBRISS:
+        case NPC_FORGEMASTER_THRONGUS:
+        case 51437: // Forgemaster Throngus (heroic template)
+        case NPC_DRAHGA_SHADOWBURNER:
+        case NPC_ERUDAX:
+            return true;
+        default:
+            return creature->IsDungeonBoss();
+    }
+}
 
 // 94350 summon red drake
 enum Spells
@@ -172,6 +203,12 @@ enum Spells
     SPELL_SUMMON_FELHUNTER           = 76418, 
     SPELL_SPELL_LOCK                 = 40953, // heroic?
 
+    // battered red drake bombing run
+    SPELL_ENGULFING_FLAMES           = 74039,
+    SPELL_ENGULFING_FLAMES_DAMAGE_1  = 74040,
+    SPELL_ENGULFING_FLAMES_DAMAGE_2  = 74041,
+    SPELL_NET                        = 79377,
+
     // twilight stormbreaker
     SPELL_WATER_BOLT                 = 76720,
     SPELL_WATER_SHELL                = 90522,
@@ -190,6 +227,38 @@ enum Spells
 
     // twilight wyrmcaller
     SPELL_FEED_PET                   = 76816, 
+};
+
+Position const BatteredRedDrakePath[] =
+{
+    { -505.096f, -346.693f, 295.148f },
+    { -566.881f, -348.535f, 304.804f },
+    { -642.781f, -383.608f, 306.450f },
+    { -722.426f, -460.139f, 324.362f },
+    { -735.085f, -514.648f, 327.044f },
+    { -719.083f, -607.351f, 315.022f },
+    { -683.708f, -645.474f, 317.541f },
+    { -620.409f, -694.036f, 296.418f },
+    { -544.672f, -704.941f, 302.507f },
+    { -485.056f, -698.166f, 321.069f },
+    { -423.972f, -669.439f, 295.727f },
+    { -403.600f, -670.734f, 290.807f },
+    { -395.438f, -697.200f, 286.550f },
+    { -431.827f, -720.217f, 304.647f },
+    { -487.154f, -736.530f, 311.784f },
+    { -570.273f, -736.688f, 298.638f },
+    { -666.459f, -692.118f, 303.875f },
+    { -693.671f, -661.456f, 314.836f },
+    { -728.920f, -603.343f, 316.247f },
+    { -735.455f, -552.554f, 323.006f },
+    { -731.263f, -501.560f, 319.229f },
+    { -685.958f, -401.127f, 317.204f },
+    { -633.514f, -355.870f, 303.427f },
+    { -550.539f, -345.475f, 290.205f },
+    { -460.160f, -330.359f, 277.596f },
+    // Descend to the verified floor at the drake staging area before ejecting.
+    { -440.197f, -334.522f, 268.721f },
+    { -397.473f, -221.205f, 285.736f }
 };
 
 enum Events
@@ -239,6 +308,12 @@ enum Events
     EVENT_WATER_SHELL                = 43,
     EVENT_CHAIN_LIGHTNING            = 44,
     EVENT_OVERCHARGE                 = 45,
+};
+
+enum BatteredRedDrakePoints
+{
+    POINT_BOMBING_RUN                = 100,
+    POINT_BOMBING_EXIT               = 101,
 };
 
 enum Yells
@@ -1844,23 +1919,348 @@ class npc_battered_red_drake : public CreatureScript
         {
             npc_battered_red_drakeAI(Creature* creature) : CreatureAI(creature) { }
 
-            void OnSpellClick(Unit* clicker, bool& /*result*/) override
-            {
-                if (InstanceScript* instance = me->GetInstanceScript())
-                    if (instance->GetData(DATA_FORGEMASTER_THRONGUS) != DONE)
-                        return;
+            uint32 unlockCheckTimer;
+            bool bombingRunFinished;
+            bool passengerBoarded;
+            bool flightStarted;
 
-                if (me->GetEntry() == 42571)
-                    clicker->NearTeleportTo(-549.354f, -582.390f, 276.597f, 2.73476f, false);
+            bool IsBombingDrake() const
+            {
+                return me->GetEntry() == NPC_BATTERED_RED_DRAKE;
             }
 
-            void UpdateAI(uint32 /*diff*/) override { }
+            bool IsShortcutUnlocked() const
+            {
+                InstanceScript* instance = me->GetInstanceScript();
+                return instance &&
+                    instance->GetBossState(DATA_FORGEMASTER_THRONGUS) == DONE;
+            }
+
+            void Reset() override
+            {
+                unlockCheckTimer = 1000;
+                bombingRunFinished = false;
+                passengerBoarded = false;
+                flightStarted = false;
+
+                if (!IsBombingDrake())
+                {
+                    // These copies are the post-Throngus dungeon shortcut,
+                    // not the bombing vehicles. Hide them until unlocked so
+                    // players cannot click the wrong overlapping drake.
+                    me->SetVisible(IsShortcutUnlocked());
+                    return;
+                }
+
+                me->SetFlag(UNIT_FIELD_FLAGS,
+                    UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                me->RemoveFlag(UNIT_FIELD_NPC_FLAGS,
+                    UNIT_NPC_FLAG_SPELLCLICK);
+                if (!me->HasAura(SPELL_NET))
+                    me->CastSpell(me, SPELL_NET, true);
+            }
+
+            void UnlockBombingDrake()
+            {
+                me->RemoveAurasDueToSpell(SPELL_NET);
+                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+            }
+
+            void CreditRiderGroup(Player* rider, uint32 creditEntry,
+                ObjectGuid guid = ObjectGuid::Empty)
+            {
+                if (!rider)
+                    return;
+
+                if (Group* group = rider->GetGroup())
+                {
+                    for (GroupReference* ref = group->GetFirstMember();
+                        ref; ref = ref->next())
+                        if (Player* member = ref->GetSource())
+                            if (member->IsInWorld() && member->GetMap() == me->GetMap())
+                                member->KilledMonsterCredit(creditEntry, guid);
+                    return;
+                }
+
+                rider->KilledMonsterCredit(creditEntry, guid);
+            }
+
+            void FinishSoftenThemUpForGroup(Player* rider)
+            {
+                if (!rider)
+                    return;
+
+                auto finishForPlayer = [](Player* player)
+                {
+                    if (player->GetQuestStatus(QUEST_SOFTEN_THEM_UP) != QUEST_STATUS_INCOMPLETE)
+                        return;
+
+                    for (uint8 i = 0; i < 15; ++i)
+                        player->KilledMonsterCredit(NPC_TWILIGHT_MINION_CREDIT);
+                    for (uint8 i = 0; i < 30; ++i)
+                        player->KilledMonsterCredit(NPC_TROGG_DWELLER_CREDIT);
+                };
+
+                if (Group* group = rider->GetGroup())
+                {
+                    for (GroupReference* ref = group->GetFirstMember();
+                        ref; ref = ref->next())
+                        if (Player* member = ref->GetSource())
+                            if (member->IsInWorld() && member->GetMap() == me->GetMap())
+                                finishForPlayer(member);
+                    return;
+                }
+
+                finishForPlayer(rider);
+            }
+
+            void PrepareBombingFlight()
+            {
+                if (bombingRunFinished || flightStarted)
+                    return;
+
+                flightStarted = true;
+                me->SetCanFly(true);
+                me->SetDisableGravity(true);
+                me->SetSpeed(MOVE_FLIGHT, 2.0f, true);
+                me->UpdateMovementFlags();
+                me->GetMotionMaster()->Clear(false);
+
+                // Launch the spline immediately. A delayed AI timer is not
+                // reliable while seat 0 gives the passenger vehicle control.
+                Movement::MoveSplineInit init(me);
+                for (uint8 i = 0; i < 26; ++i)
+                    init.Path().push_back(G3D::Vector3(
+                        BatteredRedDrakePath[i].GetPositionX(),
+                        BatteredRedDrakePath[i].GetPositionY(),
+                        BatteredRedDrakePath[i].GetPositionZ()));
+                init.SetFly();
+                init.SetUncompressed();
+                init.SetSmooth();
+                init.SetVelocity(24.0f);
+                init.Launch();
+
+                me->m_Events.Schedule(me->GetSplineDuration(), 1, [this]()
+                {
+                    if (Vehicle* vehicle = me->GetVehicleKit())
+                        if (Unit* passenger = vehicle->GetPassenger(0))
+                        {
+                            FinishSoftenThemUpForGroup(passenger->ToPlayer());
+                            passenger->ExitVehicle(me);
+                            passenger->NearTeleportTo(-440.197f, -334.522f,
+                                268.721f, 3.28731f, false);
+                        }
+
+                    bombingRunFinished = true;
+                    passengerBoarded = false;
+
+                    Movement::MoveSplineInit exit(me);
+                    exit.MoveTo(BatteredRedDrakePath[26].GetPositionX(),
+                        BatteredRedDrakePath[26].GetPositionY(),
+                        BatteredRedDrakePath[26].GetPositionZ());
+                    exit.SetFly();
+                    exit.SetUncompressed();
+                    exit.SetVelocity(24.0f);
+                    exit.Launch();
+                    me->DespawnOrUnsummon(me->GetSplineDuration() + 500);
+                });
+            }
+
+            void OnSpellClick(Unit* clicker, bool& result) override
+            {
+                if (IsBombingDrake())
+                {
+                    if (me->HasAura(SPELL_NET) || bombingRunFinished ||
+                        clicker->GetTypeId() != TYPEID_PLAYER || !me->GetVehicleKit() ||
+                        (passengerBoarded && clicker->GetVehicleBase() != me))
+                    {
+                        result = false;
+                        return;
+                    }
+
+                    // Spell 80343 is the retail boarding spell for this drake,
+                    // but some clients/DBC combinations do not apply its
+                    // vehicle-control aura. Never leave a valid click as a
+                    // no-op: board the player directly when the spell did not.
+                    if (!clicker->GetVehicle())
+                        clicker->EnterVehicle(me, 0);
+
+                    // Once one valid drake is boarded, release the remaining
+                    // group vehicles too. Residual combat state must not keep
+                    // the bots' individual drakes netted after the master left.
+                    std::list<Creature*> drakes;
+                    me->GetCreatureListWithEntryInGrid(drakes,
+                        NPC_BATTERED_RED_DRAKE, 120.0f);
+                    for (Creature* drake : drakes)
+                    {
+                        drake->RemoveAurasDueToSpell(SPELL_NET);
+                        drake->RemoveFlag(UNIT_FIELD_FLAGS,
+                            UNIT_FLAG_NOT_SELECTABLE);
+                        if (!drake->GetVehicleKit() ||
+                            !drake->GetVehicleKit()->IsVehicleInUse())
+                            drake->SetFlag(UNIT_FIELD_NPC_FLAGS,
+                                UNIT_NPC_FLAG_SPELLCLICK);
+                    }
+
+                    PrepareBombingFlight();
+
+                    result = true;
+                    return;
+                }
+
+                if (IsShortcutUnlocked())
+                    clicker->NearTeleportTo(-549.354f, -582.390f, 276.597f, 2.73476f, false);
+                else
+                    result = false;
+            }
+
+            void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+            {
+                if (!IsBombingDrake() || passenger->GetTypeId() != TYPEID_PLAYER)
+                    return;
+
+                if (!apply)
+                    return;
+
+                passengerBoarded = true;
+                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->RemoveFlag(UNIT_FIELD_NPC_FLAGS,
+                    UNIT_NPC_FLAG_SPELLCLICK);
+                Talk(0, passenger);
+                Talk(1, passenger);
+                PrepareBombingFlight();
+            }
+
+            void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+            {
+                if (!target || !target->IsAlive() || !spell ||
+                    target->GetTypeId() != TYPEID_UNIT ||
+                    IsProtectedGrimBatolBoss(target->ToCreature()) ||
+                    !me->IsValidAttackTarget(target))
+                    return;
+
+                if (spell->Id == SPELL_ENGULFING_FLAMES ||
+                    spell->Id == SPELL_ENGULFING_FLAMES_DAMAGE_1 ||
+                    spell->Id == SPELL_ENGULFING_FLAMES_DAMAGE_2)
+                {
+                    // Vehicle kills do not consistently propagate quest
+                    // objectives from bot riders to their real-player group.
+                    // Credit every in-map member explicitly before the kill.
+                    if (Vehicle* vehicle = me->GetVehicleKit())
+                        if (Player* rider = vehicle->GetPassenger(0) ?
+                            vehicle->GetPassenger(0)->ToPlayer() : nullptr)
+                        {
+                            uint32 const questCredit = target->GetEntry() == NPC_TROGG_DWELLER ?
+                                NPC_TROGG_DWELLER_CREDIT : NPC_TWILIGHT_MINION_CREDIT;
+                            CreditRiderGroup(rider, questCredit);
+                            CreditRiderGroup(rider, target->GetEntry(), target->GetGUID());
+                        }
+
+                    me->Kill(target, false, spell);
+                }
+            }
+
+            void MovementInform(uint32 type, uint32 pointId) override
+            {
+                if (!IsBombingDrake() ||
+                    (type != POINT_MOTION_TYPE && type != EFFECT_MOTION_TYPE))
+                    return;
+
+                if (pointId == POINT_BOMBING_RUN)
+                {
+                    if (Vehicle* vehicle = me->GetVehicleKit())
+                        if (Unit* passenger = vehicle->GetPassenger(0))
+                            passenger->ExitVehicle(me);
+
+                    bombingRunFinished = true;
+                    passengerBoarded = false;
+                    me->GetMotionMaster()->MovePoint(POINT_BOMBING_EXIT,
+                        BatteredRedDrakePath[26]);
+                }
+                else if (pointId == POINT_BOMBING_EXIT)
+                    me->DespawnOrUnsummon();
+            }
+
+            void UpdateAI(uint32 diff) override
+            {
+                if (!IsBombingDrake())
+                {
+                    bool const shouldBeVisible = IsShortcutUnlocked();
+                    if (me->IsVisible() != shouldBeVisible)
+                        me->SetVisible(shouldBeVisible);
+                    return;
+                }
+
+                if (me->HasAura(SPELL_NET))
+                {
+                    if (unlockCheckTimer <= diff)
+                    {
+                        unlockCheckTimer = 1000;
+                        // The database has no separate destructible net
+                        // creatures. The three nearby guard packs are the
+                        // authoritative gate for freeing each drake.
+                        if (!me->SelectNearestTarget(30.0f))
+                            UnlockBombingDrake();
+                    }
+                    else
+                        unlockCheckTimer -= diff;
+                    return;
+                }
+
+                Vehicle* vehicle = me->GetVehicleKit();
+                if (passengerBoarded && !bombingRunFinished &&
+                    (!vehicle || !vehicle->IsVehicleInUse()))
+                {
+                    me->DespawnOrUnsummon();
+                    return;
+                }
+
+            }
         };
 
         CreatureAI* GetAI(Creature* creature) const override
         {
             return GetInstanceAI<npc_battered_red_drakeAI>(creature);
         }
+};
+
+class spell_grim_batol_engulfing_flames : public SpellScriptLoader
+{
+public:
+    spell_grim_batol_engulfing_flames() : SpellScriptLoader("spell_grim_batol_engulfing_flames") { }
+
+    class spell_grim_batol_engulfing_flames_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_grim_batol_engulfing_flames_SpellScript);
+
+        void HandleHit()
+        {
+            Creature* target = GetHitCreature();
+            Unit* caster = GetCaster();
+            if (!target || !caster)
+                return;
+
+            if (IsProtectedGrimBatolBoss(target))
+            {
+                SetHitDamage(0);
+                return;
+            }
+
+            if (target->IsAlive() && caster->IsValidAttackTarget(target))
+                SetHitDamage(target->GetHealth());
+        }
+
+        void Register() override
+        {
+            OnHit += SpellHitFn(spell_grim_batol_engulfing_flames_SpellScript::HandleHit);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_grim_batol_engulfing_flames_SpellScript();
+    }
 };
 
 
@@ -1961,6 +2361,7 @@ void AddSC_grim_batol()
     new npc_ascended_rockbreaker_fissure();
     new npc_crimsonborne_warlord_empowering_flames();
     new npc_battered_red_drake();
+    new spell_grim_batol_engulfing_flames();
     new spell_twilight_enforcer_meat_grinder();
     new spell_twilight_shadow_weaver_shadow_weave();
     new spell_twilight_thundercaller_electric_blast();

@@ -41,6 +41,37 @@ static Rates const qualityToRate[MAX_ITEM_QUALITY] =
     RATE_DROP_ITEM_ARTIFACT,                                // ITEM_QUALITY_ARTIFACT
 };
 
+namespace
+{
+// Ordinary corpse loot did not use MoP's loot-specialization data.  Keep
+// non-equipment rewards shared (quest items, currencies, tokens, mounts,
+// recipes and crafting materials), but only let wearable armor and weapons
+// enter an instance loot roll when they match the loot owner's selected spec.
+bool IsAllowedForInstanceLootSpec(Loot const& loot,
+    LootStoreItem const* item, Player const* player)
+{
+    if (!item || !player || item->type != LOOT_ITEM_TYPE_ITEM ||
+        item->needs_quest || item->mincountOrRef < 0)
+        return true;
+
+    Creature const* creature = loot.GetSource() ?
+        loot.GetSource()->ToCreature() : nullptr;
+    if (!creature || !creature->GetMap() ||
+        (!creature->GetMap()->IsDungeon() && !creature->GetMap()->IsRaid()))
+        return true;
+
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(item->itemid);
+    if (!proto || proto->InventoryType == INVTYPE_NON_EQUIP ||
+        (proto->Class != ITEM_CLASS_ARMOR &&
+         proto->Class != ITEM_CLASS_WEAPON))
+        return true;
+
+    // Use the same strict class, armor proficiency and selected-spec test as
+    // MoP personal loot and bonus rolls.
+    return player->IsItemFitToSpecialization(proto);
+}
+}
+
 LootStore LootTemplates_Creature("creature_loot_template",           "creature entry",                  true);
 LootStore LootTemplates_Disenchant("disenchant_loot_template",       "item disenchant id",              true);
 LootStore LootTemplates_Fishing("fishing_loot_template",             "area id",                         true);
@@ -79,6 +110,9 @@ struct LootGroupInvalidSelector
             if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(item->itemid))
                 if (!_player->IsItemFitToSpecialization(proto))
                     return true;
+
+        if (!IsAllowedForInstanceLootSpec(_loot, item, _player))
+            return true;
 
         return false;
     }
@@ -438,7 +472,7 @@ LootItem::LootItem(LootStoreItem const& li)
 
 LootItem::LootItem(WorldDropLootItem const& item)
 {
-    count = 1;
+    count = urand(item.CountMin, item.CountMax);
     currency = false;
     follow_loot_rules = false;
     is_blocked = false;
@@ -542,6 +576,11 @@ void LootItem::AddAllowedLooter(const Player* player)
 // Inserts the item into the loot (called by LootTemplate processors)
 void Loot::AddItem(LootStoreItem const& item, Player* player)
 {
+    // This also protects scripted/direct loot paths which do not pass through
+    // LootGroupInvalidSelector.
+    if (!IsAllowedForInstanceLootSpec(*this, &item, player))
+        return;
+
     if (item.type == LOOT_ITEM_TYPE_CURRENCY)
     {
         if (m_mainLootGenerated)
@@ -1025,7 +1064,7 @@ void Loot::FillFFALoot(Player* player)
                     else
                     {
                         float chance = itr->second.GetChance(creature->GetLevel());
-                        if (creature->isElite())
+                        if (creature->isElite() && itr->second.EliteBonus)
                             AddPct(chance, 20.0f);
                         if (roll_chance_f(chance))
                         {
@@ -1040,7 +1079,7 @@ void Loot::FillFFALoot(Player* player)
             {
                 auto& rolled = itr.second[urand(0, itr.second.size() - 1)];
                 float chance = rolled.Item->GetChance(creature->GetLevel());
-                if (creature->isElite())
+                if (creature->isElite() && rolled.Item->EliteBonus)
                     AddPct(chance, 20.0f);
                 if (roll_chance_f(chance))
                 {
@@ -2151,6 +2190,9 @@ void LootTemplate::Process(Loot& loot, bool rate, uint32 lootmode, uint8 groupId
     {
         LootStoreItem* item = *i;
         if (item->lootmode && !(item->lootmode & lootmode))
+            continue;
+
+        if (!IsAllowedForInstanceLootSpec(loot, item, player))
             continue;
 
         float chanceMultiplier = policy == LootRollPolicy::BoostedRaidBoss ?
@@ -3321,8 +3363,10 @@ void LootMgr::LoadWorldDrop()
 
     uint32 starttime = getMSTime();
     uint32 count = 0;
-    //                                              0         1         2          3             4          5
-    auto result = WorldDatabase.PQuery("SELECT `expansion`, `item`,  `chance`, `level_min`, `level_max`, `group` FROM world_drop_loot_template");
+    //                                              0         1        2         3             4
+    //                                              5        6            7            8
+    auto result = WorldDatabase.PQuery("SELECT `expansion`, `item`, `chance`, `level_min`, `level_max`, "
+        "`group`, `min_count`, `max_count`, `elite_bonus` FROM world_drop_loot_template");
     if (result)
     {
         do
@@ -3343,6 +3387,13 @@ void LootMgr::LoadWorldDrop()
                     TC_LOG_ERROR("sql.sql", "LootMgr::LoadWorldDrop item %u has different groups (in one expansion)", fields[1].GetUInt32());
                     continue;
                 }
+                if (itr->second.CountMin != fields[6].GetUInt32() ||
+                    itr->second.CountMax != fields[7].GetUInt32() ||
+                    itr->second.EliteBonus != fields[8].GetBool())
+                {
+                    TC_LOG_ERROR("sql.sql", "LootMgr::LoadWorldDrop item %u has inconsistent count or elite settings", fields[1].GetUInt32());
+                    continue;
+                }
                 itr->second.AddDrop(fields[3].GetUInt8(), fields[4].GetUInt8(), fields[2].GetFloat());
             }
             else
@@ -3350,6 +3401,9 @@ void LootMgr::LoadWorldDrop()
                 auto& item = m_worldDropLoot[expansion][fields[1].GetUInt32()];
                 item.Group = fields[5].GetUInt32();
                 item.Item = fields[1].GetUInt32();
+                item.CountMin = std::max<uint32>(1, fields[6].GetUInt32());
+                item.CountMax = std::max(item.CountMin, fields[7].GetUInt32());
+                item.EliteBonus = fields[8].GetBool();
                 item.AddDrop(fields[3].GetUInt8(), fields[4].GetUInt8(), fields[2].GetFloat());
             }
             ++count;

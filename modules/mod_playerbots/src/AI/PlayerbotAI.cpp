@@ -277,7 +277,8 @@ bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
     // in combat. That let a filler chain-pull unrelated packs while the real
     // player was still fighting the first one. LFG fillers may now engage only
     // the requester's actual target or an enemy already attacking the party.
-    if (requester->GetVictim() == target && target->IsInCombat())
+    if (GroupPveCombat::IsActivelyAttacking(requester,
+            const_cast<Unit*>(target)))
         return true;
 
     for (Unit* attacker : requester->getAttackers())

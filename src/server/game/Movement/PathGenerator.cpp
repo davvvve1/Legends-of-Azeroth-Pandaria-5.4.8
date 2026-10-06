@@ -30,6 +30,23 @@
 #include "DetourCommon.h"
 #include "DetourNavMeshQuery.h"
 
+namespace
+{
+constexpr uint32 LostCityOfTheTolvirMap = 755;
+constexpr float SiamatPlatformMinX = -11004.5f;
+constexpr float SiamatPlatformMaxX = -10897.4f;
+constexpr float SiamatPlatformMinY = -1449.6f;
+constexpr float SiamatPlatformMaxY = -1343.1f;
+constexpr float SiamatPlatformActivationZ = 27.0f;
+constexpr float SiamatPlatformFloorZ = 36.0f;
+
+bool IsInsideSiamatPlatform(float x, float y)
+{
+    return x >= SiamatPlatformMinX && x <= SiamatPlatformMaxX &&
+        y >= SiamatPlatformMinY && y <= SiamatPlatformMaxY;
+}
+}
+
 ////////////////// PathGenerator //////////////////
 PathGenerator::PathGenerator(WorldObject const* owner) :
     _polyLength(0), _type(PATHFIND_BLANK), _useStraightPath(false),
@@ -90,6 +107,17 @@ bool PathGenerator::CalculatePath(float destX, float destY, float destZ, bool fo
         if (center.GetExactDist2d(x, y) < 70.0f || center.GetExactDist2d(destX, destY))
             skip = true;
     }
+
+    // Siamat's platform is a destructible gameobject and is therefore absent
+    // from map 755's static navmesh. Detour otherwise selects the walkable
+    // floor below the building and sends bosses, pets and playerbots through
+    // the platform. Use direct movement while both endpoints are in the arena;
+    // NormalizePath keeps those points on the dynamic floor below.
+    if (_source->GetMapId() == LostCityOfTheTolvirMap &&
+        (z > SiamatPlatformActivationZ || destZ > SiamatPlatformActivationZ) &&
+        IsInsideSiamatPlatform(x, y) &&
+        IsInsideSiamatPlatform(destX, destY))
+        skip = true;
 
     // make sure navMesh works - we can run on map w/o mmap
     // check if the start and end point have a .mmtile loaded (can we pass via not loaded tile on the way?)
@@ -648,8 +676,20 @@ void PathGenerator::BuildPointPath(const float *startPoint, const float *endPoin
 
 void PathGenerator::NormalizePath()
 {
+    bool const preserveSiamatPlatform =
+        _source->GetMapId() == LostCityOfTheTolvirMap &&
+        (GetStartPosition().z > SiamatPlatformActivationZ ||
+         GetEndPosition().z > SiamatPlatformActivationZ);
+
     for (uint32 i = 0; i < _pathPoints.size(); ++i)
+    {
         _source->UpdateAllowedPositionZ(_pathPoints[i].x, _pathPoints[i].y, _pathPoints[i].z);
+
+        if (preserveSiamatPlatform &&
+            IsInsideSiamatPlatform(_pathPoints[i].x, _pathPoints[i].y) &&
+            _pathPoints[i].z < SiamatPlatformFloorZ)
+            _pathPoints[i].z = SiamatPlatformFloorZ;
+    }
 }
 
 void PathGenerator::BuildShortcut()

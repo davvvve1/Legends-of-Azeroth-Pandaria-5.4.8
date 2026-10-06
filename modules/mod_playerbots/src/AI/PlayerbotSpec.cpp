@@ -327,12 +327,60 @@ Player* PlayerBotSpec::GetGroupPvePullTank(Player* player)
     return fallback;
 }
 
+bool GroupPveCombat::IsActivelyAttacking(Player* attacker, Unit* target)
+{
+    if (!attacker || !target || !attacker->IsAlive() || !attacker->IsInWorld() ||
+        !target->IsAlive() || !target->IsInWorld() ||
+        attacker->GetMap() != target->GetMap() ||
+        !attacker->IsValidAttackTarget(target))
+        return false;
+
+    // Melee swings and explicit auto-attacks establish a victim before the
+    // first hit lands.
+    if (attacker->GetVictim() == target)
+        return true;
+
+    // Ranged attacks and cast-time spells can be in flight before either the
+    // enemy combat flag or a threat entry exists. The exact spell target is
+    // the attack order; merely selecting a hostile unit is not.
+    for (uint8 type = CURRENT_MELEE_SPELL; type < CURRENT_MAX_SPELL; ++type)
+    {
+        Spell* spell = attacker->GetCurrentSpell(CurrentSpellTypes(type));
+        if (!spell || spell->m_targets.GetUnitTargetGUID() != target->GetGUID())
+            continue;
+
+        SpellInfo const* info = spell->GetSpellInfo();
+        if (info && info->DmgClass != SPELL_DAMAGE_CLASS_NONE)
+            return true;
+    }
+
+    // Instant attacks may have completed before the next bot update.
+    return target->CanHaveThreatList() &&
+        target->GetThreatManager().getThreat(attacker) > 0.0f;
+}
+
 bool GroupPveCombat::IsEngaged(Player* player, Unit* target)
 {
     Group* group = GetActiveGroup(player);
     if (!player || !group || !target || !target->IsAlive() || !target->IsInWorld() ||
-        target->GetMap() != player->GetMap() || !target->IsInCombat() ||
+        target->GetMap() != player->GetMap() ||
         !player->IsValidAttackTarget(target)) return false;
+
+    // A real master's attack is sufficient to wake every bot immediately,
+    // including during a cast or while a projectile is still in flight.
+    if (PlayerbotAI* ai = GET_PLAYERBOT_AI(player))
+        if (Player* master = ai->GetMaster())
+        {
+            PlayerbotAI* masterAI = GET_PLAYERBOT_AI(master);
+            if (group->IsMember(master->GetGUID()) &&
+                (!masterAI || masterAI->IsRealPlayer()) &&
+                IsActivelyAttacking(master, target))
+                return true;
+        }
+
+    if (!target->IsInCombat())
+        return false;
+
     Unit* victim = target->GetVictim();
     Player* owner = victim ? victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
     if (owner && group->IsMember(owner->GetGUID())) return true;

@@ -38,6 +38,7 @@ public:
         creators["dead"] = &StrategyContext::dead;
         creators["group"] = &StrategyContext::group;
         creators["battleground"] = &StrategyContext::battleground;
+        creators["mount"] = &StrategyContext::mount;
 
         creators["formation"] = &StrategyContext::combat_formation;
         creators["move from group"] = &StrategyContext::move_from_group;
@@ -63,6 +64,7 @@ private:
     static Strategy* dead(PlayerbotAI* botAI) { return new DeadStrategy(botAI); }
     static Strategy* group(PlayerbotAI* botAI) { return new GroupStrategy(botAI); }
     static Strategy* battleground(PlayerbotAI* botAI) { return new BattlegroundStrategy(botAI); }
+    static Strategy* mount(PlayerbotAI* botAI) { return new MountStrategy(botAI); }
     static Strategy* combat_formation(PlayerbotAI* ai) { return new CombatFormationStrategy(ai); }
     static Strategy* move_from_group(PlayerbotAI* botAI) { return new MoveFromGroupStrategy(botAI); }
 
