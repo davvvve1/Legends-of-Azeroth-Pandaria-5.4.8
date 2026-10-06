@@ -1650,7 +1650,19 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
     SetDungeon(gguid, dungeon->Entry());
     SetSoloJoinedPlayersCount(gguid, soloJoinedPlayersCount);
     if (!isContinue)
-        SetKicksLeft(gguid, proposal.raid ? LFG_RAID_MAX_KICKS : LFG_GROUP_MAX_KICKS);
+    {
+        bool hasServerControlledPlayerbot = false;
+        for (auto const& playerPair : proposal.players)
+            if (ProposalAutoAcceptPlayers.count(playerPair.first))
+            {
+                hasServerControlledPlayerbot = true;
+                break;
+            }
+
+        SetKicksLeft(gguid, hasServerControlledPlayerbot ?
+            LFG_BOT_GROUP_MAX_KICKS :
+            (proposal.raid ? LFG_RAID_MAX_KICKS : LFG_GROUP_MAX_KICKS));
+    }
 
     SaveToDB(gguid, lfgGroup->GetDbStoreId());
 
@@ -1752,6 +1764,11 @@ void LFGMgr::SetProposalAutoAccept(ObjectGuid guid, bool enabled)
         ProposalAutoAcceptPlayers.insert(guid);
     else
         ProposalAutoAcceptPlayers.erase(guid);
+}
+
+void LFGMgr::RefillPlayerbotKicks(ObjectGuid groupGuid)
+{
+    SetKicksLeft(groupGuid, LFG_BOT_GROUP_MAX_KICKS);
 }
 
 void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)

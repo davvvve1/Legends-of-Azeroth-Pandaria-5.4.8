@@ -429,6 +429,10 @@ void WorldSession::HandleGroupUninviteGuidOpcode(WorldPacket& recvData)
                         target && target->IsAlive() ? 1u : 0u);
 
                     ObjectGuid const groupGuid = group->GetGUID();
+                    // Bot replacements must never consume or inherit the
+                    // retail three-kick limit. Refill on every direct bot
+                    // removal so the player can keep changing the lineup.
+                    sLFGMgr->RefillPlayerbotKicks(groupGuid);
                     Player::RemoveFromGroup(group, guid, GROUP_REMOVEMETHOD_KICK_LFG,
                         GetPlayer()->GetGUID(), reason.c_str());
 

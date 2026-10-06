@@ -26,6 +26,7 @@
 #include "Player.h"
 #include "SpellInfo.h"
 #include "CreatureTextMgr.h"
+#include "Transport.h"
 
 /*######
 ## Quest 25134: Lazy Peons
@@ -1068,6 +1069,66 @@ class AreaTrigger_at_ring_of_valor_entrance : public AreaTriggerScript
     }
 };
 
+// Call of Duty (25924) - Horde ship from Bladefist Bay to Vashj'ir.
+// The client transport path loops back to Orgrimmar and this core has no
+// original squid-destruction scene. Complete and disembark quest passengers
+// when the ship reaches Erunak's destination instead of carrying them back.
+class transport_call_of_duty_horde : public TransportScript
+{
+public:
+    transport_call_of_duty_horde() : TransportScript("transport_call_of_duty_horde") { }
+
+    void OnRelocate(Transport* transport, uint32 waypointId, uint32 mapId,
+        float /*x*/, float /*y*/, float /*z*/) override
+    {
+        // Taxi path 2204 reaches Vashj'ir at node 4 and waits there for
+        // 45 seconds. Keying off that exact client waypoint prevents the
+        // return leg from carrying quest passengers back to Bladefist Bay.
+        if (mapId != 0 || waypointId != 4)
+            return;
+
+        std::vector<Player*> questPassengers;
+        for (WorldObject* passenger : transport->GetPassengers())
+            if (Player* player = passenger->ToPlayer())
+                if (player->GetQuestStatus(25924) == QUEST_STATUS_INCOMPLETE)
+                    questPassengers.push_back(player);
+
+        for (Player* player : questPassengers)
+        {
+            player->KilledMonsterCredit(36901);
+            player->TeleportTo(0, -4611.18f, 3985.19f, -68.5f, 5.36f);
+        }
+    }
+};
+
+// Arrival fallback for players who reach the Vashj'ir surface while the
+// transport relocation event is missed. The quest ender is about 70 yards
+// underwater, so surface passengers never enter his 30-yard SmartAI trigger.
+class player_call_of_duty_horde_arrival : public PlayerScript
+{
+public:
+    player_call_of_duty_horde_arrival() : PlayerScript("player_call_of_duty_horde_arrival") { }
+
+    void OnLogin(Player* player) override { HandleArrival(player); }
+    void OnMapChanged(Player* player) override { HandleArrival(player); }
+
+private:
+    static void HandleArrival(Player* player)
+    {
+        if (player->GetQuestStatus(25924) != QUEST_STATUS_INCOMPLETE ||
+            player->GetMapId() != 0 || player->GetZoneId() != 4815)
+            return;
+
+        float const dx = player->GetPositionX() - (-4611.18f);
+        float const dy = player->GetPositionY() - 3985.19f;
+        if (dx * dx + dy * dy > 500.0f * 500.0f)
+            return;
+
+        player->KilledMonsterCredit(36901);
+        player->TeleportTo(0, -4611.18f, 3985.19f, -68.5f, 5.36f);
+    }
+};
+
 void AddSC_durotar()
 {
     new npc_lazy_peon();
@@ -1086,4 +1147,6 @@ void AddSC_durotar()
     new spell_script<spell_shrink>("spell_shrink");
     new aura_script<spell_teleport_out_blackout>("spell_teleport_out_blackout");
     new AreaTrigger_at_ring_of_valor_entrance();
+    new transport_call_of_duty_horde();
+    new player_call_of_duty_horde_arrival();
 }

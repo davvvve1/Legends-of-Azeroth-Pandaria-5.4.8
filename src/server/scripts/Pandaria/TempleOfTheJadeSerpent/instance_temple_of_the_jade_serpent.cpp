@@ -678,6 +678,29 @@ class instance_temple_of_jade_serpent : public InstanceMapScript
 
                 if (state == DONE)
                 {
+                    uint32 questCredit = 0;
+                    uint32 questId = 31355;
+                    switch (type)
+                    {
+                        case DATA_WISE_MARI:  questCredit = NPC_WISE_MARI; break;
+                        case DATA_LOREWALKER: questCredit = NPC_LOREWALKTER_STONESTEP; break;
+                        case DATA_LIU:        questCredit = NPC_LIU_FLAMEHEART; break;
+                        case DATA_SHA_OF_DOUBT:
+                            questCredit = NPC_SHA_OF_DOUBT;
+                            questId = 31356;
+                            break;
+                        default: break;
+                    }
+
+                    // These encounters include scripted defeats where the visible
+                    // boss may not die to a player. Award the dungeon quest credit
+                    // to every eligible party member when the encounter is done.
+                    if (questCredit)
+                        for (auto const& itr : instance->GetPlayers())
+                            if (Player* player = itr.GetSource())
+                                if (player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+                                    player->KilledMonsterCredit(questCredit);
+
                     switch (type)
                     {
                         case DATA_LOREWALKER:

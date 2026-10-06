@@ -432,6 +432,10 @@ class LFGMgr
         {
             return ProposalAutoAcceptPlayers.count(guid) != 0;
         }
+        /// Refill the independent allowance used for direct playerbot swaps.
+        /// Called after every server-controlled bot removal, so it never runs
+        /// out while ordinary player vote-kick limits remain unchanged.
+        void RefillPlayerbotKicks(ObjectGuid groupGuid);
         /// Updates proposal to join dungeon with player answer
         void UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept);
         /// Updates the role check with player answer

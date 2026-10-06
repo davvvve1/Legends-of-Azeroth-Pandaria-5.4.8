@@ -385,7 +385,13 @@ class boss_yu_lon_tjs : public CreatureScript
                             if (Creature* liu = Unit::GetCreature(*me, instance->GetGuidData(DATA_LIU)))
                             {
                                 me->SetFacingToObject(liu);
-                                liu->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                // Cleansing Breath ends the encounter. Liu is left rooted,
+                                // passive and non-attackable by phase three, so merely making
+                                // her selectable leaves both the boss and quest 31355 stuck.
+                                if (Player* recipient = liu->GetLootRecipient())
+                                    recipient->Kill(liu);
+                                else
+                                    me->Kill(liu);
                             }
 
                             me->CastSpell((Unit*)NULL, SPELL_CLEANSING_BREATH, false);

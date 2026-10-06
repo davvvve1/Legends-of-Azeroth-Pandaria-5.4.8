@@ -34,7 +34,10 @@ typedef std::map<uint32, GroupQueueData> GroupQueueDataMap;
 enum LfgGroupEnum
 {
     LFG_GROUP_MAX_KICKS                           = 3,
-    LFG_RAID_MAX_KICKS = 15,
+    LFG_RAID_MAX_KICKS                            = 15,
+    // Refilled after every server-controlled playerbot removal, making bot
+    // replacement effectively unlimited without relaxing normal vote kicks.
+    LFG_BOT_GROUP_MAX_KICKS                       = 255,
 };
 
 /**

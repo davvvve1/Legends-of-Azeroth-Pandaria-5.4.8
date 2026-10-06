@@ -4972,6 +4972,42 @@ private:
     }
 };
 
+// Face to Face With Consequence (31771)
+// Some clients leave the quest at COMPLETE when the reward button is pressed,
+// so the completion ping and the following phase update never run.  Reward it
+// as soon as its two kill objectives are complete and repair characters that
+// were already left in that state when they next log in.
+class player_face_to_face_with_consequence : public PlayerScript
+{
+public:
+    player_face_to_face_with_consequence() : PlayerScript("player_face_to_face_with_consequence") { }
+
+    void OnQuestCompleted(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == 31771)
+            Reward(player, quest);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        if (player->GetQuestStatus(31771) != QUEST_STATUS_COMPLETE ||
+            player->GetQuestRewardStatus(31771))
+            return;
+
+        if (Quest const* quest = sObjectMgr->GetQuestTemplate(31771))
+            Reward(player, quest);
+    }
+
+private:
+    static void Reward(Player* player, Quest const* quest)
+    {
+        if (player->GetQuestStatus(31771) == QUEST_STATUS_COMPLETE &&
+            !player->GetQuestRewardStatus(31771) &&
+            player->CanRewardQuest(quest, false))
+            player->RewardQuest(quest, 0, player, true);
+    }
+};
+
 namespace RightTrack
 {
     uint32 const Quest = 29731;
@@ -5475,6 +5511,7 @@ void AddSC_jade_forest()
     new player_paint_it_red();
     new player_finish_them();
     new player_the_final_blow();
+    new player_face_to_face_with_consequence();
     // Rare mobs
     new npc_kor_nas_nightsavage();
     new npc_mister_ferocious();

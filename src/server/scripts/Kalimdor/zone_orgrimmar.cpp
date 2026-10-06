@@ -34,10 +34,13 @@ public:
 
         void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes mode)
         {
-            if (Unit* caster = GetCaster())
-                if (Player* player = caster->ToPlayer())
-                    if (player->GetQuestStatus(28805) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(28826) == QUEST_STATUS_INCOMPLETE)
-                        player->KilledMonsterCredit(50054);
+            // The Waters of Farseeing gameobject casts this aura. Depending on
+            // the gameobject spell path, the aura caster is not guaranteed to
+            // be the player, but the aura target always is.
+            if (Player* player = GetTarget()->ToPlayer())
+                if (player->GetQuestStatus(28805) == QUEST_STATUS_INCOMPLETE ||
+                    player->GetQuestStatus(28826) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(50054);
         }
 
         void Register()

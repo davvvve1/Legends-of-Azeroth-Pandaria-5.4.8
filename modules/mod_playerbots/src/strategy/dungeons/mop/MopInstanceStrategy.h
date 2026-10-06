@@ -10,6 +10,7 @@
 #define _PLAYERBOT_MOP_INSTANCE_STRATEGY_H
 
 #include "AttackActions.h"
+#include "MovementActions.h"
 #include "NamedObjectContext.h"
 #include "Strategy.h"
 #include "Trigger.h"
@@ -35,11 +36,27 @@ public:
     bool IsActive() override;
 };
 
+class YanZhuFizzyBubbleTrigger : public Trigger
+{
+public:
+    explicit YanZhuFizzyBubbleTrigger(PlayerbotAI* ai)
+        : Trigger(ai, "yan-zhu fizzy bubble") { }
+    bool IsActive() override;
+};
+
 class AttackCoordinatedTargetAction : public AttackAction
 {
 public:
     explicit AttackCoordinatedTargetAction(PlayerbotAI* ai)
         : AttackAction(ai, "mop attack coordinated target") { }
+    bool Execute(Event event) override;
+};
+
+class EnterYanZhuFizzyBubbleAction : public MovementAction
+{
+public:
+    explicit EnterYanZhuFizzyBubbleAction(PlayerbotAI* ai)
+        : MovementAction(ai, "enter yan-zhu fizzy bubble") { }
     bool Execute(Event event) override;
 };
 

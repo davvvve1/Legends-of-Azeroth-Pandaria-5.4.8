@@ -1153,6 +1153,14 @@ void GameObject::ForcedDespawn(uint32 msTimeToDespawn /*= 0*/)
 
 bool GameObject::ActivateToQuest(Player* target) const
 {
+    // Stay a While, and Listen (31121) is completed through the scene spell
+    // cast by Cho's Teapot (212900). The client objective references the
+    // invisible scene credit (63114), not the teapot itself, so the generic
+    // quest-object lookup cannot identify the teapot as a quest interactable.
+    if (GetEntry() == 212900 &&
+        target->GetQuestStatus(31121) == QUEST_STATUS_INCOMPLETE)
+        return true;
+
     // Forged of Shadow and Flame (25575) credits the invisible creature
     // objective 40858 through spell 76225.  The objective references neither
     // this GO nor an item, so the Twilight Arms Crate (203066) is absent from
