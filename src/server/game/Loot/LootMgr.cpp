@@ -738,7 +738,9 @@ bool Loot::FillLoot(Object* source, uint32 lootId, LootStore const& store, Playe
     }
     tab->Process(*this, store.IsRatesAllowed(), lootmode, 0, lootOwner, policy);
 
-    if (GetSource() && GetSource()->GetTypeId() == TYPEID_UNIT)
+    // World drops belong to a creature's corpse loot. Do not add them to
+    // secondary creature loot stores such as skinning or pickpocketing.
+    if (&store == &LootTemplates_Creature && GetSource() && GetSource()->GetTypeId() == TYPEID_UNIT)
     {
         Creature* creature = GetSource()->ToCreature();
         if (auto const* loot = sLootMgr->GetWorldDrop(creature))

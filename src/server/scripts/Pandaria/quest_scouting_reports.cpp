@@ -14,6 +14,9 @@ namespace ScoutingReports
     uint32 const JinyuInABarrel = 29824;
     uint32 const PrivateReportPhase = 65536;
     uint32 const OriginalPhaseData = 1;
+    // Surface overlook above the cave; the old point was a low-level huntress
+    // spawn inside the cave and put Shokia below the retail firing position.
+    Position const ShokiaHill = {86.991f,-2919.48f,64.1327f,3.0f};
 
     bool UsesPrivatePhase(uint32 quest)
     {
@@ -38,7 +41,7 @@ namespace ScoutingReports
             {1444.61f,-545.21f,353.218f,0.0f}, "Go on, Riko. Tell me about Gorrok." },
         { 29823, 55686, 55648, {352.178f,-2027.27f,58.7399f,1.5f},
             {1444.61f,-545.21f,353.218f,0.0f}, "Go on, Riko. Tell me how you helped Kiryn." },
-        { 29824, 55702, 55647, {-124.97f,-2931.21f,23.5433f,0.0f},
+        { 29824, 55702, 55647, ShokiaHill,
             {1447.21f,-547.82f,352.815f,0.0f}, "Let's hear the rest of your report, Shokia." }
     };
 
@@ -579,7 +582,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                         {-102.21f,-2995.11f,18.5783f,0.0f},
                         {-80.5588f,-2975.35f,26.0051f,0.0f},
                         {-80.5588f,-2891.55f,20.8435f,0.0f},
-                        {-124.97f,-2931.21f,23.5433f,0.0f}
+                        ScoutingReports::ShokiaHill
                     };
                     kiryn->GetMotionMaster()->MovePoint(stage, steps[std::min(stage, uint32(3))]);
                 }
@@ -626,12 +629,13 @@ public:
     npc_jade_forest_report_investigation() : CreatureScript("npc_jade_forest_report_investigation") { }
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        // Preserve the existing SmartAI interactions for the Alliance report.
-        if (player->GetQuestStatus(29730) != QUEST_STATUS_INCOMPLETE)
+        // Preserve the existing SmartAI interactions outside the controlled
+        // Horde report.  The public Widow (55368) stands next to the private
+        // report summon, so accept either one while Gorrok is being played.
+        if (!ScoutingReports::Playing(player, 29730, 55671))
             return false;
         player->CLOSE_GOSSIP_MENU();
-        if (!ScoutingReports::Playing(player, 29730, 55671) ||
-            !player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+        if (!player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
             return true;
         Unit* gorrok = player->GetVehicleBase();
         if (!player->GetQuestObjectiveCounter(264502))
@@ -647,7 +651,10 @@ public:
                 gorrok->Say("This looks like a person turned to jade. Where is the widow?", LANG_UNIVERSAL, player);
             }
         }
-        else if (creature->GetPrivateObjectOwner() == player->GetGUID() && player->GetQuestObjectiveCounter(264503))
+        else if ((creature->GetEntry() == 55368 ||
+                  creature->GetPrivateObjectOwner() == player->GetGUID()) &&
+                 player->GetQuestObjectiveCounter(264503) &&
+                 !player->GetQuestObjectiveCounter(264504))
         {
             creature->Say("Another visitor for my collection!", LANG_UNIVERSAL, player);
             gorrok->SetDisplayId(43669);
@@ -693,7 +700,7 @@ class spell_jade_forest_report_shooting : public SpellScript
             return SPELL_FAILED_BAD_TARGETS;
         Creature* target = pilot->GetSelectedUnit() ? pilot->GetSelectedUnit()->ToCreature() : nullptr;
         if (!target || !target->IsAlive() || target->GetPrivateObjectOwner() != pilot->GetGUID() ||
-            !actor->IsWithinDistInMap(target, 150.0f) ||
+            !actor->IsWithinDistInMap(target, 250.0f) ||
             (target->GetEntry() != 55709 && target->GetEntry() != 55710 &&
              target->GetEntry() != 55711 && target->GetEntry() != 55784))
             return SPELL_FAILED_BAD_TARGETS;

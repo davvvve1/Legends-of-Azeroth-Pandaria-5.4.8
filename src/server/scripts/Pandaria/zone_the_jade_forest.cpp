@@ -5102,6 +5102,28 @@ namespace RightTrack
     }
 }
 
+class npc_jade_forest_rivett_boom_bait : public CreatureScript
+{
+public:
+    npc_jade_forest_rivett_boom_bait() : CreatureScript("npc_jade_forest_rivett_boom_bait") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        uint32 const questId = 29939;
+        if (player->GetQuestStatus(questId) != QUEST_STATUS_COMPLETE)
+            return false;
+
+        if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
+        {
+            player->PlayerTalkClass->ClearMenus();
+            player->PlayerTalkClass->SendQuestGiverOfferReward(quest, creature->GetGUID(), true);
+            return true;
+        }
+
+        return false;
+    }
+};
+
 class npc_jade_forest_right_track_report : public CreatureScript
 {
 public:
@@ -5524,6 +5546,7 @@ void AddSC_jade_forest()
     new npc_lurking_tiger();
     AddSC_scouting_reports();
     new npc_jade_forest_right_track_report();
+    new npc_jade_forest_rivett_boom_bait();
     new creature_script<npc_jade_forest_right_track_kiryn>("npc_jade_forest_right_track_kiryn");
     new spell_script<spell_jade_forest_right_track_smoke>("spell_jade_forest_right_track_smoke");
     new npc_rakira();
