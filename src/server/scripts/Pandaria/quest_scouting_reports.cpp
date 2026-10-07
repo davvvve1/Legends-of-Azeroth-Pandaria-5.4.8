@@ -14,9 +14,10 @@ namespace ScoutingReports
     uint32 const JinyuInABarrel = 29824;
     uint32 const PrivateReportPhase = 65536;
     uint32 const OriginalPhaseData = 1;
-    // Summit overlook above the cave. Keep the actors' escape point separate:
-    // Kiryn and Riko must not attempt to path vertically up to Shokia.
-    Position const ShokiaHill = {142.841f,-2947.42f,113.168f,2.86f};
+    // Retail starts Shokia at Jade Forest 62.72, 81.89, on the summit above
+    // the cave. Keep the actors' escape point separate: Kiryn and Riko must
+    // not attempt to path vertically up to Shokia.
+    Position const ShokiaHill = {-159.214f,-2927.863f,104.180f,0.43f};
     Position const ShokiaEscape = {-124.97f,-2931.21f,23.5433f,0.0f};
 
     bool UsesPrivatePhase(uint32 quest)
