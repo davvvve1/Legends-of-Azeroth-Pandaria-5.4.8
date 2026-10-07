@@ -881,14 +881,13 @@ void WorldSession::HandleGetMailList(WorldPacket& recvData)
             if (!item)
                 continue;
 
-            data.WriteBit(!item->IsLocked()); // unlocked flag
+            data.WriteBit(0);
 
             mailData << uint32(item->GetGUID().GetCounter());
-
-            item->BuildItemDynamicModifiersData(&mailData);
-
+            mailData << uint32(4);                      // unknown
+            mailData << uint32(item->GetSpellCharges());
             mailData << uint32(item->GetUInt32Value(ITEM_FIELD_DURABILITY));
-            mailData << uint32(item->GetItemSuffixFactor());
+            mailData << uint32(0);                      // unknown
 
             for (uint8 j = 0; j < MAX_INSPECTED_ENCHANTMENT_SLOT; j++)
             {
@@ -897,8 +896,8 @@ void WorldSession::HandleGetMailList(WorldPacket& recvData)
                 mailData << uint32(item->GetEnchantmentId((EnchantmentSlot)j));
             }
 
+            mailData << uint32(item->GetItemSuffixFactor());
             mailData << int32(item->GetItemRandomPropertyId());
-            mailData << int32(item->GetSpellCharges());
             mailData << uint32(item->GetUInt32Value(ITEM_FIELD_MAX_DURABILITY));
             mailData << uint32(item->GetCount());
             mailData << uint8(i);
