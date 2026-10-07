@@ -11,7 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'sql/backup/test_item_cleanup_20260925/final'
 WORLD, CHAR = 'mop_world_test', 'mop_characters_test'
-IDS = f'SELECT entry FROM {WORLD}._cleanup_test_item_ids_20260925'
+# Despite its name, Test Stationery is queried by the client mail UI. Preserve
+# its template and metadata; AHBot can continue excluding it from auctions.
+PROTECTED_TEMPLATE_IDS = (8164,)
+IDS = f'SELECT entry FROM {WORLD}._cleanup_test_item_ids_20260925 WHERE entry NOT IN (8164)'
 GUIDS = f'SELECT guid FROM {CHAR}._cleanup_test_item_guids_20260925'
 CLIENT = '/tmp/test-item-world.cnf'
 
@@ -66,7 +69,8 @@ for table,col in [('account_transmog_appearances','itemEntry'),('custom_transmog
 cols=['item'+str(i) for i in range(19)]
 add(CHAR,'character_equipmentsets',' OR '.join(copies(c) for c in cols),', '.join(f'`{c}`=IF({copies(c)},0,`{c}`)' for c in cols))
 # Serialized transmog sets are presets only; no physical items are removed here.
-entries=[r['entry'] for r in json.loads((ROOT/'contrib/test_item_cleanup/manifest.json').read_text())]
+entries=[r['entry'] for r in json.loads((ROOT/'contrib/test_item_cleanup/manifest.json').read_text())
+         if int(r['entry']) not in PROTECTED_TEMPLATE_IDS]
 pattern='(^|[^0-9])('+'|'.join(entries)+')([^0-9]|$)'
 add(CHAR,'custom_transmogrification_sets',"SetData REGEXP '"+pattern+"'")
 # Appearance-only override on otherwise legitimate item instances.

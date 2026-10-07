@@ -44,3 +44,13 @@ c++ -std=c++11 -Wall -Wextra -Werror contrib/test_item_cleanup/filter_regression
 ```
 
 The worldserver build passed. Installation and restart are left to the user.
+
+Correction, 2026-10-07: item 8164 (Test Stationery) is requested by the 5.4.8
+client mail UI, despite its test-looking name. Its template and locale were
+mistakenly removed by this cleanup. The original manifest and backups remain
+historical records; `prepare.py` now excludes 8164 from template/metadata
+cleanup and serialized appearance matching. World update
+`2026_10_07_08_world_restore_mail_stationery.sql` restores just the missing
+template and locale from the verified row backups. AHBot still excludes this
+item from listings. Restart worldserver after applying the SQL so item/hotfix
+queries can see the restored template.
