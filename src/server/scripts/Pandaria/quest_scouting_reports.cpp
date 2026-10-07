@@ -396,9 +396,13 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                 return;
 
             shokiaRifleActive = true;
+            me->NearTeleportTo(ScoutingReports::ShokiaRifle.GetPositionX(),
+                ScoutingReports::ShokiaRifle.GetPositionY(),
+                ScoutingReports::ShokiaRifle.GetPositionZ() + 0.1f, 5.93f);
+            me->SetControlled(true, UNIT_STATE_ROOT);
             if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
                 kirynGuid = kiryn->GetGUID();
-            me->Say("Rifle ready. Select a guard and use Sniper Shot. Clear each group, then shoot Kiryn's barrels.",
+            me->Say("Sniper rifle active! Select a guard and use Sniper Shot. Clear each group, then shoot Kiryn's barrels.",
                 LANG_UNIVERSAL, pilot);
             ShokiaWave();
         }
@@ -590,7 +594,8 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             // Some 5.4.8 clients suppress both GO-use packets while the player
             // is the mover of a vehicle.  Reaching the rifle is equivalent to
             // using it and guarantees that the report cannot stall here.
-            if (me->GetDistance(ScoutingReports::ShokiaRifle) <= INTERACTION_DISTANCE)
+            if (me->GetExactDist2d(ScoutingReports::ShokiaRifle.GetPositionX(),
+                    ScoutingReports::ShokiaRifle.GetPositionY()) <= 10.0f)
                 DoAction(ScoutingReports::StartShokiaRifle);
             return;
         }
