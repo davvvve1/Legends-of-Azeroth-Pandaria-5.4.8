@@ -14,6 +14,7 @@ namespace ScoutingReports
     uint32 const JinyuInABarrel = 29824;
     uint32 const PrivateReportPhase = 65536;
     uint32 const OriginalPhaseData = 1;
+    int32 const StartShokiaRifle = 2;
     // Retail starts Shokia at Jade Forest 62.72, 81.89, on the summit above
     // the cave. Keep the actors' escape point separate: Kiryn and Riko must
     // not attempt to path vertically up to Shokia.
@@ -279,6 +280,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
     bool boarded = false;
     bool closing = false;
     bool spawnFailed = false;
+    bool shokiaRifleActive = false;
     uint32 checkTimer = 500;
     uint32 stage = 0;
     uint32 escapeElapsed = 0;
@@ -290,6 +292,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         boarded = false;
         closing = false;
         spawnFailed = false;
+        shokiaRifleActive = false;
         checkTimer = 500;
         stage = 0;
         escapeElapsed = 0;
@@ -384,6 +387,20 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             closing = true;
             checkTimer = 2000;
         }
+        else if (action == ScoutingReports::StartShokiaRifle && report &&
+                 report->quest == ScoutingReports::JinyuInABarrel && !shokiaRifleActive)
+        {
+            Player* pilot = ScoutingReports::Pilot(me);
+            if (!pilot)
+                return;
+
+            shokiaRifleActive = true;
+            if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
+                kirynGuid = kiryn->GetGUID();
+            me->Say("Rifle ready. Select a guard and use Sniper Shot. Clear each group, then shoot Kiryn's barrels.",
+                LANG_UNIVERSAL, pilot);
+            ShokiaWave();
+        }
     }
 
     void PassengerBoarded(Unit* passenger, int8, bool apply) override
@@ -413,10 +430,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             }
             else
             {
-                if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
-                    kirynGuid = kiryn->GetGUID();
-                me->Say("Select a guard and use Sniper Shot. Clear each group so Kiryn can move, then shoot her barrels.", LANG_UNIVERSAL, player);
-                ShokiaWave();
+                me->Say("The sniper rifle is nearby. Walk over and use it when you are ready.", LANG_UNIVERSAL, player);
             }
             return;
         }
@@ -570,6 +584,8 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                 pilot->ExitVehicle();
             return;
         }
+        if (report->quest == ScoutingReports::JinyuInABarrel && !shokiaRifleActive)
+            return;
         if (report->quest != 29730 && targets.empty())
         {
             ++stage;
@@ -592,6 +608,24 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             }
             checkTimer = closing ? 2000 : 1500;
         }
+    }
+};
+
+class go_jade_forest_shokia_sniper_rifle : public GameObjectScript
+{
+public:
+    go_jade_forest_shokia_sniper_rifle() : GameObjectScript("go_jade_forest_shokia_sniper_rifle") { }
+
+    bool OnGossipHello(Player* player, GameObject* go) override
+    {
+        if (!ScoutingReports::Playing(player, ScoutingReports::JinyuInABarrel, 55702))
+            return false;
+        if (!player->IsWithinDistInMap(go, INTERACTION_DISTANCE))
+            return true;
+
+        if (Creature* shokia = player->GetVehicleBase()->ToCreature())
+            shokia->AI()->DoAction(ScoutingReports::StartShokiaRifle);
+        return true;
     }
 };
 
@@ -767,6 +801,7 @@ void AddSC_scouting_reports()
     new creature_script<npc_jade_forest_scouting_actor>("npc_jade_forest_scouting_actor");
     new creature_script<npc_jade_forest_report_attacker>("npc_jade_forest_report_attacker");
     new go_jade_forest_report_warning();
+    new go_jade_forest_shokia_sniper_rifle();
     new npc_jade_forest_report_investigation();
     new spell_script<spell_jade_forest_report_shooting>("spell_jade_forest_report_shooting");
     new spell_script<spell_jade_forest_report_riko_attack>("spell_jade_forest_report_riko_attack");
