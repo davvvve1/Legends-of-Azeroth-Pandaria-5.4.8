@@ -20,6 +20,10 @@ namespace ScoutingReports
     // not attempt to path vertically up to Shokia.
     Position const ShokiaHill = {-159.214f,-2927.863f,104.180f,0.43f};
     Position const ShokiaRifle = {-171.278f,-2916.500f,102.859f,3.044f};
+    // The retail rifle changes to a remote, fixed view over the village.  The
+    // generic report vehicle has no matching camera record, so use its hidden
+    // controlled actor as the camera anchor close enough to load every target.
+    Position const ShokiaCamera = {-120.0f,-2933.0f,45.0f,6.05f};
     Position const ShokiaEscape = {-124.97f,-2931.21f,23.5433f,0.0f};
 
     bool UsesPrivatePhase(uint32 quest)
@@ -349,12 +353,17 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             return nullptr;
         }
         summon->SetReactState(REACT_PASSIVE);
+        if (report->quest == ScoutingReports::JinyuInABarrel)
+            summon->SetVisibilityDistanceOverride(VisibilityDistanceType::Gigantic);
         if (target)
         {
             summon->SetFaction(14);
             targets.insert(summon->GetGUID());
             if (report->quest == ScoutingReports::JinyuInABarrel)
+            {
                 summon->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+                summon->CastSpell(summon, 104766, true); // Retail bouncing arrow.
+            }
             if (report->quest == 29823)
             {
                 summon->SetMaxHealth(entry == 55693 ? 140000 : 80000);
@@ -398,9 +407,13 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                 return;
 
             shokiaRifleActive = true;
-            me->NearTeleportTo(ScoutingReports::ShokiaRifle.GetPositionX(),
-                ScoutingReports::ShokiaRifle.GetPositionY(),
-                ScoutingReports::ShokiaRifle.GetPositionZ() + 0.1f, 5.93f);
+            me->SetDisplayId(11686); // Invisible camera anchor while in the rifle.
+            me->SetCanFly(true);
+            me->SetDisableGravity(true);
+            me->NearTeleportTo(ScoutingReports::ShokiaCamera.GetPositionX(),
+                ScoutingReports::ShokiaCamera.GetPositionY(),
+                ScoutingReports::ShokiaCamera.GetPositionZ(),
+                ScoutingReports::ShokiaCamera.GetOrientation());
             me->SetControlled(true, UNIT_STATE_ROOT);
             if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
                 kirynGuid = kiryn->GetGUID();
