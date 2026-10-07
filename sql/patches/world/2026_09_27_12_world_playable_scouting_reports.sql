@@ -13,9 +13,10 @@ SET `VehicleId`=238,`npcflag`=0,`faction`=35,`AIName`='',
     `spell1`=0,`spell2`=0,`spell3`=0,`spell4`=0
 WHERE `entry` IN (55671,55686,55702);
 UPDATE `creature_template` SET `spell1`=104718,`spell2`=104717 WHERE `entry`=55686;
-UPDATE `creature_template` SET `spell1`=104384 WHERE `entry`=55702;
+-- Shokia's rifle uses retail mouseover/right-click shooting, not an action bar.
+UPDATE `creature_template` SET `spell1`=0 WHERE `entry`=55702;
 UPDATE `creature_template` SET `AIName`='',`ScriptName`='npc_jade_forest_report_attacker'
-WHERE `entry` IN (55692,55693);
+WHERE `entry` IN (55692,55693,55709,55710,55711,55784);
 
 -- These shared investigation targets retain SmartAI for the Alliance report.
 -- The CreatureScript consumes only active Horde report interactions.

@@ -353,6 +353,8 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         {
             summon->SetFaction(14);
             targets.insert(summon->GetGUID());
+            if (report->quest == ScoutingReports::JinyuInABarrel)
+                summon->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
             if (report->quest == 29823)
             {
                 summon->SetMaxHealth(entry == 55693 ? 140000 : 80000);
@@ -402,7 +404,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             me->SetControlled(true, UNIT_STATE_ROOT);
             if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
                 kirynGuid = kiryn->GetGUID();
-            me->Say("Sniper rifle active! Select a guard and use Sniper Shot. Clear each group, then shoot Kiryn's barrels.",
+            me->Say("Sniper rifle active! Move the crosshair over a marked target and right-click to fire.",
                 LANG_UNIVERSAL, pilot);
             ShokiaWave();
         }
@@ -649,6 +651,27 @@ public:
 struct npc_jade_forest_report_attacker : public ScriptedAI
 {
     npc_jade_forest_report_attacker(Creature* creature) : ScriptedAI(creature) { }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        Player* player = clicker ? clicker->ToPlayer() : nullptr;
+        Creature* actor = player && player->GetVehicleBase()
+            ? player->GetVehicleBase()->ToCreature() : nullptr;
+        TempSummon* target = me->ToTempSummon();
+        if (!player || !actor || actor->GetEntry() != 55702 ||
+            !ScoutingReports::Playing(player, ScoutingReports::JinyuInABarrel, 55702) ||
+            me->GetPrivateObjectOwner() != player->GetGUID() || !target ||
+            target->GetSummonerGUID() != actor->GetGUID() ||
+            !actor->IsWithinDistInMap(me, 300.0f))
+            return;
+
+        result = true;
+        me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        actor->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_RIFLE);
+        actor->DealDamage(me, me->GetHealth(), nullptr, DIRECT_DAMAGE,
+            SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+    }
+
     void UpdateAI(uint32) override
     {
         if (UpdateVictim())
