@@ -19,6 +19,7 @@ namespace ScoutingReports
     // the cave. Keep the actors' escape point separate: Kiryn and Riko must
     // not attempt to path vertically up to Shokia.
     Position const ShokiaHill = {-159.214f,-2927.863f,104.180f,0.43f};
+    Position const ShokiaRifle = {-171.278f,-2916.500f,102.859f,3.044f};
     Position const ShokiaEscape = {-124.97f,-2931.21f,23.5433f,0.0f};
 
     bool UsesPrivatePhase(uint32 quest)
@@ -585,7 +586,14 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             return;
         }
         if (report->quest == ScoutingReports::JinyuInABarrel && !shokiaRifleActive)
+        {
+            // Some 5.4.8 clients suppress both GO-use packets while the player
+            // is the mover of a vehicle.  Reaching the rifle is equivalent to
+            // using it and guarantees that the report cannot stall here.
+            if (me->GetDistance(ScoutingReports::ShokiaRifle) <= INTERACTION_DISTANCE)
+                DoAction(ScoutingReports::StartShokiaRifle);
             return;
+        }
         if (report->quest != 29730 && targets.empty())
         {
             ++stage;
