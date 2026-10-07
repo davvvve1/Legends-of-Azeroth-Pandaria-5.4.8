@@ -654,13 +654,17 @@ void WorldSession::HandleGameobjectReportUse(WorldPacket& recvPacket)
 
     TC_LOG_DEBUG("network", "WORLD: Recvd CMSG_GAMEOBJ_REPORT_USE Message [in game guid: %u]", guid.GetCounter());
 
-    // ignore for remote control state
-    if (_player->m_mover != _player)
-        return;
-
     GameObject* go = GetPlayer()->GetMap()->GetGameObject(guid);
     if (!go)
         return;
+
+    // Match CMSG_GAMEOBJ_USE: players controlling their current vehicle must
+    // still be able to report/use vehicle-compatible gameobjects.  Reject
+    // unrelated remote-control movers.
+    if (_player->m_mover != _player)
+        if (!(_player->IsOnVehicle(_player->m_mover) || _player->IsMounted()) &&
+            !go->GetGOInfo()->IsUsableMounted())
+            return;
 
     if (!go->IsAtInteractDistance(_player))
         return;

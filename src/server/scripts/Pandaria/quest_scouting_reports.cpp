@@ -616,7 +616,7 @@ class go_jade_forest_shokia_sniper_rifle : public GameObjectScript
 public:
     go_jade_forest_shokia_sniper_rifle() : GameObjectScript("go_jade_forest_shokia_sniper_rifle") { }
 
-    bool OnGossipHello(Player* player, GameObject* go) override
+    bool HandleUse(Player* player, GameObject* go)
     {
         if (!ScoutingReports::Playing(player, ScoutingReports::JinyuInABarrel, 55702))
             return false;
@@ -627,6 +627,9 @@ public:
             shokia->AI()->DoAction(ScoutingReports::StartShokiaRifle);
         return true;
     }
+
+    bool OnGossipHello(Player* player, GameObject* go) override { return HandleUse(player, go); }
+    bool OnReportUse(Player* player, GameObject* go) override { return HandleUse(player, go); }
 };
 
 // Keep normal combat on unrelated static spawns. Only scene targets are private.
