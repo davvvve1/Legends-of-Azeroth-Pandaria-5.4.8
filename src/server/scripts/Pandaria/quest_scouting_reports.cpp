@@ -14,9 +14,10 @@ namespace ScoutingReports
     uint32 const JinyuInABarrel = 29824;
     uint32 const PrivateReportPhase = 65536;
     uint32 const OriginalPhaseData = 1;
-    // Surface overlook above the cave; the old point was a low-level huntress
-    // spawn inside the cave and put Shokia below the retail firing position.
-    Position const ShokiaHill = {86.991f,-2919.48f,64.1327f,3.0f};
+    // Summit overlook above the cave. Keep the actors' escape point separate:
+    // Kiryn and Riko must not attempt to path vertically up to Shokia.
+    Position const ShokiaHill = {142.841f,-2947.42f,113.168f,2.86f};
+    Position const ShokiaEscape = {-124.97f,-2931.21f,23.5433f,0.0f};
 
     bool UsesPrivatePhase(uint32 quest)
     {
@@ -489,7 +490,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             if (Creature* kiryn = me->GetMap()->GetCreature(kirynGuid))
                 kiryn->Say("The route is clear. Let's get back to camp.", LANG_UNIVERSAL);
             if (Creature* riko = me->GetMap()->GetCreature(rikoGuid))
-                riko->GetMotionMaster()->MovePoint(1, report->start);
+                riko->GetMotionMaster()->MovePoint(1, ScoutingReports::ShokiaEscape);
         }
     }
 
@@ -558,7 +559,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         if (report->quest == 29824 && stage == 4)
         {
             if (Creature* kiryn = me->GetMap()->GetCreature(kirynGuid))
-                if (kiryn->GetDistance(report->start) < 6.0f)
+                if (kiryn->GetDistance(ScoutingReports::ShokiaEscape) < 6.0f)
                 {
                     Finish(55667);
                     return;
@@ -582,7 +583,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                         {-102.21f,-2995.11f,18.5783f,0.0f},
                         {-80.5588f,-2975.35f,26.0051f,0.0f},
                         {-80.5588f,-2891.55f,20.8435f,0.0f},
-                        ScoutingReports::ShokiaHill
+                        ScoutingReports::ShokiaEscape
                     };
                     kiryn->GetMotionMaster()->MovePoint(stage, steps[std::min(stage, uint32(3))]);
                 }
@@ -700,7 +701,7 @@ class spell_jade_forest_report_shooting : public SpellScript
             return SPELL_FAILED_BAD_TARGETS;
         Creature* target = pilot->GetSelectedUnit() ? pilot->GetSelectedUnit()->ToCreature() : nullptr;
         if (!target || !target->IsAlive() || target->GetPrivateObjectOwner() != pilot->GetGUID() ||
-            !actor->IsWithinDistInMap(target, 250.0f) ||
+            !actor->IsWithinDistInMap(target, 300.0f) ||
             (target->GetEntry() != 55709 && target->GetEntry() != 55710 &&
              target->GetEntry() != 55711 && target->GetEntry() != 55784))
             return SPELL_FAILED_BAD_TARGETS;
