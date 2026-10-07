@@ -849,6 +849,61 @@ class spell_jade_forest_report_riko_attack : public SpellScript
     }
 };
 
+class spell_jade_forest_emergency_response_fireworks : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_emergency_response_fireworks);
+
+    Creature* FindRescueTarget(Player* player)
+    {
+        uint32 const hordeTargets[] = { 64360, 64362, 64363, 64364 };
+        uint32 const allianceTargets[] = { 64491, 64493, 64494 };
+        uint32 const* targets = GetSpellInfo()->Id == 125700 ? hordeTargets : allianceTargets;
+        uint32 count = GetSpellInfo()->Id == 125700 ? 4 : 3;
+        Creature* nearest = nullptr;
+        float nearestDistance = 30.0f;
+
+        for (uint32 i = 0; i < count; ++i)
+            if (Creature* candidate = player->FindNearestCreature(targets[i], 30.0f, true))
+            {
+                float distance = player->GetDistance(candidate);
+                if (distance < nearestDistance)
+                {
+                    nearest = candidate;
+                    nearestDistance = distance;
+                }
+            }
+        return nearest;
+    }
+
+    SpellCastResult CheckCast()
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!player)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        uint32 quest = GetSpellInfo()->Id == 125700 ? 30504 : 31319;
+        if (player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE)
+            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+
+        return FindRescueTarget(player) ? SPELL_CAST_OK : SPELL_FAILED_OUT_OF_RANGE;
+    }
+
+    void HandleFireworks(SpellEffIndex effectIndex)
+    {
+        PreventHitDefaultEffect(effectIndex);
+        if (Player* player = GetCaster()->ToPlayer())
+            if (Creature* target = FindRescueTarget(player))
+                player->KilledMonsterCredit(target->GetEntry(), target->GetGUID());
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_jade_forest_emergency_response_fireworks::CheckCast);
+        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_emergency_response_fireworks::HandleFireworks,
+            EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_scouting_reports()
 {
     new player_jade_forest_report_recovery();
@@ -860,4 +915,5 @@ void AddSC_scouting_reports()
     new npc_jade_forest_report_investigation();
     new spell_script<spell_jade_forest_report_shooting>("spell_jade_forest_report_shooting");
     new spell_script<spell_jade_forest_report_riko_attack>("spell_jade_forest_report_riko_attack");
+    new spell_script<spell_jade_forest_emergency_response_fireworks>("spell_jade_forest_emergency_response_fireworks");
 }
