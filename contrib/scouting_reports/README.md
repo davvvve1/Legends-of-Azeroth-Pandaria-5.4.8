@@ -15,7 +15,7 @@ The playable sections are reconstructed from the installed spells, NPCs, objecti
 6. Run the same report with two players. Verify neither can shoot or receive completion credit from the other player's targets. Invalid or public targets must reject Sniper Shot, Uppercut and Fling Filth.
 7. Check the shared warning sign, statue and Greenpaw still serve the Alliance SI:7 report (29726).
 
-The saved target POIs guide Gorrok. Shokia's rifle follows the retail control: there is no action button, and marked scene targets are fired upon with mouseover/right-click. A lost actor or a blocked final escort route exits without awarding credit so the report can be restarted.
+The saved target POIs guide Gorrok. Shokia's rifle supports the retail mouseover/right-click control on marked targets and also exposes Sniper Shot as a fallback action button. A lost actor or a blocked final escort route exits without awarding credit so the report can be restarted.
 
 Vehicle 238 has passenger seat 0 (2241) and control seat 1 (2242). All playable report actors must board the player in seat 1; pilot lookup and ability checks use the same seat. Verify the player model is hidden and WASD moves the report actor.
 

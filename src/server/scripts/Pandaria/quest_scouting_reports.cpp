@@ -23,7 +23,7 @@ namespace ScoutingReports
     // The retail rifle changes to a remote, fixed view over the village.  The
     // generic report vehicle has no matching camera record, so use its hidden
     // controlled actor as the camera anchor close enough to load every target.
-    Position const ShokiaCamera = {-120.0f,-2933.0f,45.0f,6.05f};
+    Position const ShokiaCamera = {-124.97f,-2931.21f,32.0f,0.0f};
     Position const ShokiaEscape = {-124.97f,-2931.21f,23.5433f,0.0f};
 
     bool UsesPrivatePhase(uint32 quest)
@@ -379,6 +379,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
             summon->SetFaction(35);
             summon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
         }
+        pilot->UpdateVisibilityOf(summon);
         return summon;
     }
 
@@ -415,8 +416,10 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                 ScoutingReports::ShokiaCamera.GetPositionZ(),
                 ScoutingReports::ShokiaCamera.GetOrientation());
             me->SetControlled(true, UNIT_STATE_ROOT);
-            if (Creature* kiryn = Spawn(55667, {-102.21f,-2995.11f,18.5783f,0.0f}))
+            if (Creature* kiryn = Spawn(55667, {-80.5588f,-2975.35f,26.1051f,0.0f}))
                 kirynGuid = kiryn->GetGUID();
+            pilot->VehicleSpellInitialize();
+            pilot->UpdateVisibilityForPlayer();
             me->Say("Sniper rifle active! Move the crosshair over a marked target and right-click to fire.",
                 LANG_UNIVERSAL, pilot);
             ShokiaWave();
@@ -497,9 +500,9 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
     {
         Position const positions[] =
         {
-            {-80.5588f,-2891.55f,20.8435f,3.0f},
-            {-80.5588f,-2975.35f,26.0051f,3.0f},
-            {-102.21f,-2995.11f,18.5783f,3.0f}
+            {-71.2507f,-2919.48f,34.6902f,3.0f},
+            {-71.2507f,-2947.42f,27.1145f,3.0f},
+            {-52.6340f,-2933.45f,30.1734f,3.0f}
         };
         if (stage < 2)
             for (auto const& pos : positions)
@@ -513,7 +516,7 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
         }
         else if (stage == 3)
         {
-            if (Creature* riko = Spawn(55704, {-102.21f,-2995.11f,18.5783f,0.0f}))
+            if (Creature* riko = Spawn(55704, {-80.5588f,-2975.35f,26.1051f,0.0f}))
                 rikoGuid = riko->GetGUID();
             if (Creature* kiryn = me->GetMap()->GetCreature(kirynGuid))
                 kiryn->Say("Riko is coming to help! Cover our escape!", LANG_UNIVERSAL);
@@ -625,9 +628,9 @@ struct npc_jade_forest_scouting_actor : public ScriptedAI
                 {
                     Position const steps[] =
                     {
-                        {-102.21f,-2995.11f,18.5783f,0.0f},
-                        {-80.5588f,-2975.35f,26.0051f,0.0f},
-                        {-80.5588f,-2891.55f,20.8435f,0.0f},
+                        {-80.5588f,-2975.35f,26.1051f,0.0f},
+                        {-71.2507f,-2947.42f,27.1145f,0.0f},
+                        {-71.2507f,-2919.48f,34.6902f,0.0f},
                         ScoutingReports::ShokiaEscape
                     };
                     kiryn->GetMotionMaster()->MovePoint(stage, steps[std::min(stage, uint32(3))]);
