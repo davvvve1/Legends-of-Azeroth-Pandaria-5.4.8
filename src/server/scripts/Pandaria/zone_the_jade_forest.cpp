@@ -1525,6 +1525,7 @@ class npc_big_bao : public CreatureScript
 
 enum eCreatureSpells
 {
+    SPELL_DROP_JADE              = 105912,
     SPELL_GORE                   = 115821,
     SPELL_SILVERHORN_SWITFTNESS  = 115850,
     SPELL_PROTECT_YOUNG          = 115968,
@@ -4326,6 +4327,26 @@ class go_jade_forest_keg_of_metal_brew : public GameObjectScript
         }
 };
 
+// Drop Jade Cover Cast 105918
+class spell_jade_forest_drop_jade_cover : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_drop_jade_cover);
+
+    void HandleDummy(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+
+        if (Unit* caster = GetCaster())
+            for (uint8 i = 0; i < 3; ++i)
+                caster->CastSpell(caster, SPELL_DROP_JADE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_drop_jade_cover::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
 // Smoked Blade 125633
 class spell_jade_forest_smoked_blade : public SpellScript
 {
@@ -5674,6 +5695,7 @@ void AddSC_jade_forest()
     new creature_script<npc_prince_anduin_decision>("npc_prince_anduin_decision");
     new creature_script<npc_prince_anduin_decision_helpers>("npc_prince_anduin_decision_helpers");
     new go_jade_forest_keg_of_metal_brew();
+    new spell_script<spell_jade_forest_drop_jade_cover>("spell_jade_forest_drop_jade_cover");
     new spell_script<spell_jade_forest_smoked_blade>("spell_jade_forest_smoked_blade");
     new spell_script<spell_jade_forest_summon_metal_brewmaster>("spell_jade_forest_summon_metal_brewmaster");
     new spell_script<spell_summon_boiling_cauldron>("spell_summon_boiling_cauldron");
