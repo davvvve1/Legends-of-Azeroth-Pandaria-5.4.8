@@ -5395,6 +5395,238 @@ class spell_jade_forest_right_track_smoke : public SpellScript
     }
 };
 
+namespace WhatsMinedIsYours
+{
+    uint32 const Quest = 29930;
+    uint32 const Cart = 56527;
+    uint32 const CartVehicle = 2052;
+    uint32 const Hao = 56510;
+    uint32 const DeliveryCredit = 56508;
+
+    Position const Start = { 2273.30f, -1774.80f, 234.05f, 5.92f };
+    Position const Finish = { 2388.50f, -2101.50f, 229.70f, 5.05f };
+    Position const Route[] =
+    {
+        { 2284.00f, -1792.00f, 234.80f, 0.0f },
+        { 2296.80f, -1808.90f, 235.80f, 0.0f },
+        { 2318.30f, -1834.30f, 231.40f, 0.0f },
+        { 2356.80f, -1838.20f, 230.20f, 0.0f },
+        { 2388.10f, -1863.50f, 225.00f, 0.0f },
+        { 2402.40f, -1900.00f, 219.90f, 0.0f },
+        { 2402.00f, -1933.80f, 213.20f, 0.0f },
+        { 2383.00f, -1952.00f, 214.20f, 0.0f },
+        { 2368.60f, -1963.00f, 215.80f, 0.0f },
+        { 2345.00f, -1974.00f, 216.80f, 0.0f },
+        { 2329.00f, -1980.00f, 217.60f, 0.0f },
+        { 2315.00f, -2005.00f, 219.00f, 0.0f },
+        { 2300.00f, -2030.00f, 221.00f, 0.0f },
+        { 2294.00f, -2068.00f, 222.20f, 0.0f },
+        { 2312.00f, -2080.00f, 223.50f, 0.0f },
+        { 2342.00f, -2090.00f, 225.40f, 0.0f },
+        { 2370.00f, -2098.00f, 228.00f, 0.0f },
+        Finish
+    };
+
+    void Begin(Player* player)
+    {
+        if (!player || !player->IsAlive() || player->GetVehicle() || player->IsInCombat() ||
+            player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE || player->GetMapId() != 870 ||
+            player->GetDistance(Start) > 35.0f)
+            return;
+
+        player->Dismount();
+        if (TempSummon* cart = player->SummonCreature(Cart, Start, TEMPSUMMON_TIMED_DESPAWN,
+            3 * MINUTE * IN_MILLISECONDS, CartVehicle, player->GetGUID()))
+        {
+            if (!cart->GetVehicleKit())
+            {
+                cart->DespawnOrUnsummon();
+                return;
+            }
+
+            cart->SetPhaseMask(player->GetPhaseMask(), false);
+            cart->SetExplicitSeerGuid(player->GetGUID());
+            player->UpdateVisibilityOf(cart);
+            if (!player->HaveAtClient(cart))
+            {
+                cart->DespawnOrUnsummon();
+                return;
+            }
+
+            player->EnterVehicle(cart, 0);
+            if (player->GetVehicleBase() != cart)
+                cart->DespawnOrUnsummon();
+        }
+    }
+}
+
+class npc_jade_forest_hao_mann_cart : public CreatureScript
+{
+public:
+    npc_jade_forest_hao_mann_cart() : CreatureScript("npc_jade_forest_hao_mann_cart") { }
+
+    bool OnQuestAccept(Player* player, Creature*, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == WhatsMinedIsYours::Quest)
+            WhatsMinedIsYours::Begin(player);
+        return true;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+        if (player->GetQuestStatus(WhatsMinedIsYours::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I'm ready to take the jade back to Emperor's Omen.",
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+            player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            WhatsMinedIsYours::Begin(player);
+        return true;
+    }
+};
+
+struct npc_jade_forest_jade_cart : public ScriptedAI
+{
+    npc_jade_forest_jade_cart(Creature* creature) : ScriptedAI(creature) { }
+
+    ObjectGuid playerGuid;
+    ObjectGuid haoGuid;
+    uint32 boardingDelay = 0;
+    bool boarded = false;
+    bool launched = false;
+    bool completed = false;
+
+    void OnCharmed(bool) override { }
+
+    void Reset() override
+    {
+        playerGuid.Clear();
+        haoGuid.Clear();
+        boardingDelay = 0;
+        boarded = false;
+        launched = false;
+        completed = false;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+    }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        if (Player* player = summoner->ToPlayer())
+            playerGuid = player->GetGUID();
+    }
+
+    void PassengerBoarded(Unit* passenger, int8, bool apply) override
+    {
+        Player* player = passenger->ToPlayer();
+        if (!player)
+            return;
+
+        if (apply)
+        {
+            if (playerGuid && playerGuid != player->GetGUID())
+            {
+                player->ExitVehicle();
+                return;
+            }
+
+            playerGuid = player->GetGUID();
+            player->SetClientControl(me, false);
+            boarded = true;
+            boardingDelay = 500;
+
+            Position haoPosition = WhatsMinedIsYours::Start;
+            haoPosition.m_positionX -= 2.5f;
+            haoPosition.m_positionY += 1.0f;
+            if (Creature* hao = me->SummonCreature(WhatsMinedIsYours::Hao, haoPosition,
+                TEMPSUMMON_TIMED_DESPAWN, 3 * MINUTE * IN_MILLISECONDS, 0, player->GetGUID()))
+            {
+                haoGuid = hao->GetGUID();
+                hao->SetPhaseMask(player->GetPhaseMask(), false);
+                hao->SetExplicitSeerGuid(player->GetGUID());
+                hao->SetReactState(REACT_PASSIVE);
+                hao->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+                hao->SetWalk(false);
+                hao->GetMotionMaster()->MoveFollow(me, 2.5f, 0.0f);
+            }
+            return;
+        }
+
+        boarded = false;
+        if (Creature* hao = me->GetMap()->GetCreature(haoGuid))
+            hao->DespawnOrUnsummon();
+
+        if (completed)
+        {
+            ObjectGuid guid = player->GetGUID();
+            player->m_Events.Schedule(100, [guid]()
+            {
+                if (Player* rider = ObjectAccessor::FindPlayer(guid))
+                    if (rider->IsAlive() && !rider->IsBeingTeleported() && rider->GetMapId() == 870 && !rider->GetVehicle())
+                        rider->NearTeleportTo(WhatsMinedIsYours::Finish.GetPositionX(),
+                            WhatsMinedIsYours::Finish.GetPositionY(), WhatsMinedIsYours::Finish.GetPositionZ(),
+                            WhatsMinedIsYours::Finish.GetOrientation());
+            });
+        }
+
+        me->DespawnOrUnsummon(500);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!boarded)
+            return;
+
+        Unit* passenger = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(0) : nullptr;
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        if (!player || player->GetGUID() != playerGuid)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+        if (!player->IsAlive() || player->GetQuestStatus(WhatsMinedIsYours::Quest) != QUEST_STATUS_INCOMPLETE)
+        {
+            player->ExitVehicle();
+            return;
+        }
+
+        if (boardingDelay > diff)
+        {
+            boardingDelay -= diff;
+            return;
+        }
+        boardingDelay = 0;
+
+        if (!launched)
+        {
+            launched = true;
+            Movement::MoveSplineInit route(me);
+            for (Position const& point : WhatsMinedIsYours::Route)
+                route.Path().push_back(G3D::Vector3(point.GetPositionX(), point.GetPositionY(), point.GetPositionZ()));
+            route.SetSmooth();
+            route.SetUncompressed();
+            route.SetVelocity(7.0f);
+            route.Launch();
+            return;
+        }
+
+        if (me->movespline->Finalized())
+        {
+            completed = true;
+            player->KilledMonsterCredit(WhatsMinedIsYours::DeliveryCredit);
+            player->ExitVehicle();
+        }
+    }
+};
+
 namespace AcidRain
 {
     uint32 const Quest = 29827;
@@ -5636,6 +5868,8 @@ void AddSC_jade_forest()
     new npc_jade_forest_rivett_boom_bait();
     new creature_script<npc_jade_forest_right_track_kiryn>("npc_jade_forest_right_track_kiryn");
     new spell_script<spell_jade_forest_right_track_smoke>("spell_jade_forest_right_track_smoke");
+    new npc_jade_forest_hao_mann_cart();
+    new creature_script<npc_jade_forest_jade_cart>("npc_jade_forest_jade_cart");
     new npc_rakira();
     new npc_ro_shen();
     new npc_sha_reminant();
