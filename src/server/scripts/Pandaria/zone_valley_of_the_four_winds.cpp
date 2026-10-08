@@ -2437,10 +2437,17 @@ public:
 namespace ChenAndLiLi
 {
     constexpr uint32 QuestId = 29907;
-    constexpr uint32 ArrivalCredit = 56343;
+    constexpr uint32 Chen = 56343;
+    constexpr uint32 LiLi = 56344;
+    constexpr uint32 SummonSpell = 105835;
     constexpr uint32 PangsSteadArea = 5936;
+    constexpr uint32 StartEscortEvent = 1;
+    constexpr uint32 EscortArrivalPoint = 1;
+    constexpr float StartX = 517.318f;
+    constexpr float StartY = -693.748f;
     constexpr float PangX = 545.832f;
     constexpr float PangY = -606.115f;
+    constexpr float PangZ = 263.454f;
 
     void CreditArrival(Player* player)
     {
@@ -2449,9 +2456,91 @@ namespace ChenAndLiLi
             player->GetExactDist2d(PangX, PangY) > 80.0f)
             return;
 
-        player->KilledMonsterCredit(ArrivalCredit);
+        player->KilledMonsterCredit(Chen);
+    }
+
+    void EnsureEscort(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != 870 ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE ||
+            player->GetExactDist2d(StartX, StartY) > 120.0f)
+            return;
+
+        std::list<TempSummon*> chens;
+        player->GetSummons(chens, Chen);
+        if (chens.empty())
+            player->CastSpell(player, SummonSpell, true);
     }
 }
+
+class npc_chen_and_li_li_escort : public CreatureScript
+{
+public:
+    npc_chen_and_li_li_escort() : CreatureScript("npc_chen_and_li_li_escort") { }
+
+    struct npc_chen_and_li_li_escortAI : public ScriptedAI
+    {
+        npc_chen_and_li_li_escortAI(Creature* creature) : ScriptedAI(creature) { }
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            Player* player = summoner ? summoner->ToPlayer() : nullptr;
+            if (!player || player->GetQuestStatus(ChenAndLiLi::QuestId) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            playerGuid = player->GetGUID();
+            me->SetReactState(REACT_PASSIVE);
+            me->SetWalk(true);
+            events.ScheduleEvent(ChenAndLiLi::StartEscortEvent, 500);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type != POINT_MOTION_TYPE || id != ChenAndLiLi::EscortArrivalPoint)
+                return;
+
+            if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+                ChenAndLiLi::CreditArrival(player);
+
+            if (Creature* liLi = ObjectAccessor::GetCreature(*me, liLiGuid))
+                liLi->DespawnOrUnsummon(10 * IN_MILLISECONDS);
+            me->DespawnOrUnsummon(10 * IN_MILLISECONDS);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            events.Update(diff);
+            if (events.ExecuteEvent() != ChenAndLiLi::StartEscortEvent)
+                return;
+
+            Position liLiPosition = me->GetNearPosition(2.0f, M_PI / 2.0f);
+            if (TempSummon* liLi = me->SummonCreature(ChenAndLiLi::LiLi, liLiPosition,
+                TEMPSUMMON_TIMED_DESPAWN, 2 * MINUTE * IN_MILLISECONDS, 0, playerGuid))
+            {
+                liLiGuid = liLi->GetGUID();
+                liLi->SetReactState(REACT_PASSIVE);
+                liLi->SetWalk(true);
+                liLi->GetMotionMaster()->MoveFollow(me, 2.0f, M_PI);
+            }
+
+            me->GetMotionMaster()->MovePoint(ChenAndLiLi::EscortArrivalPoint,
+                ChenAndLiLi::PangX, ChenAndLiLi::PangY, ChenAndLiLi::PangZ, true);
+        }
+
+    private:
+        EventMap events;
+        ObjectGuid playerGuid;
+        ObjectGuid liLiGuid;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_chen_and_li_li_escortAI(creature);
+    }
+};
 
 class player_chen_and_li_li_recovery : public PlayerScript
 {
@@ -2461,7 +2550,14 @@ public:
     void OnQuestAdded(Player* player, Quest const* quest) override
     {
         if (quest->GetQuestId() == ChenAndLiLi::QuestId)
-            ChenAndLiLi::CreditArrival(player);
+        {
+            ObjectGuid playerGuid = player->GetGUID();
+            player->m_Events.Schedule(1000, [playerGuid]()
+            {
+                if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                    ChenAndLiLi::EnsureEscort(onlinePlayer);
+            });
+        }
     }
 
     void OnLogin(Player* player) override
@@ -2470,7 +2566,10 @@ public:
         player->m_Events.Schedule(1000, [playerGuid]()
         {
             if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+            {
                 ChenAndLiLi::CreditArrival(onlinePlayer);
+                ChenAndLiLi::EnsureEscort(onlinePlayer);
+            }
         });
     }
 
@@ -2534,5 +2633,6 @@ void AddSC_valley_of_the_four_winds()
     new npc_vfw_miss_fanny();
     new player_lesson_in_bravery();
     new player_hop_hunting_recovery();
+    new npc_chen_and_li_li_escort();
     new player_chen_and_li_li_recovery();
 }
