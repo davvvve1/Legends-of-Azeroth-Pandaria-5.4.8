@@ -2323,6 +2323,66 @@ public:
     }
 };
 
+namespace LessonInBravery
+{
+    constexpr uint32 Quest = 29918;
+    constexpr uint32 GreatWhitePlainshawk = 56171;
+    constexpr uint32 ValleyOfTheFourWinds = 5805;
+
+    void EnsurePlainshawk(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != 870 ||
+            player->GetZoneId() != ValleyOfTheFourWinds ||
+            player->GetQuestStatus(Quest) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        std::list<Creature*> plainshawks;
+        GetCreatureListWithEntryInGrid(plainshawks, player, GreatWhitePlainshawk, 120.0f);
+        for (Creature* plainshawk : plainshawks)
+            if (plainshawk->IsAlive())
+                return;
+
+        Position spawn = player->GetNearPosition(35.0f, 0.0f);
+        spawn.m_positionZ += 20.0f;
+
+        if (TempSummon* plainshawk = player->SummonCreature(GreatWhitePlainshawk, spawn,
+            TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 15 * MINUTE * IN_MILLISECONDS, 0, player->GetGUID()))
+        {
+            plainshawk->SetCanFly(true);
+            plainshawk->SetDisableGravity(true);
+            plainshawk->SetReactState(REACT_AGGRESSIVE);
+        }
+    }
+}
+
+class player_lesson_in_bravery : public PlayerScript
+{
+public:
+    player_lesson_in_bravery() : PlayerScript("player_lesson_in_bravery") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == LessonInBravery::Quest)
+            LessonInBravery::EnsurePlainshawk(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1000, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                LessonInBravery::EnsurePlainshawk(onlinePlayer);
+        });
+    }
+
+    void OnUpdateZone(Player* player, uint32 newZone, uint32 /*newArea*/) override
+    {
+        if (newZone == LessonInBravery::ValleyOfTheFourWinds)
+            LessonInBravery::EnsurePlainshawk(player);
+    }
+};
+
 void AddSC_valley_of_the_four_winds()
 {
     // Rare Mobs
@@ -2374,4 +2434,5 @@ void AddSC_valley_of_the_four_winds()
     new atrigger_script<sat_vfw_ground_and_pound>("sat_vfw_ground_and_pound");
     new aura_script<spell_vfw_breaking_barrel>("spell_vfw_breaking_barrel");
     new npc_vfw_miss_fanny();
+    new player_lesson_in_bravery();
 }
