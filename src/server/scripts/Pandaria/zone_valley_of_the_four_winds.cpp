@@ -2383,6 +2383,57 @@ public:
     }
 };
 
+namespace HopHunting
+{
+    constexpr uint32 ChensResolution = 30046;
+    constexpr uint32 QuestId = 30053;
+    constexpr uint32 StormstoutsHops = 30055;
+
+    void EnsureQuest(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != 870 ||
+            player->GetZoneId() != LessonInBravery::ValleyOfTheFourWinds ||
+            !player->GetQuestRewardStatus(ChensResolution) ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_NONE ||
+            player->GetQuestRewardStatus(QuestId) ||
+            player->GetQuestStatus(StormstoutsHops) != QUEST_STATUS_NONE ||
+            player->GetQuestRewardStatus(StormstoutsHops))
+            return;
+
+        if (Quest const* quest = sObjectMgr->GetQuestTemplate(QuestId))
+            if (player->CanTakeQuest(quest, false) && player->CanAddQuest(quest, true))
+                player->AddQuestAndCheckCompletion(quest, nullptr);
+    }
+}
+
+class player_hop_hunting_recovery : public PlayerScript
+{
+public:
+    player_hop_hunting_recovery() : PlayerScript("player_hop_hunting_recovery") { }
+
+    void OnQuestRewarded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == HopHunting::ChensResolution)
+            HopHunting::EnsureQuest(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1500, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                HopHunting::EnsureQuest(onlinePlayer);
+        });
+    }
+
+    void OnUpdateZone(Player* player, uint32 newZone, uint32 /*newArea*/) override
+    {
+        if (newZone == LessonInBravery::ValleyOfTheFourWinds)
+            HopHunting::EnsureQuest(player);
+    }
+};
+
 void AddSC_valley_of_the_four_winds()
 {
     // Rare Mobs
@@ -2435,4 +2486,5 @@ void AddSC_valley_of_the_four_winds()
     new aura_script<spell_vfw_breaking_barrel>("spell_vfw_breaking_barrel");
     new npc_vfw_miss_fanny();
     new player_lesson_in_bravery();
+    new player_hop_hunting_recovery();
 }
