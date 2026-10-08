@@ -2434,6 +2434,53 @@ public:
     }
 };
 
+namespace ChenAndLiLi
+{
+    constexpr uint32 QuestId = 29907;
+    constexpr uint32 ArrivalCredit = 56343;
+    constexpr uint32 PangsSteadArea = 5936;
+    constexpr float PangX = 545.832f;
+    constexpr float PangY = -606.115f;
+
+    void CreditArrival(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != 870 ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE ||
+            player->GetExactDist2d(PangX, PangY) > 80.0f)
+            return;
+
+        player->KilledMonsterCredit(ArrivalCredit);
+    }
+}
+
+class player_chen_and_li_li_recovery : public PlayerScript
+{
+public:
+    player_chen_and_li_li_recovery() : PlayerScript("player_chen_and_li_li_recovery") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == ChenAndLiLi::QuestId)
+            ChenAndLiLi::CreditArrival(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1000, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                ChenAndLiLi::CreditArrival(onlinePlayer);
+        });
+    }
+
+    void OnUpdate(Player* player, uint32 /*diff*/) override
+    {
+        if (player->GetAreaId() == ChenAndLiLi::PangsSteadArea)
+            ChenAndLiLi::CreditArrival(player);
+    }
+};
+
 void AddSC_valley_of_the_four_winds()
 {
     // Rare Mobs
@@ -2487,4 +2534,5 @@ void AddSC_valley_of_the_four_winds()
     new npc_vfw_miss_fanny();
     new player_lesson_in_bravery();
     new player_hop_hunting_recovery();
+    new player_chen_and_li_li_recovery();
 }
