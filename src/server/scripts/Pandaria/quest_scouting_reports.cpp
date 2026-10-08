@@ -6,6 +6,7 @@
 #include "Vehicle.h"
 #include "Map.h"
 #include "GameObject.h"
+#include "Item.h"
 
 namespace ScoutingReports
 {
@@ -849,10 +850,8 @@ class spell_jade_forest_report_riko_attack : public SpellScript
     }
 };
 
-class spell_jade_forest_emergency_response_fireworks : public SpellScript
+namespace EmergencyResponse
 {
-    PrepareSpellScript(spell_jade_forest_emergency_response_fireworks);
-
     struct RescueTarget
     {
         uint32 CreatureId;
@@ -861,24 +860,35 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
         float Y;
     };
 
-    RescueTarget const* FindRescueTarget(Player* player)
+    RescueTarget const HordeTargets[] =
     {
-        static RescueTarget const hordeTargets[] =
-        {
-            { 64360, 252853, 777.0f, -1909.0f },
-            { 64362, 268536, 741.0f, -1847.0f },
-            { 64363, 268537, 826.0f, -1821.0f },
-            { 64364, 268538, 901.0f, -1901.0f }
-        };
-        static RescueTarget const allianceTargets[] =
-        {
-            { 64491, 268533, 764.0f, -1879.0f },
-            { 64493, 268574, 782.0f, -1786.0f },
-            { 64494, 268575, 897.0f, -1867.0f }
-        };
+        { 64360, 252853, 777.0f, -1909.0f },
+        { 64362, 268536, 741.0f, -1847.0f },
+        { 64363, 268537, 826.0f, -1821.0f },
+        { 64364, 268538, 901.0f, -1901.0f }
+    };
+    RescueTarget const AllianceTargets[] =
+    {
+        { 64491, 268533, 764.0f, -1879.0f },
+        { 64493, 268574, 782.0f, -1786.0f },
+        { 64494, 268575, 897.0f, -1867.0f }
+    };
 
-        RescueTarget const* targets = GetSpellInfo()->Id == 125700 ? hordeTargets : allianceTargets;
-        uint32 count = GetSpellInfo()->Id == 125700 ? 4 : 3;
+    uint32 QuestForSpell(uint32 spellId)
+    {
+        return spellId == 125700 ? 30504 : 31319;
+    }
+
+    uint32 QuestForItem(uint32 itemId)
+    {
+        return itemId == 86467 ? 30504 : 31319;
+    }
+
+    RescueTarget const* FindTarget(Player* player, uint32 questId)
+    {
+        RescueTarget const* targets = questId == 30504 ? HordeTargets : AllianceTargets;
+        uint32 count = questId == 30504 ? std::size(HordeTargets) : std::size(AllianceTargets);
+
         RescueTarget const* nearest = nullptr;
         float nearestDistance = 40.0f;
 
@@ -898,29 +908,49 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
         return nearest;
     }
 
-    SpellCastResult CheckCast()
+    bool GrantCredit(Player* player, uint32 questId)
     {
-        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
-        if (!player)
-            return SPELL_FAILED_BAD_TARGETS;
+        if (!player || player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
+            return false;
 
-        uint32 quest = GetSpellInfo()->Id == 125700 ? 30504 : 31319;
-        if (player->GetQuestStatus(quest) != QUEST_STATUS_INCOMPLETE)
-            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+        if (RescueTarget const* target = FindTarget(player, questId))
+        {
+            player->KilledMonsterCredit(target->CreatureId);
+            return true;
+        }
 
-        return FindRescueTarget(player) ? SPELL_CAST_OK : SPELL_FAILED_OUT_OF_RANGE;
+        return false;
     }
+}
+
+// 86467 / 86511 - Cho's Fireworks
+// Handle the quest item before CastItemUseSpell. On this core the self-targeted
+// script-effect spell can finish without invoking its SpellScript callbacks.
+class item_jade_forest_emergency_response_fireworks : public ItemScript
+{
+public:
+    item_jade_forest_emergency_response_fireworks()
+        : ItemScript("item_jade_forest_emergency_response_fireworks") { }
+
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    {
+        EmergencyResponse::GrantCredit(player, EmergencyResponse::QuestForItem(item->GetEntry()));
+        return false;
+    }
+};
+
+class spell_jade_forest_emergency_response_fireworks : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_emergency_response_fireworks);
 
     void HandleFireworks()
     {
         if (Player* player = GetCaster()->ToPlayer())
-            if (RescueTarget const* target = FindRescueTarget(player))
-                player->KilledMonsterCredit(target->CreatureId);
+            EmergencyResponse::GrantCredit(player, EmergencyResponse::QuestForSpell(GetSpellInfo()->Id));
     }
 
     void Register() override
     {
-        OnCheckCast += SpellCheckCastFn(spell_jade_forest_emergency_response_fireworks::CheckCast);
         AfterCast += SpellCastFn(spell_jade_forest_emergency_response_fireworks::HandleFireworks);
     }
 };
@@ -936,5 +966,6 @@ void AddSC_scouting_reports()
     new npc_jade_forest_report_investigation();
     new spell_script<spell_jade_forest_report_shooting>("spell_jade_forest_report_shooting");
     new spell_script<spell_jade_forest_report_riko_attack>("spell_jade_forest_report_riko_attack");
+    new item_jade_forest_emergency_response_fireworks();
     new spell_script<spell_jade_forest_emergency_response_fireworks>("spell_jade_forest_emergency_response_fireworks");
 }
