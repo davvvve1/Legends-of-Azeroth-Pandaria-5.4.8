@@ -5399,7 +5399,9 @@ namespace WhatsMinedIsYours
 {
     uint32 const Quest = 29930;
     uint32 const Cart = 56527;
-    uint32 const CartVehicle = 2052;
+    // Vehicle 1871 uses the cart attachment and lets passengers use their own
+    // attacks and spells. Vehicle 2052 looks similar but its seat cannot fight.
+    uint32 const CartVehicle = 1871;
     uint32 const Hao = 56510;
     uint32 const DeliveryCredit = 56508;
 
@@ -5500,8 +5502,8 @@ struct npc_jade_forest_jade_cart : public ScriptedAI
     ObjectGuid playerGuid;
     ObjectGuid haoGuid;
     uint32 boardingDelay = 0;
+    uint32 routePoint = 0;
     bool boarded = false;
-    bool launched = false;
     bool completed = false;
 
     void OnCharmed(bool) override { }
@@ -5511,8 +5513,8 @@ struct npc_jade_forest_jade_cart : public ScriptedAI
         playerGuid.Clear();
         haoGuid.Clear();
         boardingDelay = 0;
+        routePoint = 0;
         boarded = false;
-        launched = false;
         completed = false;
         me->SetReactState(REACT_PASSIVE);
         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
@@ -5605,25 +5607,24 @@ struct npc_jade_forest_jade_cart : public ScriptedAI
         }
         boardingDelay = 0;
 
-        if (!launched)
+        if (!me->movespline->Finalized())
+            return;
+
+        if (routePoint < sizeof(WhatsMinedIsYours::Route) / sizeof(Position))
         {
-            launched = true;
+            Position const& destination = WhatsMinedIsYours::Route[routePoint++];
             Movement::MoveSplineInit route(me);
-            for (Position const& point : WhatsMinedIsYours::Route)
-                route.Path().push_back(G3D::Vector3(point.GetPositionX(), point.GetPositionY(), point.GetPositionZ()));
-            route.SetSmooth();
-            route.SetUncompressed();
+            // Build every short leg against the navigation mesh. A single
+            // smoothed spline cut through the quarry hillside between points.
+            route.MoveTo(destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(), true);
             route.SetVelocity(7.0f);
             route.Launch();
             return;
         }
 
-        if (me->movespline->Finalized())
-        {
-            completed = true;
-            player->KilledMonsterCredit(WhatsMinedIsYours::DeliveryCredit);
-            player->ExitVehicle();
-        }
+        completed = true;
+        player->KilledMonsterCredit(WhatsMinedIsYours::DeliveryCredit);
+        player->ExitVehicle();
     }
 };
 
