@@ -98,6 +98,8 @@ enum Creatures
     NPC_STONE_1_CREDIT        = 63235,
     NPC_STONE_2_CREDIT        = 63236,
     NPC_STONE_3_CREDIT        = 63237,
+    NPC_GREENSTONE_NIBBLER    = 56401,
+    NPC_GREENSTONE_GORGER     = 56404,
 };
 
 enum Quests
@@ -109,6 +111,13 @@ enum Quests
     QUEST_A_STRONG_BACK         = 29628,
     QUEST_STAY_AND_WHILE        = 31121,
     QUEST_IF_STONES_COULD_SPEAK = 31134,
+    QUEST_CALAMITY_JADE          = 29926,
+};
+
+enum JadeForestQuestObjectives
+{
+    OBJECTIVE_GREENSTONE_NIBBLERS = 255449,
+    OBJECTIVE_GREENSTONE_GORGERS  = 255450,
 };
 
 enum eTalks
@@ -1697,15 +1706,62 @@ struct npc_forest_huntress : public ScriptedAI
     }
 };
 
-// Greenstone Nibbler 56401
-struct npc_greenstone_nibbler : public ScriptedAI
+struct npc_calamity_jade_spider : public ScriptedAI
 {
-    npc_greenstone_nibbler(Creature* creature) : ScriptedAI(creature) { }
+    npc_calamity_jade_spider(Creature* creature, uint32 objectiveId, uint32 creditEntry)
+        : ScriptedAI(creature), _objectiveId(objectiveId), _creditEntry(creditEntry) { }
+
+    void ResetCreditTracker()
+    {
+        _creditPlayerGuid.Clear();
+        _objectiveCountBeforeDeath = 0;
+    }
+
+    void DamageTaken(Unit* attacker, uint32& damage) override
+    {
+        if (damage < me->GetHealth())
+            return;
+
+        Player* player = attacker ? attacker->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        if (!player)
+            player = me->GetLootRecipient();
+
+        if (!player || player->GetQuestStatus(QUEST_CALAMITY_JADE) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        _creditPlayerGuid = player->GetGUID();
+        _objectiveCountBeforeDeath = player->GetQuestObjectiveCounter(_objectiveId);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (!_creditPlayerGuid)
+            return;
+
+        if (Player* player = ObjectAccessor::GetPlayer(*me, _creditPlayerGuid))
+            if (player->GetQuestStatus(QUEST_CALAMITY_JADE) == QUEST_STATUS_INCOMPLETE &&
+                player->GetQuestObjectiveCounter(_objectiveId) == _objectiveCountBeforeDeath)
+                player->KilledMonsterCredit(_creditEntry, ObjectGuid::Empty);
+    }
+
+private:
+    uint32 const _objectiveId;
+    uint32 const _creditEntry;
+    ObjectGuid _creditPlayerGuid;
+    uint32 _objectiveCountBeforeDeath = 0;
+};
+
+// Greenstone Nibbler 56401
+struct npc_greenstone_nibbler : public npc_calamity_jade_spider
+{
+    npc_greenstone_nibbler(Creature* creature)
+        : npc_calamity_jade_spider(creature, OBJECTIVE_GREENSTONE_NIBBLERS, NPC_GREENSTONE_NIBBLER) { }
 
     EventMap events;
 
     void Reset() override
     {
+        ResetCreditTracker();
         events.Reset();
     }
 
@@ -1738,14 +1794,16 @@ struct npc_greenstone_nibbler : public ScriptedAI
 };
 
 // Greenstone Gorger 56404
-struct npc_greenstone_gorger : public ScriptedAI
+struct npc_greenstone_gorger : public npc_calamity_jade_spider
 {
-    npc_greenstone_gorger(Creature* creature) : ScriptedAI(creature) { }
+    npc_greenstone_gorger(Creature* creature)
+        : npc_calamity_jade_spider(creature, OBJECTIVE_GREENSTONE_GORGERS, NPC_GREENSTONE_GORGER) { }
 
     EventMap events;
 
     void Reset() override
     {
+        ResetCreditTracker();
         events.Reset();
     }
 
@@ -1913,12 +1971,20 @@ struct npc_greenwood_trickster : public ScriptedAI
 };
 
 // Brittle Greenstone Gorger 56543
-struct npc_brittle_greenstone_gorger : public ScriptedAI
+struct npc_brittle_greenstone_gorger : public npc_calamity_jade_spider
 {
-    npc_brittle_greenstone_gorger(Creature* creature) : ScriptedAI(creature) { }
+    npc_brittle_greenstone_gorger(Creature* creature)
+        : npc_calamity_jade_spider(creature, OBJECTIVE_GREENSTONE_GORGERS, NPC_GREENSTONE_GORGER) { }
+
+    void Reset() override
+    {
+        ResetCreditTracker();
+    }
 
     void DamageTaken(Unit* attacker, uint32& damage) override
     {
+        npc_calamity_jade_spider::DamageTaken(attacker, damage);
+
         if (HealthBelowPct(51) && !me->HasAura(SPELL_BRITTLE))
             DoCast(me, SPELL_BRITTLE);
     }
