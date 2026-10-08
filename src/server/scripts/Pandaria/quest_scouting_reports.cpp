@@ -853,17 +853,39 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
 {
     PrepareSpellScript(spell_jade_forest_emergency_response_fireworks);
 
+    struct RescueTarget
+    {
+        uint32 CreatureId;
+        uint32 ObjectiveId;
+    };
+
     Creature* FindRescueTarget(Player* player)
     {
-        uint32 const hordeTargets[] = { 64360, 64362, 64363, 64364 };
-        uint32 const allianceTargets[] = { 64491, 64493, 64494 };
-        uint32 const* targets = GetSpellInfo()->Id == 125700 ? hordeTargets : allianceTargets;
+        static RescueTarget const hordeTargets[] =
+        {
+            { 64360, 252853 },
+            { 64362, 268536 },
+            { 64363, 268537 },
+            { 64364, 268538 }
+        };
+        static RescueTarget const allianceTargets[] =
+        {
+            { 64491, 268533 },
+            { 64493, 268574 },
+            { 64494, 268575 }
+        };
+
+        RescueTarget const* targets = GetSpellInfo()->Id == 125700 ? hordeTargets : allianceTargets;
         uint32 count = GetSpellInfo()->Id == 125700 ? 4 : 3;
         Creature* nearest = nullptr;
         float nearestDistance = 30.0f;
 
         for (uint32 i = 0; i < count; ++i)
-            if (Creature* candidate = player->FindNearestCreature(targets[i], 30.0f, true))
+        {
+            if (player->GetQuestObjectiveCounter(targets[i].ObjectiveId) != 0)
+                continue;
+
+            if (Creature* candidate = player->FindNearestCreature(targets[i].CreatureId, 30.0f, true))
             {
                 float distance = player->GetDistance(candidate);
                 if (distance < nearestDistance)
@@ -872,6 +894,8 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
                     nearestDistance = distance;
                 }
             }
+        }
+
         return nearest;
     }
 
@@ -888,9 +912,8 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
         return FindRescueTarget(player) ? SPELL_CAST_OK : SPELL_FAILED_OUT_OF_RANGE;
     }
 
-    void HandleFireworks(SpellEffIndex effectIndex)
+    void HandleFireworks()
     {
-        PreventHitDefaultEffect(effectIndex);
         if (Player* player = GetCaster()->ToPlayer())
             if (Creature* target = FindRescueTarget(player))
                 player->KilledMonsterCredit(target->GetEntry(), target->GetGUID());
@@ -899,8 +922,7 @@ class spell_jade_forest_emergency_response_fireworks : public SpellScript
     void Register() override
     {
         OnCheckCast += SpellCheckCastFn(spell_jade_forest_emergency_response_fireworks::CheckCast);
-        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_emergency_response_fireworks::HandleFireworks,
-            EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+        AfterCast += SpellCastFn(spell_jade_forest_emergency_response_fireworks::HandleFireworks);
     }
 };
 

@@ -16,6 +16,7 @@
 */
 
 #include "ScriptMgr.h"
+#include "GameObject.h"
 #include "MoveSplineInit.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -360,10 +361,346 @@ public:
     }
 };
 
+namespace AbyssalRide
+{
+    enum Data
+    {
+        QUEST_THE_ABYSSAL_RIDE       = 25371,
+
+        NPC_ABYSSAL_LURE             = 39942,
+        NPC_ABYSSAL_SEAHORSE         = 39996,
+
+        SPELL_LEAN_LEFT              = 87217,
+        SPELL_HOLD_ON_TIGHT          = 86332,
+        SPELL_LEAN_RIGHT             = 87219,
+
+        EVENT_PROMPT                 = 1,
+        EVENT_FINISH_RIDE            = 2
+    };
+
+    Position const RidePath[] =
+    {
+        { -4888.0f, 3796.0f, -149.0f, 0.0f },
+        { -4930.0f, 3765.0f, -160.0f, 0.0f },
+        { -5000.0f, 3730.0f, -175.0f, 0.0f },
+        { -5080.0f, 3700.0f, -195.0f, 0.0f },
+        { -5180.0f, 3675.0f, -215.0f, 0.0f },
+        { -5280.0f, 3650.0f, -235.0f, 0.0f },
+        { -5400.0f, 3620.0f, -250.0f, 0.0f },
+        { -5520.0f, 3615.0f, -240.0f, 0.0f },
+        { -5600.0f, 3650.0f, -225.0f, 0.0f },
+        { -5520.0f, 3700.0f, -205.0f, 0.0f },
+        { -5400.0f, 3740.0f, -190.0f, 0.0f },
+        { -5250.0f, 3770.0f, -180.0f, 0.0f },
+        { -5100.0f, 3800.0f, -165.0f, 0.0f },
+        { -4960.0f, 3810.0f, -155.0f, 0.0f },
+        { -4890.0f, 3800.0f, -149.0f, 0.0f }
+    };
+
+    uint32 const PromptSpells[] =
+    {
+        SPELL_LEAN_LEFT,
+        SPELL_HOLD_ON_TIGHT,
+        SPELL_LEAN_RIGHT,
+        SPELL_LEAN_LEFT,
+        SPELL_LEAN_RIGHT,
+        SPELL_HOLD_ON_TIGHT,
+        SPELL_LEAN_LEFT,
+        SPELL_LEAN_RIGHT,
+        SPELL_HOLD_ON_TIGHT,
+        SPELL_LEAN_RIGHT,
+        SPELL_LEAN_LEFT,
+        SPELL_HOLD_ON_TIGHT,
+        SPELL_LEAN_RIGHT,
+        SPELL_LEAN_LEFT
+    };
+}
+
+// 202766 - Braided Rope
+class go_the_abyssal_ride_braided_rope : public GameObjectScript
+{
+public:
+    go_the_abyssal_ride_braided_rope() : GameObjectScript("go_the_abyssal_ride_braided_rope") { }
+
+    bool OnGossipHello(Player* player, GameObject* go) override
+    {
+        if (player->GetQuestStatus(AbyssalRide::QUEST_THE_ABYSSAL_RIDE) != QUEST_STATUS_INCOMPLETE ||
+            player->GetVehicleBase())
+            return true;
+
+        std::list<Creature*> horses;
+        GetCreatureListWithEntryInGrid(horses, player, AbyssalRide::NPC_ABYSSAL_SEAHORSE, 120.0f);
+        for (Creature* horse : horses)
+            if (horse->GetOwnerGUID() == player->GetGUID())
+                return true;
+
+        Position summonPosition = player->GetNearPosition(35.0f, 0.0f);
+        Position arrivalPosition = player->GetNearPosition(6.0f, 0.0f);
+        summonPosition.m_positionZ = player->GetPositionZ();
+        arrivalPosition.m_positionZ = player->GetPositionZ();
+
+        Creature* horse = player->SummonCreature(AbyssalRide::NPC_ABYSSAL_SEAHORSE,
+            summonPosition, TEMPSUMMON_TIMED_DESPAWN, 2 * MINUTE * IN_MILLISECONDS);
+        if (!horse)
+            return true;
+
+        player->KilledMonsterCredit(AbyssalRide::NPC_ABYSSAL_LURE);
+        go->UseDoorOrButton();
+
+        Movement::MoveSplineInit init(horse);
+        init.MoveTo(arrivalPosition.GetPositionX(), arrivalPosition.GetPositionY(), arrivalPosition.GetPositionZ());
+        init.SetFly();
+        init.SetUncompressed();
+        init.SetSmooth();
+        init.SetVelocity(8.0f);
+        init.Launch();
+
+        horse->m_Events.Schedule(horse->GetSplineDuration(), [horse]()
+        {
+            if (horse->IsInWorld() && horse->IsAIEnabled)
+                horse->AI()->DoAction(1);
+        });
+
+        return true;
+    }
+};
+
+// 39996 - Abyssal Seahorse
+struct npc_the_abyssal_ride_seahorse : public ScriptedAI
+{
+    npc_the_abyssal_ride_seahorse(Creature* creature) : ScriptedAI(creature) { }
+
+    void IsSummonedBy(Unit* summoner) override
+    {
+        Player* player = summoner->ToPlayer();
+        if (!player || player->GetQuestStatus(AbyssalRide::QUEST_THE_ABYSSAL_RIDE) != QUEST_STATUS_INCOMPLETE)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
+        playerGuid = player->GetGUID();
+        me->SetReactState(REACT_PASSIVE);
+        me->SetCanFly(true);
+        me->SetDisableGravity(true);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+        me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        me->UpdateMovementFlags();
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action != 1 || ready || rideStarted)
+            return;
+
+        ready = true;
+        me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+    }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        Player* player = clicker ? clicker->ToPlayer() : nullptr;
+        if (!ready || rideStarted || !player || player->GetGUID() != playerGuid ||
+            player->GetQuestStatus(AbyssalRide::QUEST_THE_ABYSSAL_RIDE) != QUEST_STATUS_INCOMPLETE ||
+            player->GetVehicleBase())
+        {
+            result = false;
+            return;
+        }
+
+        result = true;
+        player->EnterVehicle(me, 0);
+        StartRide(player);
+    }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+    {
+        Player* player = passenger ? passenger->ToPlayer() : nullptr;
+        if (!player || player->GetGUID() != playerGuid)
+            return;
+
+        if (apply)
+        {
+            StartRide(player);
+            return;
+        }
+
+        if (!finished)
+            AbortRide(player);
+    }
+
+    void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+    {
+        if (!rideStarted || finished || !target || target->GetGUID() != playerGuid ||
+            !spell || spell->Id != expectedSpell)
+            return;
+
+        if (pressesNeeded > 1)
+        {
+            --pressesNeeded;
+            return;
+        }
+
+        pressesNeeded = 0;
+        expectedSpell = 0;
+        Talk(3, target);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        events.Update(diff);
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case AbyssalRide::EVENT_PROMPT:
+                    GivePrompt();
+                    break;
+                case AbyssalRide::EVENT_FINISH_RIDE:
+                    FinishRide();
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+private:
+    void StartRide(Player* player)
+    {
+        if (rideStarted || !player || player->GetVehicleBase() != me)
+            return;
+
+        rideStarted = true;
+        ready = false;
+        me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        player->VehicleSpellInitialize();
+
+        Movement::MoveSplineInit init(me);
+        for (Position const& position : AbyssalRide::RidePath)
+            init.Path().push_back(G3D::Vector3(position.GetPositionX(), position.GetPositionY(), position.GetPositionZ()));
+        init.SetFly();
+        init.SetUncompressed();
+        init.SetSmooth();
+        init.SetVelocity(20.0f);
+        init.Launch();
+
+        events.ScheduleEvent(AbyssalRide::EVENT_PROMPT, 3 * IN_MILLISECONDS);
+        events.ScheduleEvent(AbyssalRide::EVENT_FINISH_RIDE, me->GetSplineDuration() + 250);
+    }
+
+    void GivePrompt()
+    {
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        if (!player || player->GetVehicleBase() != me || promptIndex >= std::size(AbyssalRide::PromptSpells))
+            return;
+
+        expectedSpell = AbyssalRide::PromptSpells[promptIndex++];
+        pressesNeeded = expectedSpell == AbyssalRide::SPELL_HOLD_ON_TIGHT ? 3 : 1;
+
+        if (expectedSpell == AbyssalRide::SPELL_LEAN_LEFT)
+            Talk(0, player);
+        else if (expectedSpell == AbyssalRide::SPELL_HOLD_ON_TIGHT)
+            Talk(1, player);
+        else
+            Talk(2, player);
+
+        if (promptIndex < std::size(AbyssalRide::PromptSpells))
+            events.ScheduleEvent(AbyssalRide::EVENT_PROMPT, 5 * IN_MILLISECONDS);
+    }
+
+    void RemoveRideAuras(Player* player)
+    {
+        player->RemoveAurasDueToSpell(AbyssalRide::SPELL_LEAN_LEFT);
+        player->RemoveAurasDueToSpell(AbyssalRide::SPELL_HOLD_ON_TIGHT);
+        player->RemoveAurasDueToSpell(AbyssalRide::SPELL_LEAN_RIGHT);
+    }
+
+    void FinishRide()
+    {
+        if (finished)
+            return;
+
+        finished = true;
+        events.Reset();
+
+        Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+        if (player)
+        {
+            RemoveRideAuras(player);
+            if (player->GetVehicleBase() == me)
+            {
+                Talk(4, player);
+                player->KilledMonsterCredit(AbyssalRide::NPC_ABYSSAL_SEAHORSE);
+                player->ExitVehicle(me);
+            }
+        }
+
+        me->DespawnOrUnsummon(1000);
+    }
+
+    void AbortRide(Player* player)
+    {
+        finished = true;
+        events.Reset();
+        RemoveRideAuras(player);
+        player->NearTeleportTo(-4889.92f, 3799.13f, -149.06f, 3.80f, false);
+        me->DespawnOrUnsummon();
+    }
+
+    EventMap events;
+    ObjectGuid playerGuid;
+    uint32 expectedSpell = 0;
+    uint8 promptIndex = 0;
+    uint8 pressesNeeded = 0;
+    bool ready = false;
+    bool rideStarted = false;
+    bool finished = false;
+};
+
+namespace HonorAndPrivilege
+{
+    enum : uint32
+    {
+        QUEST_HONOR_AND_PRIVILEGE_ALLIANCE = 25898,
+        QUEST_HONOR_AND_PRIVILEGE_HORDE    = 25972,
+        NPC_RESCUE_BALLOON_CREDIT          = 41572
+    };
+}
+
+// 77741 - Rescue Flare
+// The client spell only contains a dummy effect. Retail awards the shared
+// Rescue Balloon objective when the flare is fired at the surface.
+class spell_honor_and_privilege_rescue_flare : public SpellScript
+{
+    PrepareSpellScript(spell_honor_and_privilege_rescue_flare);
+
+    void HandleAfterCast()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        if (!player || player->GetMapId() != 0 || player->GetZoneId() != 5144 || player->GetPositionZ() < -30.0f)
+            return;
+
+        if (player->GetQuestStatus(HonorAndPrivilege::QUEST_HONOR_AND_PRIVILEGE_ALLIANCE) == QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestStatus(HonorAndPrivilege::QUEST_HONOR_AND_PRIVILEGE_HORDE) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(HonorAndPrivilege::NPC_RESCUE_BALLOON_CREDIT);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_honor_and_privilege_rescue_flare::HandleAfterCast);
+    }
+};
+
 void AddSC_vashjir()
 {
     new creature_script<npc_drowning_soldier_and_warrior>("npc_drowning_soldier_and_warrior");
     new creature_script<npc_blood_and_thunder_troop_abductor>("npc_blood_and_thunder_troop_abductor");
     new creature_script<npc_blood_and_thunder_player_abductor>("npc_blood_and_thunder_player_abductor");
     new player_blood_and_thunder();
+    new go_the_abyssal_ride_braided_rope();
+    new creature_script<npc_the_abyssal_ride_seahorse>("npc_the_abyssal_ride_seahorse");
+    new spell_script<spell_honor_and_privilege_rescue_flare>("spell_honor_and_privilege_rescue_flare");
 }
