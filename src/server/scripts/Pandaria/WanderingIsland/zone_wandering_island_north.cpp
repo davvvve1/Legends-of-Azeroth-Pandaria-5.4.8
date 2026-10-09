@@ -343,67 +343,101 @@ class npc_min_dimwind : public CreatureScript
 
         struct npc_min_dimwindAI : public ScriptedAI
         {
-            npc_min_dimwindAI(Creature* creature) : ScriptedAI(creature), summons(creature) { }
-
-            EventMap events;
-            SummonList summons;
-
-            enum eEvents
-            {
-                EVENT_RESET    = 1,
-            };
+            npc_min_dimwindAI(Creature* creature) : ScriptedAI(creature) { }
 
             void Reset() override
             {
-                ResetMobs();
                 me->HandleEmoteCommand(EMOTE_STATE_READY2H);
-            }
-
-            void DamageTaken(Unit* attacker, uint32& damage) override
-            {
-                if (me->GetHealthPct() < 25 && attacker && attacker->ToCreature() && attacker->ToCreature()->GetEntry() == 54130)
-                    damage = 0;
-            }
-
-            void JustSummoned(Creature* summon) override
-            {
-                if (summon->GetEntry() == 54130)
-                {
-                    summons.Summon(summon);
-
-                    summon->SetFacingToObject(me);
-                    summon->HandleEmoteCommand(EMOTE_STATE_READY2H);
-                }
-            }
-
-            void ResetMobs()
-            {
-                events.CancelEvent(EVENT_RESET);
-                me->HandleEmoteCommand(EMOTE_STATE_READY2H);
-
-                summons.DespawnAll();
-
-                for (int i = 0; i < 4; ++i)
-                    me->SummonCreature(54130, me->GetPositionX()-3+rand()%6, me->GetPositionY() + 4 + rand()%4, me->GetPositionZ()+2, 4.9f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
             }
 
             void MoveInLineOfSight(Unit* who) override
             {
-                Player * player = who->ToPlayer();
-                if (!player || player->GetQuestStatus(29419) != QUEST_STATUS_INCOMPLETE)
+                Player* player = who->ToPlayer();
+                if (!player || !player->IsAlive() || player->GetQuestStatus(29419) != QUEST_STATUS_INCOMPLETE ||
+                    !me->IsWithinDistInMap(player, 20.0f) || !me->IsWithinLOSInMap(player))
                     return;
 
-                if (me->GetDistance(who) < 15.f)
-                {
-                    me->HandleEmoteCommand(EMOTE_STATE_STAND);
-                    Talk(0);
-                    player->KilledMonsterCredit(54855);
-                    events.ScheduleEvent(EVENT_RESET, 6000);
+                me->HandleEmoteCommand(EMOTE_STATE_STAND);
 
-                    for (auto&& guid : summons)
-                        if (Creature* const creature = Unit::GetCreature(*me, guid))
-                            creature->GetMotionMaster()->MoveFleeing(me, 5000);
+                std::list<Creature*> scamps;
+                GetCreatureListWithEntryInGrid(scamps, me, 54130, 20.0f);
+                for (Creature* scamp : scamps)
+                    scamp->AI()->SetData(0, 1);
+
+                // Min makes the player summon the personal copy that runs back
+                // to the cart. The credit spell is authoritative; direct credit
+                // is a fallback for clients with incomplete spell data.
+                me->CastSpell(player, 106206, true);
+                player->CastSpell(player, 106231, true);
+                if (player->GetQuestStatus(29419) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(54855);
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_min_dimwindAI(creature);
+        }
+};
+
+class npc_min_dimwind_summon : public CreatureScript
+{
+    public:
+        npc_min_dimwind_summon() : CreatureScript("npc_min_dimwind_summon") { }
+
+        struct npc_min_dimwind_summonAI : public ScriptedAI
+        {
+            npc_min_dimwind_summonAI(Creature* creature) : ScriptedAI(creature) { }
+
+            enum Events
+            {
+                EVENT_THANK_PLAYER = 1,
+                EVENT_EXPLAIN,
+                EVENT_RUN_TO_CART,
+                EVENT_CALL_FOR_CART,
+                EVENT_CALL_FOR_CART_AGAIN,
+                EVENT_TIMEOUT,
+            };
+
+            enum Points
+            {
+                POINT_CART = 1,
+            };
+
+            EventMap events;
+            ObjectGuid playerGuid;
+
+            void IsSummonedBy(Unit* summoner) override
+            {
+                Player* player = summoner->ToPlayer();
+                if (!player)
+                {
+                    me->DespawnOrUnsummon();
+                    return;
                 }
+
+                playerGuid = player->GetGUID();
+                me->SetReactState(REACT_PASSIVE);
+                events.ScheduleEvent(EVENT_THANK_PLAYER, 4000);
+                events.ScheduleEvent(EVENT_EXPLAIN, 8000);
+                events.ScheduleEvent(EVENT_RUN_TO_CART, 12000);
+                events.ScheduleEvent(EVENT_TIMEOUT, 60000);
+            }
+
+            void MovementInform(uint32 type, uint32 pointId) override
+            {
+                if (type != POINT_MOTION_TYPE || pointId != POINT_CART)
+                    return;
+
+                events.CancelEvent(EVENT_CALL_FOR_CART);
+                events.CancelEvent(EVENT_CALL_FOR_CART_AGAIN);
+                events.CancelEvent(EVENT_TIMEOUT);
+                Talk(3);
+
+                if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+                    player->RemoveAurasDueToSpell(106205);
+
+                me->DespawnOrUnsummon(5000);
             }
 
             void UpdateAI(uint32 diff) override
@@ -413,10 +447,31 @@ class npc_min_dimwind : public CreatureScript
                 {
                     switch (eventId)
                     {
-                        case EVENT_RESET:
-                        {
-                            ResetMobs();
-                        }
+                        case EVENT_THANK_PLAYER:
+                            if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+                            {
+                                me->SetFacingToObject(player);
+                                Talk(0, player);
+                            }
+                            break;
+                        case EVENT_EXPLAIN:
+                            Talk(1);
+                            break;
+                        case EVENT_RUN_TO_CART:
+                            me->SetWalk(false);
+                            me->GetMotionMaster()->MovePoint(POINT_CART, 1210.0f, 3507.0f, 85.9f);
+                            events.ScheduleEvent(EVENT_CALL_FOR_CART, 10000);
+                            events.ScheduleEvent(EVENT_CALL_FOR_CART_AGAIN, 20000);
+                            break;
+                        case EVENT_CALL_FOR_CART:
+                        case EVENT_CALL_FOR_CART_AGAIN:
+                            Talk(2);
+                            break;
+                        case EVENT_TIMEOUT:
+                            if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
+                                player->RemoveAurasDueToSpell(106205);
+                            me->DespawnOrUnsummon();
+                            break;
                     }
                 }
             }
@@ -424,7 +479,7 @@ class npc_min_dimwind : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return new npc_min_dimwindAI(creature);
+            return new npc_min_dimwind_summonAI(creature);
         }
 };
 
@@ -1125,6 +1180,7 @@ void AddSC_wandering_island_north()
     new boss_jaomin_ro();
     new npc_attacker_dimwind();
     new npc_min_dimwind();
+    new npc_min_dimwind_summon();
     new npc_aysa_lake_escort();
     new npc_aysa();
     new boss_li_fei();
