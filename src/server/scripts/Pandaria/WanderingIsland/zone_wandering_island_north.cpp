@@ -1037,6 +1037,59 @@ class AreaTrigger_at_temple_entrance : public AreaTriggerScript
         }
 };
 
+// 29423 - The Passion of Shen-zin Su
+// The quest is flagged for automatic acceptance, but characters that rewarded
+// 29422 without receiving the follow-up were left at Huo with no quest, no
+// follower and therefore no destination POI. Recover that state for every
+// player and make sure Huo's benediction is present whenever the quest starts.
+class player_passion_of_shen_zin_su : public PlayerScript
+{
+    enum
+    {
+        QUEST_HUO_THE_SPIRIT_OF_FIRE = 29422,
+        QUEST_THE_PASSION_OF_SHEN_ZIN_SU = 29423,
+        SPELL_HUO_BENEDICTION = 102630,
+        MAP_THE_WANDERING_ISLE = 860,
+    };
+
+public:
+    player_passion_of_shen_zin_su() : PlayerScript("player_passion_of_shen_zin_su") { }
+
+    void OnLogin(Player* player) override
+    {
+        Recover(player);
+    }
+
+    void OnQuestRewarded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_HUO_THE_SPIRIT_OF_FIRE)
+            Recover(player);
+    }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_THE_PASSION_OF_SHEN_ZIN_SU && !player->HasAura(SPELL_HUO_BENEDICTION))
+            player->CastSpell(player, SPELL_HUO_BENEDICTION, true);
+    }
+
+private:
+    static void Recover(Player* player)
+    {
+        if (!player || player->GetMapId() != MAP_THE_WANDERING_ISLE ||
+            !player->GetQuestRewardStatus(QUEST_HUO_THE_SPIRIT_OF_FIRE))
+            return;
+
+        if (player->GetQuestStatus(QUEST_THE_PASSION_OF_SHEN_ZIN_SU) == QUEST_STATUS_NONE)
+            if (Quest const* quest = sObjectMgr->GetQuestTemplate(QUEST_THE_PASSION_OF_SHEN_ZIN_SU))
+                if (player->CanTakeQuest(quest, false) && player->CanAddQuest(quest, false))
+                    player->AddQuestAndCheckCompletion(quest, nullptr);
+
+        if (player->GetQuestStatus(QUEST_THE_PASSION_OF_SHEN_ZIN_SU) == QUEST_STATUS_INCOMPLETE &&
+            !player->HasAura(SPELL_HUO_BENEDICTION))
+            player->CastSpell(player, SPELL_HUO_BENEDICTION, true);
+    }
+};
+
 class npc_trainee_nim : public CreatureScript
 {
     public:
@@ -1235,6 +1288,7 @@ void AddSC_wandering_island_north()
     new boss_li_fei_fight();
     new spell_huo_benediction();
     new AreaTrigger_at_temple_entrance();
+    new player_passion_of_shen_zin_su();
     new npc_trainee_nim();
     new npc_merchant_lorvo();
     new spell_lit_brazier_of_flame();
