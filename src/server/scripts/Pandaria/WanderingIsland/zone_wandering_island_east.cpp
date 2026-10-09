@@ -112,6 +112,9 @@ class npc_tushui_monk : public CreatureScript
                 me->SetFaction(FACTION_TUSHUI_TRAINER);
                 me->SetReactState(REACT_DEFENSIVE);
                 me->SetFullHealth();
+                // The balance poles are farther apart than ordinary melee
+                // range. Let trainees fight from an adjacent pole.
+                me->SetFloatValue(UNIT_FIELD_COMBAT_REACH, 8.0f);
 
                 if (!me->GetVehicleBase())
                 {

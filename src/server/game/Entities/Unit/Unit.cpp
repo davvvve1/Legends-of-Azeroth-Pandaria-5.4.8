@@ -827,6 +827,15 @@ uint32 Unit::DealDamage(Unit* victim, uint32 damage, CleanDamage const* cleanDam
         damage = RecaculateDamage(damage);
     }
 
+    // Tushui Monks on the balance poles are sparring partners, not lethal
+    // enemies. Keep this final guard after every script and damage modifier so
+    // neither melee nor Throw Rock can bypass it through later recalculation.
+    if (GetTypeId() == TYPEID_UNIT && GetEntry() == 55019 && victim->GetTypeId() == TYPEID_PLAYER)
+    {
+        damage = std::min(damage, std::max<uint32>(1, victim->CountPctFromMaxHealth(5)));
+        damage = damage >= victim->GetHealth() ? victim->GetHealth() - 1 : damage;
+    }
+
 
 
     if (victim->GetTypeId() == TYPEID_PLAYER && this != victim)
