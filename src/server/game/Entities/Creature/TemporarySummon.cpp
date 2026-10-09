@@ -287,6 +287,21 @@ void TempSummon::InitStats(uint32 duration)
             }
             owner->m_SummonSlot[slot] = GetGUID();
         }
+
+        // Temporary summons use their summoner's level unless their summon
+        // properties explicitly request the creature template level.
+        if (!(m_Properties->Flags & SUMMON_PROP_FLAG_USE_CREATURE_LEVEL))
+        {
+            SelectLevel(GetCreatureTemplate(), owner->GetLevel());
+
+            if (!IsPet())
+            {
+                CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(GetLevel(), GetCreatureTemplate()->unit_class);
+                SetModifierValue(UNIT_MOD_ARMOR, BASE_VALUE, stats->GenerateArmor(GetCreatureTemplate()));
+            }
+
+            UpdateAllStats();
+        }
     }
 
     if (m_Properties->Faction)

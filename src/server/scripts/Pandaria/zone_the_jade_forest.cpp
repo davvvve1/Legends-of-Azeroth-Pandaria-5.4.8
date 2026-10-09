@@ -1525,7 +1525,9 @@ class npc_big_bao : public CreatureScript
 
 enum eCreatureSpells
 {
+    SPELL_HOLDING_JADE           = 105871,
     SPELL_DROP_JADE              = 105912,
+    SPELL_THROW_JADE             = 115363,
     SPELL_GORE                   = 115821,
     SPELL_SILVERHORN_SWITFTNESS  = 115850,
     SPELL_PROTECT_YOUNG          = 115968,
@@ -1718,6 +1720,22 @@ struct npc_calamity_jade_spider : public ScriptedAI
         _objectiveCountBeforeDeath = 0;
     }
 
+    void ClearUnintendedImmunities()
+    {
+        // Quarry shale spiders are ordinary tamable beasts. Do not retain a
+        // stale immunity flag or immunity aura after an evade/reset cycle.
+        me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC);
+        me->RemoveAurasByType(SPELL_AURA_EFFECT_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_STATE_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_SCHOOL_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_DAMAGE_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_DISPEL_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_MECHANIC_IMMUNITY);
+        me->RemoveAurasByType(SPELL_AURA_APPLY_CREATURE_IMMUNITIES);
+        me->RemoveAurasByType(SPELL_AURA_MOD_IMMUNE_AURA_APPLY_SCHOOL);
+        me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_BLEED, false);
+    }
+
     void DamageTaken(Unit* attacker, uint32& damage) override
     {
         if (damage < me->GetHealth())
@@ -1805,6 +1823,7 @@ struct npc_greenstone_gorger : public npc_calamity_jade_spider
     void Reset() override
     {
         ResetCreditTracker();
+        ClearUnintendedImmunities();
         events.Reset();
     }
 
@@ -1980,6 +1999,7 @@ struct npc_brittle_greenstone_gorger : public npc_calamity_jade_spider
     void Reset() override
     {
         ResetCreditTracker();
+        ClearUnintendedImmunities();
     }
 
     void DamageTaken(Unit* attacker, uint32& damage) override
@@ -3050,6 +3070,23 @@ Position pos[4] =
     { 217.361f, -1469.312f, 82.2334f, 0.1932f }, // jump pos 2
 };
 
+// Shao the Defiant 55009
+struct npc_shao_the_defiant : public ScriptedAI
+{
+    npc_shao_the_defiant(Creature* creature) : ScriptedAI(creature) { }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        Player* player = who->ToPlayer();
+        if (!player || player->GetQuestStatus(QUEST_THE_SPLINTED_PATH) != QUEST_STATUS_INCOMPLETE ||
+            !player->IsWithinDistInMap(me, 40.0f))
+            return;
+
+        Talk(SAY_SHAO_THE_DEFIANT_ANN, player);
+        player->KilledMonsterCredit(NPC_CREDIT_TRIGGER);
+    }
+};
+
 class AreaTrigger_q29586 : public AreaTriggerScript
 {
     public:
@@ -3107,6 +3144,45 @@ class AreaTrigger_q29586 : public AreaTriggerScript
 
             return true;
         }
+};
+
+enum TempleOfTheJadeSerpent
+{
+    QUEST_TEMPLE_OF_THE_JADE_SERPENT = 29932,
+    SPELL_EAST_TEMPLE_ARRIVAL_SCENE  = 128950,
+};
+
+// Elder Sage Wind-Yi 57242
+class npc_elder_sage_wind_yi : public CreatureScript
+{
+public:
+    npc_elder_sage_wind_yi() : CreatureScript("npc_elder_sage_wind_yi") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_TEMPLE_OF_THE_JADE_SERPENT) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I have a message for the Jade Serpent.",
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+            player->GetQuestStatus(QUEST_TEMPLE_OF_THE_JADE_SERPENT) == QUEST_STATUS_INCOMPLETE &&
+            player->IsAlive() && player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            player->CastSpell(player, SPELL_EAST_TEMPLE_ARRIVAL_SCENE, true);
+
+        player->CLOSE_GOSSIP_MENU();
+        return true;
+    }
 };
 
 enum q30063
@@ -4327,23 +4403,96 @@ class go_jade_forest_keg_of_metal_brew : public GameObjectScript
         }
 };
 
-// Drop Jade Cover Cast 105918
-class spell_jade_forest_drop_jade_cover : public SpellScript
+// Puckish Sprite 56349
+struct npc_jade_forest_puckish_sprite : public ScriptedAI
 {
-    PrepareSpellScript(spell_jade_forest_drop_jade_cover);
+    npc_jade_forest_puckish_sprite(Creature* creature) : ScriptedAI(creature) { }
 
-    void HandleDummy(SpellEffIndex effIndex)
+    enum Events
     {
-        PreventHitDefaultEffect(effIndex);
+        EVENT_THROW_JADE = 1,
+    };
 
-        if (Unit* caster = GetCaster())
-            for (uint8 i = 0; i < 3; ++i)
-                caster->CastSpell(caster, SPELL_DROP_JADE, true);
+    EventMap events;
+    bool jadeThrown = false;
+
+    void Reset() override
+    {
+        events.Reset();
+        jadeThrown = false;
+        DoCast(me, SPELL_HOLDING_JADE, true);
+    }
+
+    void JustEngagedWith(Unit*) override
+    {
+        events.ScheduleEvent(EVENT_THROW_JADE, urand(2000, 4000));
+    }
+
+    void SpellHitTarget(Unit*, SpellInfo const* spell) override
+    {
+        if (spell->Id == SPELL_THROW_JADE)
+            jadeThrown = true;
+    }
+
+    void JustDied(Unit*) override
+    {
+        // Each sprite starts with four chunks: one remains on its corpse and
+        // the other three scatter. A successful throw consumes one first.
+        uint8 dropCount = jadeThrown ? 2 : 3;
+        for (uint8 i = 0; i < dropCount; ++i)
+            DoCast(me, SPELL_DROP_JADE, true);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            if (eventId == EVENT_THROW_JADE && !jadeThrown)
+            {
+                DoCastVictim(SPELL_THROW_JADE);
+                // Interrupted throws do not consume jade, but the sprite can
+                // try again if it remains alive long enough.
+                events.ScheduleEvent(EVENT_THROW_JADE, 8000);
+            }
+        }
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+// Drop Jade 105912
+class spell_jade_forest_drop_jade : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_drop_jade);
+
+    void CorrectDestination(SpellDestination& destination)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        Position position = destination._position;
+        float groundZ = caster->GetMap()->GetHeight(caster->GetPhaseMask(), position.GetPositionX(),
+            position.GetPositionY(), caster->GetPositionZ() + 5.0f, true, 20.0f);
+        if (groundZ > INVALID_HEIGHT)
+        {
+            position.m_positionZ = groundZ + 0.05f;
+            destination.Relocate(position);
+        }
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_jade_forest_drop_jade_cover::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(
+            spell_jade_forest_drop_jade::CorrectDestination, EFFECT_0, TARGET_DEST_CASTER_RANDOM);
     }
 };
 
@@ -5395,6 +5544,43 @@ class spell_jade_forest_right_track_smoke : public SpellScript
     }
 };
 
+namespace AllWeCanSpare
+{
+    uint32 const Quest = 29925;
+    uint32 const FlightPath = 2837;
+}
+
+class npc_jade_forest_toya : public CreatureScript
+{
+public:
+    npc_jade_forest_toya() : CreatureScript("npc_jade_forest_toya") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(AllWeCanSpare::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I'm ready to see Lorewalker Cho.",
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INFO_DEF + 1 &&
+            player->GetQuestStatus(AllWeCanSpare::Quest) == QUEST_STATUS_INCOMPLETE &&
+            player->IsAlive() && player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            player->ActivateTaxiPathTo(AllWeCanSpare::FlightPath);
+
+        return true;
+    }
+};
+
 namespace WhatsMinedIsYours
 {
     uint32 const Quest = 29930;
@@ -5406,7 +5592,9 @@ namespace WhatsMinedIsYours
     uint32 const DeliveryCredit = 56508;
 
     Position const Start = { 2273.30f, -1774.80f, 234.05f, 5.92f };
-    Position const Finish = { 2388.50f, -2101.50f, 229.70f, 5.05f };
+    // The navigation surface here is at Z 231.20. The old endpoint at 229.70
+    // put the cart's post-dismount safety teleport below the terrain.
+    Position const Finish = { 2388.50f, -2101.50f, 231.50f, 5.05f };
     Position const Route[] =
     {
         { 2284.00f, -1792.00f, 234.80f, 0.0f },
@@ -5869,6 +6057,7 @@ void AddSC_jade_forest()
     new npc_jade_forest_rivett_boom_bait();
     new creature_script<npc_jade_forest_right_track_kiryn>("npc_jade_forest_right_track_kiryn");
     new spell_script<spell_jade_forest_right_track_smoke>("spell_jade_forest_right_track_smoke");
+    new npc_jade_forest_toya();
     new npc_jade_forest_hao_mann_cart();
     new creature_script<npc_jade_forest_jade_cart>("npc_jade_forest_jade_cart");
     new npc_rakira();
@@ -5911,7 +6100,9 @@ void AddSC_jade_forest()
     new creature_script<npc_windward_nest_trigger>("npc_windward_nest_trigger");
     new npc_instructor_skythorn();
     new npc_the_pearlfin_situation_q();
+    new creature_script<npc_shao_the_defiant>("npc_shao_the_defiant");
     new AreaTrigger_q29586();
+    new npc_elder_sage_wind_yi();
     new spell_q30063();
     new spell_q29637();
     new npc_rumpus_spawn();
@@ -5930,7 +6121,8 @@ void AddSC_jade_forest()
     new creature_script<npc_prince_anduin_decision>("npc_prince_anduin_decision");
     new creature_script<npc_prince_anduin_decision_helpers>("npc_prince_anduin_decision_helpers");
     new go_jade_forest_keg_of_metal_brew();
-    new spell_script<spell_jade_forest_drop_jade_cover>("spell_jade_forest_drop_jade_cover");
+    new creature_script<npc_jade_forest_puckish_sprite>("npc_jade_forest_puckish_sprite");
+    new spell_script<spell_jade_forest_drop_jade>("spell_jade_forest_drop_jade");
     new spell_script<spell_jade_forest_smoked_blade>("spell_jade_forest_smoked_blade");
     new spell_script<spell_jade_forest_summon_metal_brewmaster>("spell_jade_forest_summon_metal_brewmaster");
     new spell_script<spell_summon_boiling_cauldron>("spell_summon_boiling_cauldron");

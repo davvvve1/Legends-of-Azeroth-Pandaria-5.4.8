@@ -1173,7 +1173,7 @@ void Creature::SaveToDB(uint32 mapid, uint16 spawnMask, uint32 phaseMask)
     WorldDatabase.CommitTransaction(trans);
 }
 
-void Creature::SelectLevel(const CreatureTemplate* cinfo)
+void Creature::SelectLevel(const CreatureTemplate* cinfo, uint8 forcedLevel)
 {
     uint8 dbminlevel = cinfo->minlevel;
     uint8 dbmaxlevel = cinfo->maxlevel;
@@ -1208,7 +1208,7 @@ void Creature::SelectLevel(const CreatureTemplate* cinfo)
     // level
     uint8 minlevel = std::min(dbmaxlevel, dbminlevel);
     uint8 maxlevel = std::max(dbmaxlevel, dbminlevel);
-    uint8 level = minlevel == maxlevel ? minlevel : urand(minlevel, maxlevel);
+    uint8 level = forcedLevel ? forcedLevel : (minlevel == maxlevel ? minlevel : urand(minlevel, maxlevel));
     SetLevel(level);
 
     CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(level, cinfo->unit_class);

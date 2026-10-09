@@ -590,7 +590,7 @@ enum SummonPropFlags
     SUMMON_PROP_FLAG_UNK6            = 0x00000020,          // 0 spells in 3.3.5, unused
     SUMMON_PROP_FLAG_UNK7            = 0x00000040,          // 12 spells in 3.0.3, no idea
     SUMMON_PROP_FLAG_UNK8            = 0x00000080,          // 4 spells in 3.0.3, no idea
-    SUMMON_PROP_FLAG_UNK9            = 0x00000100,          // 51 spells in 3.0.3, no idea, many quest related
+    SUMMON_PROP_FLAG_USE_CREATURE_LEVEL = 0x00000100,       // Keep the creature template level instead of inheriting the summoner's level
     SUMMON_PROP_FLAG_UNK10           = 0x00000200,          // 51 spells in 3.0.3, something defensive
     SUMMON_PROP_FLAG_UNK11           = 0x00000400,          // 3 spells, requires something near?
     SUMMON_PROP_FLAG_UNK12           = 0x00000800,          // 30 spells in 3.0.3, no idea

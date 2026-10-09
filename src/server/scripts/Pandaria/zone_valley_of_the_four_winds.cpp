@@ -19,6 +19,13 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptedEscortAI.h"
+#include "Chat.h"
+#include "DatabaseEnv.h"
+#include "Spell.h"
+#include "World.h"
+
+#include <array>
+#include <unordered_map>
 
 enum eBonobosSpells
 {
@@ -2323,6 +2330,722 @@ public:
     }
 };
 
+namespace SunsongRanch
+{
+    constexpr uint32 MapId = 870;
+    constexpr uint32 AreaId = 6039;
+    constexpr uint32 TillersFaction = 1272;
+    constexpr uint8 BasePlotCount = 4;
+    constexpr uint8 ExaltedPlotCount = 8;
+
+    constexpr uint32 UntilledSoil = 58562;
+    constexpr uint32 TilledSoil = 58563;
+    constexpr uint32 StubbornWeed = 60153;
+    constexpr uint32 EncroachingWeed = 60185;
+    constexpr uint32 SnagtoothHooligan = 56462;
+    constexpr uint32 SwoopingPlainshawk = 60072;
+
+    constexpr uint32 AlluringAura = 115588;
+    constexpr uint32 InfestedAura = 115483;
+    constexpr uint32 WigglingAura = 115489;
+    constexpr uint32 SmotheredAura = 115977;
+    constexpr uint32 StubbornAura = 115894;
+    constexpr uint32 TanglevineBeam = 116236;
+    constexpr uint32 SolidStone = 115745;
+    constexpr uint32 Pull = 115857;
+    constexpr uint32 VintageBugSprayer = 115481;
+    constexpr uint32 HarvestReputation = 131047;
+
+    enum PlotState : uint8
+    {
+        PlotUntilled,
+        PlotTilled,
+        PlotGrowing,
+        PlotRipe,
+        PlotEncounter
+    };
+
+    enum Encounter : uint8
+    {
+        EncounterNone,
+        EncounterInfested,
+        EncounterSnagtooth,
+        EncounterPlainshawk,
+        EncounterVine,
+        EncounterStones
+    };
+
+    struct CropData
+    {
+        uint32 PlantSpell;
+        uint32 HarvestItem;
+        uint32 GrowingEntry;
+        uint32 RipeEntry;
+        uint32 InfestedEntry;
+        uint32 WigglingEntry;
+        uint32 AlluringEntry;
+        uint32 SmotheredEntry;
+    };
+
+    // The first ten crops are cooking ingredients.  The last six are the
+    // profession plots sold by Merchant Greenfield at higher Tillers ranks.
+    std::array<CropData, 16> const Crops =
+    {{
+        { 111102, 74840, 58566, 58567, 60026, 60029, 60070, 60181 },
+        { 123361, 74841, 63153, 63154, 63145, 63146, 63147, 63148 },
+        { 123388, 74843, 63161, 63165, 63162, 63169, 63159, 63167 },
+        { 123485, 74842, 63181, 63185, 63182, 63189, 63178, 63187 },
+        { 123535, 74844, 63224, 63229, 63226, 63233, 63222, 63231 },
+        { 123565, 74849, 63246, 63250, 63247, 63254, 63243, 63252 },
+        { 123568, 74850, 63261, 63265, 63262, 63270, 63259, 63268 },
+        { 129974, 74846, 66081, 66085, 66082, 66089, 66079, 66087 },
+        { 129976, 74847, 66109, 66113, 66110, 66117, 66107, 66115 },
+        { 129978, 74848, 66124, 66129, 66125, 66133, 66122, 66131 },
+        { 123773, 72092, 65965, 65973, 65966, 65971, 65964, 65969 },
+        { 123774,     0, 65916, 65933, 65918, 65924, 65913, 65921 },
+        { 123775, 74249, 65986, 65989, 65987, 65993, 65985, 65991 },
+        { 129623, 72988, 66003, 66006, 66004, 66010, 66002, 66008 },
+        { 129628, 72120, 66013, 66016, 66014, 66020, 66012, 66018 },
+        { 129863, 89112, 66040, 66043, 66041, 66047, 66039, 66045 }
+    }};
+
+    std::array<Position, ExaltedPlotCount> const PlotPositions =
+    {{
+        Position(-171.727f, 642.276f, 165.493f, 6.22907f),
+        Position(-166.521f, 641.210f, 165.493f, 6.22907f),
+        Position(-172.071f, 646.583f, 165.493f, 6.22907f),
+        Position(-166.536f, 645.502f, 165.493f, 6.22907f),
+        Position(-171.543f, 637.844f, 165.493f, 6.22907f),
+        Position(-166.279f, 636.965f, 165.493f, 0.06996f),
+        Position(-172.089f, 650.839f, 165.493f, 6.22907f),
+        Position(-166.623f, 649.691f, 165.493f, 6.22907f)
+    }};
+
+    struct PlotRecord
+    {
+        uint8 Crop = 0;
+        PlotState State = PlotUntilled;
+        uint32 ReadyTime = 0;
+        Encounter Event = EncounterNone;
+        uint8 Progress = 0;
+    };
+
+    struct PullState
+    {
+        uint8 Plot = 0;
+        Encounter Event = EncounterNone;
+        uint32 Timer = 0;
+    };
+
+    std::unordered_map<uint32, PullState> ActivePulls;
+
+    uint8 GetUnlockedPlotCount(Player const* player)
+    {
+        return player->GetReputationRank(TillersFaction) >= REP_EXALTED ? ExaltedPlotCount : BasePlotCount;
+    }
+
+    bool IsAtFarm(Player const* player)
+    {
+        return player && player->IsInWorld() && player->GetMapId() == MapId && player->GetAreaId() == AreaId;
+    }
+
+    int8 FindPlot(Position const& position)
+    {
+        for (uint8 i = 0; i < PlotPositions.size(); ++i)
+            if (position.GetExactDist2d(PlotPositions[i]) < 2.0f)
+                return i;
+
+        return -1;
+    }
+
+    CropData const* FindCropBySpell(uint32 spellId, uint8* cropIndex = nullptr)
+    {
+        for (uint8 i = 0; i < Crops.size(); ++i)
+        {
+            if (Crops[i].PlantSpell != spellId)
+                continue;
+
+            if (cropIndex)
+                *cropIndex = i;
+            return &Crops[i];
+        }
+
+        return nullptr;
+    }
+
+    bool IsFarmEntry(uint32 entry)
+    {
+        if (entry == UntilledSoil || entry == TilledSoil || entry == StubbornWeed ||
+            entry == EncroachingWeed || entry == SnagtoothHooligan || entry == SwoopingPlainshawk)
+            return true;
+
+        for (CropData const& crop : Crops)
+            if (entry == crop.GrowingEntry || entry == crop.RipeEntry || entry == crop.InfestedEntry ||
+                entry == crop.WigglingEntry || entry == crop.AlluringEntry || entry == crop.SmotheredEntry)
+                return true;
+
+        return false;
+    }
+
+    void EnsurePlotRows(Player* player)
+    {
+        uint32 guid = player->GetGUID().GetCounter();
+        CharacterDatabase.DirectPExecute(
+            "INSERT IGNORE INTO character_sunsong_farm "
+            "(guid, plot, crop, state, ready_time, encounter, progress) VALUES "
+            "(%u,0,0,0,0,0,0),(%u,1,0,0,0,0,0),(%u,2,0,0,0,0,0),(%u,3,0,0,0,0,0),"
+            "(%u,4,0,0,0,0,0),(%u,5,0,0,0,0,0),(%u,6,0,0,0,0,0),(%u,7,0,0,0,0,0)",
+            guid, guid, guid, guid, guid, guid, guid, guid);
+    }
+
+    bool LoadPlot(Player const* player, uint8 plot, PlotRecord& record)
+    {
+        QueryResult result = CharacterDatabase.PQuery(
+            "SELECT crop, state, ready_time, encounter, progress FROM character_sunsong_farm "
+            "WHERE guid = %u AND plot = %u", player->GetGUID().GetCounter(), uint32(plot));
+        if (!result)
+            return false;
+
+        Field* fields = result->Fetch();
+        record.Crop = fields[0].GetUInt8();
+        record.State = PlotState(fields[1].GetUInt8());
+        record.ReadyTime = fields[2].GetUInt32();
+        record.Event = Encounter(fields[3].GetUInt8());
+        record.Progress = fields[4].GetUInt8();
+
+        if (record.Crop >= Crops.size() || record.State > PlotEncounter || record.Event > EncounterStones)
+        {
+            record = PlotRecord();
+            return false;
+        }
+
+        return true;
+    }
+
+    void SavePlot(Player const* player, uint8 plot, PlotRecord const& record)
+    {
+        CharacterDatabase.DirectPExecute(
+            "REPLACE INTO character_sunsong_farm "
+            "(guid, plot, crop, state, ready_time, encounter, progress) "
+            "VALUES (%u, %u, %u, %u, %u, %u, %u)",
+            player->GetGUID().GetCounter(), uint32(plot), uint32(record.Crop), uint32(record.State),
+            record.ReadyTime, uint32(record.Event), uint32(record.Progress));
+    }
+
+    uint32 GetPlotEntry(PlotRecord const& record)
+    {
+        CropData const& crop = Crops[record.Crop];
+        switch (record.State)
+        {
+            case PlotUntilled: return UntilledSoil;
+            case PlotTilled:   return TilledSoil;
+            case PlotGrowing:  return crop.GrowingEntry;
+            case PlotRipe:     return crop.RipeEntry;
+            case PlotEncounter:
+                switch (record.Event)
+                {
+                    case EncounterInfested:   return crop.InfestedEntry;
+                    case EncounterSnagtooth:  return crop.WigglingEntry;
+                    case EncounterPlainshawk: return crop.AlluringEntry;
+                    case EncounterVine:       return crop.SmotheredEntry;
+                    case EncounterStones:     return StubbornWeed;
+                    default:                  return crop.RipeEntry;
+                }
+        }
+
+        return UntilledSoil;
+    }
+
+    void DespawnPlotSummons(Player* player, uint8 plot)
+    {
+        std::vector<TempSummon*> summons;
+        for (TempSummon* summon : player->GetSummons())
+            if (summon && summon->GetPrivateObjectOwner() == player->GetGUID() && IsFarmEntry(summon->GetEntry()) &&
+                summon->GetHomePosition().GetExactDist2d(PlotPositions[plot]) < 2.0f)
+                summons.push_back(summon);
+
+        for (TempSummon* summon : summons)
+            summon->DespawnOrUnsummon();
+    }
+
+    TempSummon* SummonPlot(Player* player, uint8 plot, PlotRecord const& record)
+    {
+        uint32 entry = GetPlotEntry(record);
+        TempSummon* crop = player->SummonCreature(entry, PlotPositions[plot], TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID());
+        if (!crop)
+            return nullptr;
+
+        crop->SetPrivateObjectOwner(player->GetGUID());
+        crop->SetReactState(REACT_PASSIVE);
+        crop->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+        if (record.State == PlotGrowing || record.State == PlotTilled)
+            crop->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        else
+            crop->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+
+        if (record.State == PlotEncounter)
+        {
+            switch (record.Event)
+            {
+                case EncounterInfested:   crop->CastSpell(crop, InfestedAura, true); break;
+                case EncounterSnagtooth:  crop->CastSpell(crop, WigglingAura, true); break;
+                case EncounterPlainshawk: crop->CastSpell(crop, AlluringAura, true); break;
+                case EncounterVine:       crop->CastSpell(crop, SmotheredAura, true); break;
+                case EncounterStones:     crop->CastSpell(crop, StubbornAura, true); break;
+                default: break;
+            }
+        }
+
+        return crop;
+    }
+
+    void RefreshPlot(Player* player, uint8 plot, PlotRecord const& record)
+    {
+        DespawnPlotSummons(player, plot);
+        SummonPlot(player, plot, record);
+    }
+
+    void ClearPullState(Player* player)
+    {
+        ActivePulls.erase(player->GetGUID().GetCounter());
+        player->RemoveAurasDueToSpell(SolidStone);
+        player->RemoveAurasDueToSpell(TanglevineBeam);
+    }
+
+    void CompleteEncounter(Player* player, uint8 plot)
+    {
+        PlotRecord record;
+        if (!LoadPlot(player, plot, record) || record.State != PlotEncounter)
+            return;
+
+        record.State = PlotRipe;
+        record.ReadyTime = 0;
+        record.Event = EncounterNone;
+        record.Progress = 0;
+        SavePlot(player, plot, record);
+        ClearPullState(player);
+        RefreshPlot(player, plot, record);
+    }
+
+    void RefreshFarm(Player* player)
+    {
+        if (!IsAtFarm(player))
+            return;
+
+        EnsurePlotRows(player);
+        uint8 plotCount = GetUnlockedPlotCount(player);
+        for (uint8 plot = 0; plot < plotCount; ++plot)
+        {
+            PlotRecord record;
+            if (!LoadPlot(player, plot, record))
+            {
+                record = PlotRecord();
+                SavePlot(player, plot, record);
+            }
+
+            if (record.State == PlotGrowing && record.ReadyTime && record.ReadyTime <= uint32(time(nullptr)))
+            {
+                record.State = PlotEncounter;
+                record.ReadyTime = 0;
+                record.Event = Encounter(urand(EncounterInfested, EncounterStones));
+                record.Progress = 0;
+                SavePlot(player, plot, record);
+            }
+
+            RefreshPlot(player, plot, record);
+        }
+    }
+
+    bool ValidatePlantTarget(Player* player, Creature* target, uint32 spellId, uint8* plotOut = nullptr)
+    {
+        if (!IsAtFarm(player) || !target || target->GetEntry() != TilledSoil ||
+            target->GetPrivateObjectOwner() != player->GetGUID() || !FindCropBySpell(spellId))
+            return false;
+
+        int8 plot = FindPlot(*target);
+        if (plot < 0 || uint8(plot) >= GetUnlockedPlotCount(player))
+            return false;
+
+        PlotRecord record;
+        if (!LoadPlot(player, plot, record) || record.State != PlotTilled)
+            return false;
+
+        if (plotOut)
+            *plotOut = plot;
+        return true;
+    }
+
+    void Plant(Player* player, Creature* target, uint32 spellId)
+    {
+        uint8 plot = 0;
+        uint8 cropIndex = 0;
+        if (!ValidatePlantTarget(player, target, spellId, &plot) || !FindCropBySpell(spellId, &cropIndex))
+            return;
+
+        PlotRecord record;
+        record.Crop = cropIndex;
+        record.State = PlotGrowing;
+        record.ReadyTime = uint32(sWorld->GetNextDailyQuestsResetTime());
+        SavePlot(player, plot, record);
+        RefreshPlot(player, plot, record);
+    }
+
+    bool GiveHarvest(Player* player, uint8 cropIndex)
+    {
+        if (cropIndex == 11)
+        {
+            std::array<uint32, 6> const herbs = {{ 72234, 72235, 72237, 72238, 79010, 79011 }};
+            return player->AddItem(herbs[urand(0, herbs.size() - 1)], 5);
+        }
+
+        uint32 item = Crops[cropIndex].HarvestItem;
+        uint32 count = cropIndex >= 10 ? ((cropIndex == 14 || cropIndex == 15) ? 1 : 5) : 5;
+        return item && player->AddItem(item, count);
+    }
+
+    void Harvest(Player* player, uint8 plot, PlotRecord& record)
+    {
+        if (!GiveHarvest(player, record.Crop))
+            return;
+
+        player->CastSpell(player, HarvestReputation, true);
+        record.State = PlotTilled;
+        record.ReadyTime = 0;
+        record.Event = EncounterNone;
+        record.Progress = 0;
+        SavePlot(player, plot, record);
+        RefreshPlot(player, plot, record);
+    }
+
+    bool HasLivingCombatSummon(Player* player, uint8 plot, uint32 entry)
+    {
+        for (TempSummon* summon : player->GetSummons())
+            if (summon && summon->IsAlive() && summon->GetEntry() == entry &&
+                summon->GetPrivateObjectOwner() == player->GetGUID() &&
+                summon->GetHomePosition().GetExactDist2d(PlotPositions[plot]) < 2.0f)
+                return true;
+
+        return false;
+    }
+
+    void StartCombatEncounter(Player* player, Creature* crop, uint8 plot, Encounter event)
+    {
+        uint32 entry = event == EncounterPlainshawk ? SwoopingPlainshawk : SnagtoothHooligan;
+        if (HasLivingCombatSummon(player, plot, entry))
+            return;
+
+        Position spawn = PlotPositions[plot];
+        if (event == EncounterPlainshawk)
+            spawn.m_positionZ += 12.0f;
+
+        TempSummon* enemy = player->SummonCreature(entry, spawn, TEMPSUMMON_DEAD_DESPAWN, 0, 0, player->GetGUID());
+        if (!enemy)
+            return;
+
+        enemy->SetPrivateObjectOwner(player->GetGUID());
+        enemy->SelectLevel(enemy->GetCreatureTemplate(), player->GetLevel());
+        CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(
+            enemy->GetLevel(), enemy->GetCreatureTemplate()->unit_class);
+        enemy->SetModifierValue(UNIT_MOD_ARMOR, BASE_VALUE, stats->GenerateArmor(enemy->GetCreatureTemplate()));
+        enemy->UpdateAllStats();
+        enemy->SetFaction(14);
+        enemy->SetHomePosition(spawn);
+        if (event == EncounterPlainshawk)
+        {
+            enemy->SetCanFly(true);
+            enemy->SetDisableGravity(true);
+        }
+
+        crop->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        enemy->SetReactState(REACT_AGGRESSIVE);
+        enemy->AI()->AttackStart(player);
+    }
+
+    void StartPullEncounter(Player* player, Creature* crop, uint8 plot, Encounter event)
+    {
+        auto active = ActivePulls.find(player->GetGUID().GetCounter());
+        if (active != ActivePulls.end() && active->second.Plot != plot)
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("Finish clearing the other farm plot first.");
+            return;
+        }
+
+        bool newlyStarted = active == ActivePulls.end();
+        ActivePulls[player->GetGUID().GetCounter()] = { plot, event, 0 };
+
+        if (event == EncounterStones)
+        {
+            if (newlyStarted)
+            {
+                player->CastSpell(player, SolidStone, true);
+                ChatHandler(player->GetSession()).PSendSysMessage("Use Pull! five times to clear the stubborn weed.");
+            }
+            return;
+        }
+
+        crop->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        if (TempSummon* weed = player->SummonCreature(EncroachingWeed, PlotPositions[plot],
+            TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID()))
+        {
+            weed->SetPrivateObjectOwner(player->GetGUID());
+            weed->SetReactState(REACT_PASSIVE);
+            weed->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            weed->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+            weed->CastSpell(player, TanglevineBeam, true);
+        }
+
+        ChatHandler(player->GetSession()).PSendSysMessage("Move 20 yards away from the crop to tear out the vine.");
+    }
+
+    void PullStubbornWeed(Player* player);
+
+    void HandleCropClick(Player* player, Creature* crop)
+    {
+        if (!IsAtFarm(player) || crop->GetPrivateObjectOwner() != player->GetGUID())
+            return;
+
+        int8 plot = FindPlot(*crop);
+        if (plot < 0 || uint8(plot) >= GetUnlockedPlotCount(player))
+            return;
+
+        PlotRecord record;
+        if (!LoadPlot(player, plot, record))
+            return;
+
+        switch (record.State)
+        {
+            case PlotUntilled:
+                record.State = PlotTilled;
+                SavePlot(player, plot, record);
+                RefreshPlot(player, plot, record);
+                break;
+            case PlotRipe:
+                Harvest(player, plot, record);
+                break;
+            case PlotEncounter:
+                switch (record.Event)
+                {
+                    case EncounterInfested:
+                        ChatHandler(player->GetSession()).PSendSysMessage("Use your Vintage Bug Sprayer on this crop.");
+                        break;
+                    case EncounterSnagtooth:
+                    case EncounterPlainshawk:
+                        StartCombatEncounter(player, crop, plot, record.Event);
+                        break;
+                    case EncounterVine:
+                        StartPullEncounter(player, crop, plot, record.Event);
+                        break;
+                    case EncounterStones:
+                        StartPullEncounter(player, crop, plot, record.Event);
+                        PullStubbornWeed(player);
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    void SprayInfestedCrop(Player* player)
+    {
+        if (!IsAtFarm(player))
+            return;
+
+        uint8 nearestPlot = 0;
+        float nearestDistance = 20.0f;
+        bool found = false;
+        for (uint8 plot = 0; plot < GetUnlockedPlotCount(player); ++plot)
+        {
+            PlotRecord record;
+            float distance = player->GetExactDist2d(PlotPositions[plot]);
+            if (distance >= nearestDistance || !LoadPlot(player, plot, record) ||
+                record.State != PlotEncounter || record.Event != EncounterInfested)
+                continue;
+
+            nearestDistance = distance;
+            nearestPlot = plot;
+            found = true;
+        }
+
+        if (found)
+            CompleteEncounter(player, nearestPlot);
+    }
+
+    void PullStubbornWeed(Player* player)
+    {
+        auto active = ActivePulls.find(player->GetGUID().GetCounter());
+        if (active == ActivePulls.end() || active->second.Event != EncounterStones)
+            return;
+
+        uint8 plot = active->second.Plot;
+        PlotRecord record;
+        if (!LoadPlot(player, plot, record) || record.State != PlotEncounter || record.Event != EncounterStones)
+        {
+            ClearPullState(player);
+            return;
+        }
+
+        if (++record.Progress >= 5)
+        {
+            CompleteEncounter(player, plot);
+            return;
+        }
+
+        SavePlot(player, plot, record);
+        ChatHandler(player->GetSession()).PSendSysMessage("Pull! (%u/5)", uint32(record.Progress));
+    }
+}
+
+struct npc_sunsong_farm_crop : public ScriptedAI
+{
+    npc_sunsong_farm_crop(Creature* creature) : ScriptedAI(creature) { }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        if (Player* player = clicker->ToPlayer())
+        {
+            result = true;
+            SunsongRanch::HandleCropClick(player, me);
+        }
+    }
+
+    void UpdateAI(uint32 /*diff*/) override { }
+};
+
+class spell_sunsong_plant_seed : public SpellScript
+{
+    PrepareSpellScript(spell_sunsong_plant_seed);
+
+    SpellCastResult CheckCast()
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        Creature* target = GetExplTargetUnit() ? GetExplTargetUnit()->ToCreature() : nullptr;
+        if (!player || !SunsongRanch::IsAtFarm(player))
+            return SPELL_FAILED_NOT_HERE;
+
+        if (!SunsongRanch::ValidatePlantTarget(player, target, GetSpellInfo()->Id))
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+
+    void HandlePlant(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        Creature* target = GetHitCreature();
+        if (player && target)
+            SunsongRanch::Plant(player, target, GetSpellInfo()->Id);
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_sunsong_plant_seed::CheckCast);
+        OnEffectHitTarget += SpellEffectFn(spell_sunsong_plant_seed::HandlePlant, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+class player_sunsong_ranch : public PlayerScript
+{
+public:
+    player_sunsong_ranch() : PlayerScript("player_sunsong_ranch") { }
+
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1500, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                SunsongRanch::RefreshFarm(onlinePlayer);
+        });
+    }
+
+    void OnLogout(Player* player) override
+    {
+        SunsongRanch::ClearPullState(player);
+    }
+
+    void OnUpdateZone(Player* player, uint32 /*newZone*/, uint32 newArea) override
+    {
+        if (newArea == SunsongRanch::AreaId)
+            SunsongRanch::RefreshFarm(player);
+        else
+            SunsongRanch::ClearPullState(player);
+    }
+
+    void OnMapChanged(Player* player) override
+    {
+        SunsongRanch::RefreshFarm(player);
+    }
+
+    void OnCreatureKill(Player* player, Creature* killed) override
+    {
+        uint32 entry = killed->GetEntry();
+        if ((entry != SunsongRanch::SnagtoothHooligan && entry != SunsongRanch::SwoopingPlainshawk) ||
+            killed->GetPrivateObjectOwner() != player->GetGUID())
+            return;
+
+        int8 plot = SunsongRanch::FindPlot(killed->GetHomePosition());
+        if (plot < 0)
+            return;
+
+        SunsongRanch::PlotRecord record;
+        if (!SunsongRanch::LoadPlot(player, plot, record) || record.State != SunsongRanch::PlotEncounter)
+            return;
+
+        if ((entry == SunsongRanch::SnagtoothHooligan && record.Event == SunsongRanch::EncounterSnagtooth) ||
+            (entry == SunsongRanch::SwoopingPlainshawk && record.Event == SunsongRanch::EncounterPlainshawk))
+            SunsongRanch::CompleteEncounter(player, plot);
+    }
+
+    void OnSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
+    {
+        if (!spell || !SunsongRanch::IsAtFarm(player))
+            return;
+
+        switch (spell->GetSpellInfo()->Id)
+        {
+            case SunsongRanch::VintageBugSprayer:
+                SunsongRanch::SprayInfestedCrop(player);
+                break;
+            case SunsongRanch::Pull:
+                SunsongRanch::PullStubbornWeed(player);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void OnUpdate(Player* player, uint32 diff) override
+    {
+        auto active = SunsongRanch::ActivePulls.find(player->GetGUID().GetCounter());
+        if (active == SunsongRanch::ActivePulls.end())
+            return;
+
+        if (!SunsongRanch::IsAtFarm(player))
+        {
+            SunsongRanch::ClearPullState(player);
+            return;
+        }
+
+        if (active->second.Timer > diff)
+        {
+            active->second.Timer -= diff;
+            return;
+        }
+
+        active->second.Timer = 250;
+        if (active->second.Event == SunsongRanch::EncounterVine &&
+            player->GetExactDist2d(SunsongRanch::PlotPositions[active->second.Plot]) >= 20.0f)
+        {
+            uint8 plot = active->second.Plot;
+            SunsongRanch::CompleteEncounter(player, plot);
+        }
+    }
+};
+
 namespace LessonInBravery
 {
     constexpr uint32 Quest = 29918;
@@ -2631,6 +3354,9 @@ void AddSC_valley_of_the_four_winds()
     new atrigger_script<sat_vfw_ground_and_pound>("sat_vfw_ground_and_pound");
     new aura_script<spell_vfw_breaking_barrel>("spell_vfw_breaking_barrel");
     new npc_vfw_miss_fanny();
+    new creature_script<npc_sunsong_farm_crop>("npc_sunsong_farm_crop");
+    new spell_script<spell_sunsong_plant_seed>("spell_sunsong_plant_seed");
+    new player_sunsong_ranch();
     new player_lesson_in_bravery();
     new player_hop_hunting_recovery();
     new npc_chen_and_li_li_escort();
