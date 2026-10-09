@@ -94,7 +94,8 @@ class npc_tushui_monk : public CreatureScript
             EVENT_HIDE             = 2,
             EVENT_RETURN           = 3,
             FACTION_FRIENDLY       = 35,
-            FACTION_TUSHUI_TRAINER = 2357
+            FACTION_TUSHUI_TRAINER = 2357,
+            NPC_TUSHUI_CREDIT      = 55019
         };
 
         struct npc_tushui_monkAI : public ScriptedAI
@@ -171,7 +172,7 @@ class npc_tushui_monk : public CreatureScript
                 me->SetReactState(REACT_PASSIVE);
 
                 if (Player* player = attacker ? attacker->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr)
-                    player->KilledMonsterCredit(me->GetEntry(), me->GetGUID());
+                    player->KilledMonsterCredit(NPC_TUSHUI_CREDIT, me->GetGUID());
 
                 events.Reset();
                 events.ScheduleEvent(EVENT_HIDE, 2000);
