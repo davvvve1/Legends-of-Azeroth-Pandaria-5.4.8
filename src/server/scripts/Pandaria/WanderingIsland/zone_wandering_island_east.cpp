@@ -87,33 +87,124 @@ class npc_tushui_monk : public CreatureScript
     public:
         npc_tushui_monk() : CreatureScript("npc_tushui_monk") { }
 
+        enum TushuiMonkData
+        {
+            SPELL_THROW_ROCK       = 109308,
+            EVENT_THROW_ROCK       = 1,
+            EVENT_HIDE             = 2,
+            EVENT_RETURN           = 3,
+            FACTION_FRIENDLY       = 35,
+            FACTION_TUSHUI_TRAINER = 2357
+        };
+
         struct npc_tushui_monkAI : public ScriptedAI
         {
             npc_tushui_monkAI(Creature* creature) : ScriptedAI(creature) { }
 
+            EventMap events;
+            bool defeated = false;
+
             void Reset() override
             {
-                std::list<Creature*> poleList;
-                GetCreatureListWithEntryInGrid(poleList, me, 54993, 25.0f);
+                events.Reset();
+                defeated = false;
+                me->SetVisible(true);
+                me->SetFaction(FACTION_TUSHUI_TRAINER);
+                me->SetReactState(REACT_DEFENSIVE);
+                me->SetFullHealth();
 
-                if (poleList.empty())
+                if (!me->GetVehicleBase())
                 {
-                    me->DespawnOrUnsummon(1000);
+                    std::list<Creature*> poleList;
+                    GetCreatureListWithEntryInGrid(poleList, me, 54993, 25.0f);
+
+                    if (poleList.empty())
+                    {
+                        me->DespawnOrUnsummon(1000);
+                        return;
+                    }
+
+                    Trinity::Containers::RandomResizeList(poleList, 1);
+
+                    for (auto&& creature : poleList)
+                        me->EnterVehicle(creature);
+                }
+            }
+
+            void JustEngagedWith(Unit* /*who*/) override
+            {
+                events.ScheduleEvent(EVENT_THROW_ROCK, 1000);
+            }
+
+            void DamageDealt(Unit* victim, uint32& damage, DamageEffectType /*damageType*/) override
+            {
+                if (!victim || victim->GetTypeId() != TYPEID_PLAYER)
+                    return;
+
+                // This is a training duel. A bad spell/stat scaling value must
+                // never let a monk one-shot or kill the trainee.
+                damage = std::min(damage, std::max<uint32>(1, victim->CountPctFromMaxHealth(10)));
+                damage = damage >= victim->GetHealth() ? victim->GetHealth() - 1 : damage;
+            }
+
+            void DamageTaken(Unit* attacker, uint32& damage) override
+            {
+                if (defeated)
+                {
+                    damage = 0;
                     return;
                 }
 
-                Trinity::Containers::RandomResizeList(poleList, 1);
+                if (damage < me->GetHealth())
+                    return;
 
-                for (auto&& creature: poleList)
-                    me->EnterVehicle(creature);
+                damage = 0;
+                defeated = true;
+                me->SetHealth(1);
+                me->AttackStop();
+                me->CombatStop(true);
+                me->DeleteThreatList();
+                me->SetFaction(FACTION_FRIENDLY);
+                me->SetReactState(REACT_PASSIVE);
 
-                me->SetFaction(2357);
+                if (Player* player = attacker ? attacker->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr)
+                    player->KilledMonsterCredit(me->GetEntry(), me->GetGUID());
+
+                events.Reset();
+                events.ScheduleEvent(EVENT_HIDE, 2000);
             }
 
-            void JustDied(Unit* /*killer*/) override
+            void UpdateAI(uint32 diff) override
             {
-                me->ExitVehicle();
-                me->DespawnOrUnsummon(1000);
+                events.Update(diff);
+
+                while (uint32 eventId = events.ExecuteEvent())
+                {
+                    switch (eventId)
+                    {
+                        case EVENT_THROW_ROCK:
+                            if (!defeated && me->GetVictim())
+                            {
+                                DoCastVictim(SPELL_THROW_ROCK);
+                                events.ScheduleEvent(EVENT_THROW_ROCK, 3000);
+                            }
+                            break;
+                        case EVENT_HIDE:
+                            me->SetVisible(false);
+                            events.ScheduleEvent(EVENT_RETURN, 60000);
+                            break;
+                        case EVENT_RETURN:
+                            Reset();
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if (defeated || !UpdateVictim())
+                    return;
+
+                DoMeleeAttackIfReady();
             }
         };
 
