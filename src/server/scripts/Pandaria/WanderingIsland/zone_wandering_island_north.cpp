@@ -599,7 +599,7 @@ class npc_aysa : public CreatureScript
     enum
     {
         QUEST_WAY_OF_THE_TUSHUI = 29414,
-        NPC_AYSA_LAKE_ESCORT    = 56661,
+        SPELL_SUMMON_AYSA       = 114728,
         NPC_MASTER_LI_FEI       = 54856,
         SPELL_MEDITATION_BAR    = 116421,
         NPC_TROUBLEMAKER        = 59637,
@@ -619,11 +619,19 @@ class npc_aysa : public CreatureScript
     public:
         npc_aysa() : CreatureScript("npc_aysa") { }
 
-        bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
+        bool OnGossipHello(Player* player, Creature* creature) override
+        {
+            if (creature->IsQuestGiver())
+                player->PrepareQuestMenu(creature->GetGUID());
+
+            player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+            return true;
+        }
+
+        bool OnQuestAccept(Player* /*player*/, Creature* creature, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_WAY_OF_THE_TUSHUI)
-                if (Creature* tempSummon = creature->SummonCreature(NPC_AYSA_LAKE_ESCORT, *creature, TEMPSUMMON_MANUAL_DESPAWN, 0, player->GetGUID()))
-                    tempSummon->SetPhaseMask(1, true);
+                creature->CastSpell(creature, SPELL_SUMMON_AYSA, true);
 
             return true;
         }
