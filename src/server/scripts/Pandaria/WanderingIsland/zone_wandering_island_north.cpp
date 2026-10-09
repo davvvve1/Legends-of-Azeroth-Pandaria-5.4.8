@@ -109,7 +109,10 @@ class npc_master_shang_xi : public CreatureScript
 
 struct npc_training_target : public ScriptedAI
 {
-    npc_training_target(Creature* creature) : ScriptedAI(creature), _resetTimer(0) { }
+    npc_training_target(Creature* creature) : ScriptedAI(creature), _resetTimer(0)
+    {
+        SetCombatMovement(false);
+    }
 
     void Reset() override
     {
@@ -158,6 +161,11 @@ struct npc_training_target : public ScriptedAI
         if (!UpdateVictim())
             return;
 
+        // Training targets must remain passive even if another spell clears the
+        // controlled state while a player is completing the lesson.
+        if (!me->HasUnitState(UNIT_STATE_STUNNED))
+            me->SetControlled(true, UNIT_STATE_STUNNED);
+
         if (_resetTimer <= diff)
         {
             EnterEvadeMode();
@@ -166,6 +174,8 @@ struct npc_training_target : public ScriptedAI
         else
             _resetTimer -= diff;
     }
+
+    void MoveInLineOfSight(Unit* /*who*/) override { }
 
 private:
     uint32 _resetTimer;

@@ -2330,6 +2330,75 @@ public:
     }
 };
 
+namespace AshyosVision
+{
+    constexpr uint32 QuestId = 29577;
+    constexpr uint32 ObjectiveId = 259400;
+    constexpr uint32 PoolsOfPurityArea = 5973;
+    constexpr uint32 GossipMenu = 29577;
+    constexpr uint32 GossipActionBeginRitual = GOSSIP_ACTION_INFO_DEF + 1;
+    constexpr uint32 SpellAshyoKneeling = 107838;
+    constexpr uint32 SpellGoldenDreamVisual = 131525;
+}
+
+// Clever Ashyo 56113 - Ashyo's Vision 29577
+class npc_vfw_clever_ashyo : public CreatureScript
+{
+public:
+    npc_vfw_clever_ashyo() : CreatureScript("npc_vfw_clever_ashyo") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (creature->GetAreaId() == AshyosVision::PoolsOfPurityArea &&
+            player->GetQuestStatus(AshyosVision::QuestId) == QUEST_STATUS_INCOMPLETE &&
+            !player->GetQuestObjectiveCounter(AshyosVision::ObjectiveId))
+        {
+            player->ADD_GOSSIP_ITEM_DB(AshyosVision::GossipMenu, 0, GOSSIP_SENDER_MAIN,
+                AshyosVision::GossipActionBeginRitual);
+            player->SEND_GOSSIP_MENU(AshyosVision::GossipMenu, creature->GetGUID());
+            return true;
+        }
+
+        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+
+        if (sender != GOSSIP_SENDER_MAIN || action != AshyosVision::GossipActionBeginRitual ||
+            creature->GetAreaId() != AshyosVision::PoolsOfPurityArea ||
+            player->GetQuestStatus(AshyosVision::QuestId) != QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestObjectiveCounter(AshyosVision::ObjectiveId))
+            return true;
+
+        // Credit immediately so another player restarting the shared visual
+        // sequence cannot interrupt this player's quest progression.
+        player->KilledMonsterCredit(creature->GetEntry());
+
+        creature->AI()->Talk(0, player);
+        creature->CastSpell(creature, AshyosVision::SpellAshyoKneeling, true);
+        creature->CastSpell(creature, AshyosVision::SpellGoldenDreamVisual, true);
+
+        ObjectGuid playerGuid = player->GetGUID();
+        creature->m_Events.Schedule(6 * IN_MILLISECONDS, [creature, playerGuid]()
+        {
+            if (Player* eventPlayer = ObjectAccessor::GetPlayer(*creature, playerGuid))
+                creature->AI()->Talk(1, eventPlayer);
+        });
+        creature->m_Events.Schedule(12 * IN_MILLISECONDS, [creature]()
+        {
+            creature->RemoveAurasDueToSpell(AshyosVision::SpellAshyoKneeling);
+        });
+
+        return true;
+    }
+};
+
 namespace SunsongRanch
 {
     constexpr uint32 MapId = 870;
@@ -3354,6 +3423,7 @@ void AddSC_valley_of_the_four_winds()
     new atrigger_script<sat_vfw_ground_and_pound>("sat_vfw_ground_and_pound");
     new aura_script<spell_vfw_breaking_barrel>("spell_vfw_breaking_barrel");
     new npc_vfw_miss_fanny();
+    new npc_vfw_clever_ashyo();
     new creature_script<npc_sunsong_farm_crop>("npc_sunsong_farm_crop");
     new spell_script<spell_sunsong_plant_seed>("spell_sunsong_plant_seed");
     new player_sunsong_ranch();
