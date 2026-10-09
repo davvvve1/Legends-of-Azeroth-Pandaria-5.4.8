@@ -871,6 +871,13 @@ enum eShaReminantSpells
     SPELL_OVERWHELMING_GUILT          = 131150,
 };
 
+namespace JadedHeart
+{
+    constexpr uint32 QuestId = 30502;
+    constexpr uint32 EliteShaRemnant = 59434;
+    constexpr uint32 WeakenedShaRemnant = 59454;
+}
+
 enum eShaReminantEvents
 {
     EVENT_SHADOW_CLAW               = 1,
@@ -933,6 +940,63 @@ class npc_sha_reminant : public CreatureScript
         {
             return new npc_sha_reminantAI(creature);
         }
+};
+
+// Celestial Jade (80074), spell 114297 - weaken the elite Sha Remnant for
+// Jaded Heart. The weakened creature uses a separate normal-rank template.
+class spell_jade_forest_celestial_jade : public SpellScript
+{
+    PrepareSpellScript(spell_jade_forest_celestial_jade);
+
+    ObjectGuid targetGuid;
+
+    Creature* GetShaRemnant()
+    {
+        Unit* target = GetExplTargetUnit();
+        if (!target)
+            if (Player* player = GetCaster()->ToPlayer())
+                target = player->GetSelectedUnit();
+
+        return target ? target->ToCreature() : nullptr;
+    }
+
+    SpellCastResult CheckTarget()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        Creature* target = GetShaRemnant();
+        if (!player || player->GetQuestStatus(JadedHeart::QuestId) != QUEST_STATUS_INCOMPLETE ||
+            !target || !target->IsAlive() || target->GetEntry() != JadedHeart::EliteShaRemnant)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        targetGuid = target->GetGUID();
+        return SPELL_CAST_OK;
+    }
+
+    void WeakenTarget()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        Creature* target = player ? ObjectAccessor::GetCreature(*player, targetGuid) : nullptr;
+        if (!player || !target || !target->IsAlive() ||
+            target->GetEntry() != JadedHeart::EliteShaRemnant)
+            return;
+
+        if (!target->UpdateEntry(JadedHeart::WeakenedShaRemnant))
+            return;
+
+        // UpdateEntry intentionally retains the old AI. Re-select it so the
+        // normal-rank template loses the elite spell rotation as intended.
+        target->AIM_Initialize();
+        target->SetReactState(REACT_AGGRESSIVE);
+        target->CombatStart(player, true);
+        target->AddThreat(player, 1.0f);
+        target->AI()->AttackStart(player);
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_jade_forest_celestial_jade::CheckTarget);
+        AfterCast += SpellCastFn(spell_jade_forest_celestial_jade::WeakenTarget);
+    }
 };
 
 #define GOSSIP_CHOICE_1 "Challenge the Patriarch."
@@ -6063,6 +6127,7 @@ void AddSC_jade_forest()
     new npc_rakira();
     new npc_ro_shen();
     new npc_sha_reminant();
+    new spell_script<spell_jade_forest_celestial_jade>("spell_jade_forest_celestial_jade");
     new npc_hutia();
     // Standard Mobs
     new npc_pandriarch_windfur();
