@@ -13467,13 +13467,24 @@ void Unit::RegenerateHealth()
     // normal regen case (maybe partly in combat case)
     else if (!IsInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT))
     {
-        addvalue = CountPctFromMaxHealth(1); // 1% per 2 second, confirmed by sniffs
+        addvalue = CountPctFromMaxHealth(1);
         if (!IsInCombat())
         {
             if (GetTypeId() == TYPEID_UNIT && !GetCharmerOrOwnerGUID().IsPlayer())
                 addvalue = GetMaxHealth() / 3.0f;
             else
             {
+                if (Player const* player = ToPlayer())
+                {
+                    // Since 4.0.1, player health regeneration is percentage based
+                    // and deliberately much faster for new characters.
+                    float const healthRate = sWorld->getRate(RATE_HEALTH);
+                    uint8 const level = std::max<uint8>(player->GetLevel(), 1);
+                    addvalue = level < 15
+                        ? 0.20f * GetMaxHealth() / level * healthRate
+                        : 0.015f * GetMaxHealth() * healthRate;
+                }
+
                 for (auto&& itr : GetAuraEffectsByType(SPELL_AURA_MOD_HEALTH_REGEN_PERCENT))
                 {
                     // Soul Harvest (101976)
@@ -13488,6 +13499,9 @@ void Unit::RegenerateHealth()
         }
         else  // If don't have any aura == 0
             ApplyPct(addvalue, GetTotalAuraModifier(SPELL_AURA_MOD_REGEN_DURING_COMBAT));
+
+        if (GetTypeId() == TYPEID_PLAYER && !IsStandState())
+            addvalue *= 1.5f;
     }
 
     // always regeneration bonus (including combat)
