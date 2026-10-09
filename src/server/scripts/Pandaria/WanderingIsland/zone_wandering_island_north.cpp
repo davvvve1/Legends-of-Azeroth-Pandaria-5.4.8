@@ -336,6 +336,40 @@ class npc_attacker_dimwind : public CreatureScript
         }
 };
 
+namespace MissingDriver
+{
+    constexpr uint32 QuestId = 29419;
+    constexpr uint32 MinDimwind = 54855;
+    constexpr uint32 AmberleafScamp = 54130;
+    constexpr uint32 SummonCartDriver = 106205;
+    constexpr uint32 ForceSummonCartDriver = 106206;
+    constexpr uint32 DriverCredit = 106231;
+
+    void Rescue(Player* player, Creature* minDimwind)
+    {
+        if (!player || !player->IsAlive() || player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        if (minDimwind)
+        {
+            minDimwind->HandleEmoteCommand(EMOTE_STATE_STAND);
+
+            std::list<Creature*> scamps;
+            GetCreatureListWithEntryInGrid(scamps, minDimwind, AmberleafScamp, 20.0f);
+            for (Creature* scamp : scamps)
+                scamp->AI()->SetData(0, 1);
+
+            minDimwind->CastSpell(player, ForceSummonCartDriver, true);
+        }
+
+        // The spell is the retail credit path. Keep direct credit as a safe
+        // fallback so incomplete client spell data cannot block the quest.
+        player->CastSpell(player, DriverCredit, true);
+        if (player->GetQuestStatus(QuestId) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(MinDimwind);
+    }
+}
+
 class npc_min_dimwind : public CreatureScript
 {
     public:
@@ -353,24 +387,11 @@ class npc_min_dimwind : public CreatureScript
             void MoveInLineOfSight(Unit* who) override
             {
                 Player* player = who->ToPlayer();
-                if (!player || !player->IsAlive() || player->GetQuestStatus(29419) != QUEST_STATUS_INCOMPLETE ||
+                if (!player || player->GetQuestStatus(MissingDriver::QuestId) != QUEST_STATUS_INCOMPLETE ||
                     !me->IsWithinDistInMap(player, 20.0f) || !me->IsWithinLOSInMap(player))
                     return;
 
-                me->HandleEmoteCommand(EMOTE_STATE_STAND);
-
-                std::list<Creature*> scamps;
-                GetCreatureListWithEntryInGrid(scamps, me, 54130, 20.0f);
-                for (Creature* scamp : scamps)
-                    scamp->AI()->SetData(0, 1);
-
-                // Min makes the player summon the personal copy that runs back
-                // to the cart. The credit spell is authoritative; direct credit
-                // is a fallback for clients with incomplete spell data.
-                me->CastSpell(player, 106206, true);
-                player->CastSpell(player, 106231, true);
-                if (player->GetQuestStatus(29419) == QUEST_STATUS_INCOMPLETE)
-                    player->KilledMonsterCredit(54855);
+                MissingDriver::Rescue(player, me);
             }
         };
 
@@ -435,7 +456,7 @@ class npc_min_dimwind_summon : public CreatureScript
                 Talk(3);
 
                 if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
-                    player->RemoveAurasDueToSpell(106205);
+                    player->RemoveAurasDueToSpell(MissingDriver::SummonCartDriver);
 
                 me->DespawnOrUnsummon(5000);
             }
@@ -469,7 +490,7 @@ class npc_min_dimwind_summon : public CreatureScript
                             break;
                         case EVENT_TIMEOUT:
                             if (Player* player = ObjectAccessor::GetPlayer(*me, playerGuid))
-                                player->RemoveAurasDueToSpell(106205);
+                                player->RemoveAurasDueToSpell(MissingDriver::SummonCartDriver);
                             me->DespawnOrUnsummon();
                             break;
                     }
@@ -480,6 +501,24 @@ class npc_min_dimwind_summon : public CreatureScript
         CreatureAI* GetAI(Creature* creature) const override
         {
             return new npc_min_dimwind_summonAI(creature);
+        }
+};
+
+// 6958 - retail rescue area for The Missing Driver. This also covers cases
+// where the client reaches the objective volume before Min enters line of sight.
+class at_min_dimwind_captured : public AreaTriggerScript
+{
+    public:
+        at_min_dimwind_captured() : AreaTriggerScript("at_min_dimwind_captured") { }
+
+        bool OnTrigger(Player* player, AreaTriggerEntry const* /*trigger*/) override
+        {
+            if (!player || !player->IsAlive() ||
+                player->GetQuestStatus(MissingDriver::QuestId) != QUEST_STATUS_INCOMPLETE)
+                return false;
+
+            MissingDriver::Rescue(player, player->FindNearestCreature(MissingDriver::MinDimwind, 30.0f, true));
+            return true;
         }
 };
 
@@ -1181,6 +1220,7 @@ void AddSC_wandering_island_north()
     new npc_attacker_dimwind();
     new npc_min_dimwind();
     new npc_min_dimwind_summon();
+    new at_min_dimwind_captured();
     new npc_aysa_lake_escort();
     new npc_aysa();
     new boss_li_fei();
