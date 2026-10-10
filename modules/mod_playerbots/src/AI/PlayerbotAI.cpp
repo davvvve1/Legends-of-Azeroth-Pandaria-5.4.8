@@ -492,6 +492,13 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         bot->IsDuringRemoveFromWorld())
         return;
 
+    // Leadership is instance-scoped. Once a completed group leaves the map,
+    // every bot must immediately return to its ordinary real-master follow
+    // behaviour instead of carrying a stale tank anchor into the open world.
+    if (IsInstanceTankLeadershipActive() &&
+        (!bot->GetMap() || !bot->GetMap()->IsDungeon()))
+        SetInstanceTankLeader(0);
+
     // Chat is handled on the world thread, but movement/action state belongs
     // to this map thread. Consume gotank transitions here so an old point or
     // chase generator cannot keep driving the tank after "gotank" is turned
@@ -863,24 +870,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     Player* distanceRecoveryMaster = GetMaster();
     // Encounter positioning (especially C'Thun's separate stomach floor)
     // must not be undone by generic catch-up teleports to the raid leader.
-    bool gotankGroupInCombat = false;
-    if (IsInstanceTankLeadershipActive())
-    {
-        Group* group = bot->GetGroup(GroupSlot::Instance);
-        if (!group)
-            group = bot->GetGroup();
-        if (group)
-            for (GroupReference* ref = group->GetFirstMember(); ref;
-                ref = ref->next())
-                if (Player* member = ref->GetSource())
-                    if (member->IsInWorld() && member->GetMap() == bot->GetMap() &&
-                        (member->IsInCombat() || member->GetVictim() ||
-                            !member->getAttackers().empty()))
-                    {
-                        gotankGroupInCombat = true;
-                        break;
-                    }
-    }
+    bool const gotankGroupInCombat = IsInstanceTankLeadershipActive() &&
+        GroupPveCombat::GroupHasActiveCombat(bot);
     bool const recoverGotankDeadMaster = IsInstanceTankLeadershipActive() &&
         bot->GetMap() && bot->GetMap()->IsDungeon() &&
         distanceRecoveryMaster && !distanceRecoveryMaster->IsAlive() &&

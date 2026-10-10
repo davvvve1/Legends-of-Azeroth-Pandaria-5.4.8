@@ -11,6 +11,8 @@ AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 CHAT_SOURCE = ROOT / "modules/mod_playerbots/src/mod_playerbots.cpp"
 FOLLOW_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/FollowActions.cpp"
 LEAD_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceLeadershipAction.cpp"
+COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
+COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
 
 
 def require(condition: bool, message: str) -> None:
@@ -23,6 +25,8 @@ ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 chat = CHAT_SOURCE.read_text(encoding="utf-8-sig")
 follow = FOLLOW_SOURCE.read_text(encoding="utf-8-sig")
 lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
+combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
+combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
 
 require('command != "gotank"' in chat and 'command != "go tank"' in chat,
         "both documented gotank command spellings must remain accepted")
@@ -52,14 +56,44 @@ require('PossibleTargetsValue(botAI,' in lead and
         '"instance leadership targets", 160.0f, true' in lead and
         "bot->GetMapId() != MogushanPalaceMap" in lead,
         "generic leadership must scan the next mmap-reachable corridor pack")
+require("GroupHasActiveCombat(Player* observer)" in combat_header and
+        "GroupPveCombat::GroupHasActiveCombat(bot)" in lead and
+        "GroupPveCombat::GroupHasActiveCombat(bot)" in follow and
+        "!bot->IsInCombat()" not in lead,
+        "gotank must use live enemies rather than a stale core combat flag")
+require("enemy->IsAlive()" in combat and
+        "member->GetDistance(enemy) <= 180.0f" in combat,
+        "dead or remote stale hostile references must not stop the route")
+require("ResetCompletedPull();" in lead and
+        'GetValue<ObjectGuid>("pull target")' in lead and
+        'GetValue<LastMovement&>("last movement")' in lead and
+        "SetNextCheckDelay(0)" in lead,
+        "the completed pull must release target and movement ownership")
+require("bot->GetDistance(member) > 60.0f" in lead and
+        "getMSTimeDiff(_groupWaitStarted, now) >= 4000" in lead,
+        "regrouping must have a bounded grace period rather than a permanent veto")
+require("GetDungeonEncounterList" in lead and
+        "GetCompletedEncounterMask" in lead and
+        "path.SetPathLengthLimit(4000.0f)" in lead and
+        "walked >= 35.0f" in lead,
+        "generic instances must advance toward the next encounter over mmap steps")
+require("IsInstanceComplete()" in lead and
+        "FinishLeadership();" in lead and
+        "ai->SetInstanceTankLeader(0)" in lead,
+        "a completed instance must restore ordinary master following")
 
 print(json.dumps({
-    "checks": 9,
+    "checks": 15,
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
     "dead_master": "pause-leadership-and-regroup",
     "active_fight_teleport": "blocked",
     "generic_route_scan_yards": 160,
+    "generic_boss_route": "live-mmap-35-yard-steps",
+    "post_combat": "dead-target-and-movement-cleared",
+    "regroup_grace_ms": 4000,
+    "stale_combat_cutoff_yards": 180,
+    "instance_complete": "follow-master-restored",
     "result": "pass",
 }, sort_keys=True))

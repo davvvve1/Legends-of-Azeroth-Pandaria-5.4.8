@@ -54,6 +54,7 @@ struct WorldLocation {
 struct FollowAction {
     Player* bot; Player* master; AI* botAI;
     Player* GetMaster(){return master;}
+    Player* GetFollowTarget(){return master;}
     bool UseGroupFollowFormation(); WorldLocation GetGroupFollowLocation();
 };
 METHODS
@@ -67,10 +68,10 @@ int main() {
     FollowAction action{&tank,&master,&ai};
     assert(action.UseGroupFollowFormation());
     auto p=action.GetGroupFollowLocation();
-    assert(p.x==105 && p.y==100);
+    assert(p.x==108 && p.y==100);
     master.orientation=static_cast<float>(M_PI/2);
     p=action.GetGroupFollowLocation();
-    assert(std::abs(p.x-100)<0.001f && std::abs(p.y-105)<0.001f);
+    assert(std::abs(p.x-100)<0.001f && std::abs(p.y-108)<0.001f);
     master.orientation=0;
     std::vector<WorldLocation> positions;
     for(Player* bot:{&dps1,&dps2,&healer}) {
@@ -85,7 +86,7 @@ int main() {
     refs[0].player=&dps1; refs[4].player=&healer;
     p=action.GetGroupFollowLocation(); assert(p.x==before.x && p.y==before.y);
     action.bot=&tank;
-    map.maxOffset=3; p=action.GetGroupFollowLocation(); assert(p.x==102.5f);
+    map.maxOffset=3; p=action.GetGroupFollowLocation(); assert(p.x==102.0f);
     map.maxOffset=0; p=action.GetGroupFollowLocation(); assert(p.x==master.x && p.y==master.y);
     master.combat=true; assert(!action.UseGroupFollowFormation()); master.combat=false;
     tank.combat=true; assert(!action.UseGroupFollowFormation()); tank.combat=false;

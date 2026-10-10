@@ -3,9 +3,18 @@
 Run `python3 contrib/playerbot_gotank/run_tests.py` from the repository root.
 The check fails if the accepted chat spellings, map-thread transition reset,
 Mogu'shan Palace route restart, dead-master regrouping, combat-safe recovery,
-or the generic 160-yard mmap-gated corridor scan is removed.
+the generic 160-yard mmap-gated trash scan, post-combat cleanup, bounded
+regrouping, or boss-to-boss mmap navigation is removed.
 
 The selected tank leads only while the real master is alive and the party is
 ready.  Repeating `gotank`, `go tank`, or `go-tank` clears leadership and makes
 the bots follow the real master again.  Enabling it later creates a fresh route
 generation rather than resuming stale movement from the previous activation.
+
+After every pack the leader discards the dead pull target and the preceding
+combat movement delay, then resumes the same route. Core combat flags do not
+hold the party indefinitely when no live nearby enemy is actually fighting.
+Outside Mogu'shan Palace, the next incomplete encounter supplies a persistent
+destination and the live mmap is traversed in short steps so intervening trash
+becomes visible and is pulled normally. Finishing all registered encounters,
+or leaving the instance, clears `gotank` and restores real-master following.

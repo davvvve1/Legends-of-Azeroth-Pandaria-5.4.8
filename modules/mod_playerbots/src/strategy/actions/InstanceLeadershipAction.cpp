@@ -6,8 +6,11 @@
 
 #include "Group.h"
 #include "GameObject.h"
+#include "GroupPveCombat.h"
 #include "InstanceScript.h"
+#include "LastMovementValue.h"
 #include "Map.h"
+#include "ObjectMgr.h"
 #include "PathGenerator.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
@@ -203,7 +206,7 @@ void GetMogushanRoute(uint8 stage, RoutePoint const*& points, size_t& count)
 }
 }
 
-bool InstanceLeadershipAction::GroupIsReady() const
+bool InstanceLeadershipAction::GroupIsReady()
 {
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
@@ -211,6 +214,7 @@ bool InstanceLeadershipAction::GroupIsReady() const
     if (!group)
         return false;
 
+    bool together = true;
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
@@ -218,13 +222,243 @@ bool InstanceLeadershipAction::GroupIsReady() const
             !member->IsInWorld() || member->GetMap() != bot->GetMap())
             continue;
 
-        // The tank advances in short, safe stages. This also makes the toggle
-        // useful with a real player in the group: it waits instead of pulling
-        // another pack while somebody is looting or recovering mana.
-        if (bot->GetDistance(member) > 42.0f)
-            return false;
+        if (bot->GetDistance(member) > 60.0f)
+            together = false;
     }
+
+    if (together)
+    {
+        _groupWaitStarted = 0;
+        return true;
+    }
+
+    // A slow real player or a follower caught on geometry must not veto the
+    // complete run forever. Give the formation a short regroup window, then
+    // let the leader continue; follower catch-up remains active in parallel.
+    uint32 const now = getMSTime();
+    if (!_groupWaitStarted)
+    {
+        _groupWaitStarted = now;
+        return false;
+    }
+
+    return getMSTimeDiff(_groupWaitStarted, now) >= 4000;
+}
+
+bool InstanceLeadershipAction::GroupHasActiveCombat() const
+{
+    return GroupPveCombat::GroupHasActiveCombat(bot);
+}
+
+bool InstanceLeadershipAction::IsInstanceComplete() const
+{
+    if (!bot || !bot->GetMap() || !bot->GetMap()->IsDungeon())
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(
+        bot->GetMapId(), bot->GetMap()->GetDifficulty());
+    if (!instance || !encounters || encounters->empty())
+        return false;
+
+    uint32 const completed = instance->GetCompletedEncounterMask();
+    for (DungeonEncounter const* encounter : *encounters)
+        if (encounter && encounter->dbcEntry &&
+            encounter->dbcEntry->encounterIndex < 32 &&
+            !(completed & (1u << encounter->dbcEntry->encounterIndex)))
+            return false;
+
     return true;
+}
+
+bool InstanceLeadershipAction::HasGenericDestination() const
+{
+    if (!bot || bot->GetMapId() == MogushanPalaceMap ||
+        !bot->GetMap() || !bot->GetMap()->IsDungeon())
+        return false;
+
+    DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(
+        bot->GetMapId(), bot->GetMap()->GetDifficulty());
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!encounters || encounters->empty() || !instance)
+        return false;
+
+    uint32 const completed = instance->GetCompletedEncounterMask();
+    for (DungeonEncounter const* encounter : *encounters)
+        if (encounter && encounter->dbcEntry &&
+            encounter->dbcEntry->encounterIndex < 32 &&
+            !(completed & (1u << encounter->dbcEntry->encounterIndex)))
+            return true;
+
+    return false;
+}
+
+bool InstanceLeadershipAction::FindGenericDestination(Position& destination) const
+{
+    DungeonEncounterList const* encounterList = sObjectMgr->GetDungeonEncounterList(
+        bot->GetMapId(), bot->GetMap()->GetDifficulty());
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!encounterList || !instance)
+        return false;
+
+    std::vector<DungeonEncounter const*> encounters(encounterList->begin(),
+        encounterList->end());
+    std::stable_sort(encounters.begin(), encounters.end(),
+        [](DungeonEncounter const* left, DungeonEncounter const* right)
+        {
+            if (!left || !left->dbcEntry)
+                return false;
+            if (!right || !right->dbcEntry)
+                return true;
+            return left->dbcEntry->encounterIndex <
+                right->dbcEntry->encounterIndex;
+        });
+
+    uint32 const completed = instance->GetCompletedEncounterMask();
+    CellObjectGuidsMap const& cells = sObjectMgr->GetMapObjectGuids(
+        bot->GetMapId(), bot->GetMap()->GetSpawnMode());
+
+    for (DungeonEncounter const* encounter : encounters)
+    {
+        if (!encounter || !encounter->dbcEntry ||
+            encounter->dbcEntry->encounterIndex >= 32 ||
+            (completed & (1u << encounter->dbcEntry->encounterIndex)) ||
+            encounter->creditType != ENCOUNTER_CREDIT_KILL_CREATURE)
+            continue;
+
+        CreatureData const* best = nullptr;
+        float bestDistance = std::numeric_limits<float>::max();
+        for (auto const& cell : cells)
+            for (uint32 spawnId : cell.second.creatures)
+            {
+                CreatureData const* data = sObjectMgr->GetCreatureData(spawnId);
+                if (!data || data->id != encounter->creditEntry ||
+                    !(data->phaseMask & bot->GetPhaseMask()))
+                    continue;
+
+                float const dx = data->posX - bot->GetPositionX();
+                float const dy = data->posY - bot->GetPositionY();
+                float const dz = data->posZ - bot->GetPositionZ();
+                float const distance = dx * dx + dy * dy + dz * dz;
+                if (distance < bestDistance)
+                {
+                    best = data;
+                    bestDistance = distance;
+                }
+            }
+
+        if (best)
+        {
+            destination.Relocate(best->posX, best->posY, best->posZ,
+                best->orientation);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool InstanceLeadershipAction::AdvanceGenericRoute()
+{
+    Position destination;
+    if (!FindGenericDestination(destination))
+        return false;
+
+    if (bot->GetExactDist2d(destination.GetPositionX(),
+        destination.GetPositionY()) <= 15.0f)
+    {
+        bot->StopMoving();
+        return true;
+    }
+
+    // Use the live mmap to turn the next incomplete encounter into short
+    // corridor steps. Each step loads the next grid and exposes intervening
+    // trash to SelectNextTarget without requiring per-instance trash routes.
+    PathGenerator path(bot);
+    path.SetPathLengthLimit(4000.0f);
+    if (!path.CalculatePath(destination.GetPositionX(),
+        destination.GetPositionY(), destination.GetPositionZ(), false))
+        return false;
+
+    PathType const pathType = path.GetPathType();
+    if (pathType & (PATHFIND_NOPATH | PATHFIND_SHORTCUT |
+        PATHFIND_NOT_USING_PATH))
+        return false;
+
+    Movement::PointsArray const& points = path.GetPath();
+    if (points.size() < 2)
+        return false;
+
+    G3D::Vector3 waypoint = points.back();
+    float walked = 0.0f;
+    for (size_t i = 1; i < points.size(); ++i)
+    {
+        walked += (points[i] - points[i - 1]).length();
+        waypoint = points[i];
+        if (walked >= 35.0f)
+            break;
+    }
+
+    return MoveTo(bot->GetMapId(), waypoint.x, waypoint.y, waypoint.z,
+        false, false, false, false, MovementPriority::MOVEMENT_NORMAL, true);
+}
+
+void InstanceLeadershipAction::ResetCompletedPull()
+{
+    Value<ObjectGuid>* pullValue = context->GetValue<ObjectGuid>("pull target");
+    ObjectGuid const pullGuid = pullValue->Get();
+    if (!pullGuid)
+        return;
+
+    Unit* pull = botAI->GetUnit(pullGuid);
+    if (pull && pull->IsAlive() && pull->IsInWorld() &&
+        pull->GetMap() == bot->GetMap())
+        return;
+
+    pullValue->Set(ObjectGuid::Empty);
+    Unit* current = context->GetValue<Unit*>("current target")->Get();
+    if (!current || !current->IsAlive() || current->GetGUID() == pullGuid)
+        context->GetValue<Unit*>("current target")->Set(nullptr);
+    context->GetValue<LastMovement&>("last movement")->Get().clear();
+    bot->SetTarget(ObjectGuid::Empty);
+    bot->SetSelection(ObjectGuid::Empty);
+    bot->GetMotionMaster()->Clear(false);
+    bot->StopMoving();
+    _groupWaitStarted = 0;
+
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (group && group->GetTargetIcon(7) == pullGuid)
+        group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
+
+    botAI->SetNextCheckDelay(0);
+}
+
+void InstanceLeadershipAction::FinishLeadership()
+{
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+
+    if (group)
+    {
+        group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
+        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+            if (Player* member = ref->GetSource())
+                if (PlayerbotAI* ai = GET_PLAYERBOT_AI(member))
+                    ai->SetInstanceTankLeader(0);
+    }
+    else
+        botAI->SetInstanceTankLeader(0);
+
+    context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
+    context->GetValue<Unit*>("current target")->Set(nullptr);
+    context->GetValue<LastMovement&>("last movement")->Get().clear();
+    bot->SetTarget(ObjectGuid::Empty);
+    bot->SetSelection(ObjectGuid::Empty);
+    bot->GetMotionMaster()->Clear(false);
+    bot->StopMoving();
 }
 
 Unit* InstanceLeadershipAction::SelectNextTarget() const
@@ -434,6 +668,7 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     context->GetValue<Unit*>("current target")->Set(target);
     context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());
     bot->SetTarget(target->GetGUID());
+    _groupWaitStarted = 0;
 
     float const distance = bot->GetExactDist(target);
     if (distance > 22.0f || !bot->IsWithinLOSInMap(target))
@@ -449,12 +684,19 @@ bool InstanceLeadershipAction::isUseful()
         (!master->IsAlive() || !master->IsInWorld() ||
             master->GetMap() != bot->GetMap());
 
-    return bot && bot->IsAlive() && !bot->IsInCombat() &&
-        bot->GetMap() && bot->GetMap()->IsDungeon() &&
-        botAI->IsInstanceTankLeader() &&
-        !realMasterUnavailable && PlayerBotSpec::IsTank(bot, true) &&
-        GroupIsReady() &&
-        (SelectNextTarget() || HasMogushanPalaceDestination());
+    if (!bot || !bot->IsAlive() || !bot->GetMap() ||
+        !bot->GetMap()->IsDungeon() || !botAI->IsInstanceTankLeader() ||
+        !PlayerBotSpec::IsTank(bot, true) || GroupHasActiveCombat())
+        return false;
+
+    ResetCompletedPull();
+
+    if (IsInstanceComplete())
+        return true;
+
+    return !realMasterUnavailable &&
+        (SelectNextTarget() || HasMogushanPalaceDestination() ||
+            HasGenericDestination());
 }
 
 bool InstanceLeadershipAction::Execute(Event /*event*/)
@@ -462,11 +704,26 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
     if (!isUseful())
         return false;
 
+    if (IsInstanceComplete())
+    {
+        FinishLeadership();
+        return true;
+    }
+
+    ResetCompletedPull();
+
     if (Unit* target = SelectNextTarget())
+    {
+        if (!GroupIsReady())
+            return true;
         return EngageTarget(target);
+    }
+
+    // Regrouping gates the next pull, never travel through an empty corridor.
+    _groupWaitStarted = 0;
 
     if (bot->GetMapId() == MogushanPalaceMap)
         return AdvanceMogushanPalaceRoute();
 
-    return false;
+    return AdvanceGenericRoute();
 }

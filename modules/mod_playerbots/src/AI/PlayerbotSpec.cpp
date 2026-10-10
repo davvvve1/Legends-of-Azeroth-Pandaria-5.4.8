@@ -359,6 +359,53 @@ bool GroupPveCombat::IsActivelyAttacking(Player* attacker, Unit* target)
         target->GetThreatManager().getThreat(attacker) > 0.0f;
 }
 
+bool GroupPveCombat::GroupHasActiveCombat(Player* observer)
+{
+    Group* group = GetActiveGroup(observer);
+    if (!observer || !group || !observer->IsInWorld())
+        return false;
+
+    auto activeEnemy = [](Player* member, Unit* enemy)
+    {
+        return enemy && enemy->IsAlive() && enemy->IsInWorld() &&
+            enemy->GetMap() == member->GetMap() &&
+            member->IsValidAttackTarget(enemy) &&
+            member->GetDistance(enemy) <= 180.0f;
+    };
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || !member->IsAlive() || !member->IsInWorld() ||
+            member->GetMap() != observer->GetMap())
+            continue;
+
+        if (activeEnemy(member, member->GetVictim()))
+            return true;
+
+        for (Unit* attacker : member->getAttackers())
+            if (activeEnemy(member, attacker))
+                return true;
+
+        for (uint8 type = CURRENT_MELEE_SPELL; type < CURRENT_MAX_SPELL; ++type)
+            if (Spell* spell = member->GetCurrentSpell(CurrentSpellTypes(type)))
+                if (Unit* target = spell->m_targets.GetUnitTarget())
+                    if (activeEnemy(member, target))
+                        return true;
+
+        if (Guardian* guardian = member->GetGuardianPet())
+        {
+            if (activeEnemy(member, guardian->GetVictim()))
+                return true;
+            for (Unit* attacker : guardian->getAttackers())
+                if (activeEnemy(member, attacker))
+                    return true;
+        }
+    }
+
+    return false;
+}
+
 bool GroupPveCombat::IsEngaged(Player* player, Unit* target)
 {
     Group* group = GetActiveGroup(player);

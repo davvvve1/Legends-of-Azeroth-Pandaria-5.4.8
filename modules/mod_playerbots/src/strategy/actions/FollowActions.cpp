@@ -6,6 +6,7 @@
 
 #include "Event.h"
 #include "Formations.h"
+#include "GroupPveCombat.h"
 #include "GroupFollowFormation.h"
 #include "PlayerbotSpec.h"
 #include "LastMovementValue.h"
@@ -83,7 +84,8 @@ bool FollowAction::Execute(Event event)
     {
         Player* leader = GetFollowTarget();
         if (!leader || leader == bot || !leader->IsInWorld() ||
-            leader->GetMap() != bot->GetMap() || bot->IsInCombat() ||
+            leader->GetMap() != bot->GetMap() ||
+            GroupPveCombat::GroupHasActiveCombat(bot) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
 
@@ -183,7 +185,8 @@ bool FollowAction::isUseful()
     {
         Player* leader = GetFollowTarget();
         if (!leader || leader == bot || !leader->IsInWorld() ||
-            leader->GetMap() != bot->GetMap() || bot->IsInCombat() ||
+            leader->GetMap() != bot->GetMap() ||
+            GroupPveCombat::GroupHasActiveCombat(bot) ||
             leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;

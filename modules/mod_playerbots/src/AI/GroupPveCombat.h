@@ -6,6 +6,7 @@ class GroupPveCombat
 {
 public:
     static bool IsActivelyAttacking(Player* attacker, Unit* target);
+    static bool GroupHasActiveCombat(Player* observer);
     static bool IsEngaged(Player* player, Unit* target);
     static bool IsCollected(Player* player, Unit* target);
     static Unit* OpeningTarget(Player* player);
