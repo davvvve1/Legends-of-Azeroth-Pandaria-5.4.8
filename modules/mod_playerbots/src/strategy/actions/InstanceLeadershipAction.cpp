@@ -380,6 +380,7 @@ void InstanceLeadershipAction::ResetCompletedPull()
     pullValue->Set(ObjectGuid::Empty);
     _forwardSearchStarted = getMSTime();
     _approachTargetGuid = 0;
+    _pullMarkedAt = 0;
     _approachProgressAt = 0;
     _approachBestDistance = 0.0f;
     Unit* current = context->GetValue<Unit*>("current target")->Get();
@@ -640,9 +641,12 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     uint32 const now = getMSTime();
     uint32 const targetGuid = target->GetGUID().GetCounter();
     float const distance = bot->GetExactDist(target);
-    if (_approachTargetGuid != targetGuid)
+    bool const newPullLock = context->GetValue<ObjectGuid>("pull target")
+        ->Get() != target->GetGUID();
+    if (_approachTargetGuid != targetGuid || newPullLock)
     {
         _approachTargetGuid = targetGuid;
+        _pullMarkedAt = now;
         _approachProgressAt = now;
         _approachBestDistance = distance;
     }
@@ -669,11 +673,35 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());
     bot->SetTarget(target->GetGUID());
 
+    // Publish the kill order for one second, then make the tank itself open
+    // that exact locked target. Previously a distant skull only started an
+    // out-of-combat approach and Attack() was deferred until 22 yards; in
+    // live groups this looked like the tank was waiting for somebody else to
+    // pull. Starting combat after the marker preview gives the combat engine
+    // ownership of the chase while followers remain gated on the tank.
+    uint32 const markedFor = _pullMarkedAt
+        ? getMSTimeDiff(_pullMarkedAt, now) : 1000;
     bool issued = false;
-    if (distance > 22.0f || !bot->IsWithinLOSInMap(target))
+    if (!bot->IsWithinLOSInMap(target))
         issued = MoveTo(target, 18.0f, MovementPriority::MOVEMENT_FORCED);
+    else if (markedFor < 1000)
+    {
+        if (distance > 22.0f)
+            issued = MoveTo(target, 18.0f,
+                MovementPriority::MOVEMENT_FORCED);
+        botAI->SetNextCheckDelay(0);
+        issued = true;
+    }
     else
+    {
         issued = Attack(target);
+        if (issued)
+            TC_LOG_INFO("server",
+                "gotank opening attack leader=%s target=%s entry=%u target-guid=%u marked-ms=%u distance=%.1f map=%u instance=%u",
+                bot->GetName().c_str(), target->GetName().c_str(),
+                target->GetEntry(), targetGuid, markedFor, distance,
+                bot->GetMapId(), bot->GetInstanceId());
+    }
 
     // Attack() puts the bot in combat and assigns its victim before the first
     // swing/threat event reaches the creature. Give that opening attack more
@@ -709,6 +737,7 @@ void InstanceLeadershipAction::AbandonUnreachableTarget(Unit* target)
     }
     _unreachableTargets[guid.GetCounter()] = now;
     _approachTargetGuid = 0;
+    _pullMarkedAt = 0;
     _approachProgressAt = 0;
     _approachBestDistance = 0.0f;
     _forwardSearchStarted = now;

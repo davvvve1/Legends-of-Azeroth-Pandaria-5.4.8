@@ -38,6 +38,7 @@ private:
     uint32 _leadershipGeneration = 0;
     uint32 _forwardSearchStarted = 0;
     uint32 _approachTargetGuid = 0;
+    uint32 _pullMarkedAt = 0;
     uint32 _approachProgressAt = 0;
     float _approachBestDistance = 0.0f;
     // Keep every recently failed candidate suppressed independently. A

@@ -254,6 +254,12 @@ require("if (!splineMoving)" in ai and
         'GetValue<LastMovement&>("last movement")' in ai and
         "bot->StopMoving();" in ai,
         "a finalized spline must release stale movement before the next route step")
+require("_pullMarkedAt = now" in lead and
+        "markedFor < 1000" in lead and
+        "issued = Attack(target);" in lead and
+        '"gotank opening attack leader=' in lead and
+        "botAI->SetNextCheckDelay(0)" in lead,
+        "the tank must open its locked skull target one second after marking it")
 require("_instanceTankWaitingForHealerMana" in header and
         "lowestHealerMana <= 30.0f" in controller and
         "lowestHealerMana < 80.0f" in controller and
@@ -269,7 +275,7 @@ require("_instanceTankWaitingForHealerMana" in header and
         "gotank must pause between pulls for low healer mana and preserve the healer's recovery tick")
 
 print(json.dumps({
-    "checks": 46,
+    "checks": 47,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -291,6 +297,7 @@ print(json.dumps({
     "persistent_controller": "direct-before-idle-actions",
     "route_ownership": "follow-engine-blocked-between-waypoints",
     "tank_kill_order": "skull-follows-selected-target",
+    "tank_open_after_mark_ms": 1000,
     "target_marker_party_category": "instance",
     "pull_approach": "locked-target-no-nearest-mob-oscillation",
     "pull_opening_grace_ms": 7000,
