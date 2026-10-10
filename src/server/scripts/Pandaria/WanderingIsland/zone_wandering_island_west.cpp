@@ -76,9 +76,13 @@ struct boss_ruk_ruk : public ScriptedAI
         if (!player || player->GetQuestStatus(DoNoEvil::QUEST_DO_NO_EVIL) != QUEST_STATUS_INCOMPLETE)
             return;
 
-        if (Creature* ji = me->SummonCreature(DoNoEvil::NPC_JI_FIREPAW,
+        // Ji must be owned by the player.  A creature cannot attack its own
+        // summoner, so summoning him through Ruk-Ruk leaves him standing idle
+        // and also prevents his damage from being attributed to the player.
+        if (Creature* ji = player->SummonCreature(DoNoEvil::NPC_JI_FIREPAW,
             1170.43f, 4414.15f, 210.92f, 0.75f, TEMPSUMMON_MANUAL_DESPAWN))
         {
+            summons.Summon(ji);
             jiGuid = ji->GetGUID();
             ji->SetUInt32Value(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
             ji->SetReactState(REACT_AGGRESSIVE);
