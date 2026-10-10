@@ -345,16 +345,130 @@ class npc_ji_forest_escort : public CreatureScript
         }
 };
 
+namespace NoneLeftBehind
+{
+    enum : uint32
+    {
+        QUEST_NONE_LEFT_BEHIND = 29794,
+        NPC_INJURED_SAILOR     = 55999,
+        NPC_DELORA_LIONHEART   = 55944,
+        SPELL_CARRY_SAILOR     = 129340,
+    };
+}
+
+// The carry aura turns the player into a vehicle. The old SmartAI attempted
+// to board the sailor through an immediate cross-cast, which could leave the
+// player with the carry aura but no passenger. Board directly and retain a
+// proximity fallback in addition to the retail area trigger.
+struct npc_injured_sailor_none_left_behind : public ScriptedAI
+{
+    npc_injured_sailor_none_left_behind(Creature* creature) : ScriptedAI(creature) { }
+
+    ObjectGuid carrierGuid;
+    uint32 checkTimer;
+    bool rescued;
+
+    void Reset() override
+    {
+        carrierGuid.Clear();
+        checkTimer = 500;
+        rescued = false;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+    }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        Player* player = clicker ? clicker->ToPlayer() : nullptr;
+        if (!player || !carrierGuid.IsEmpty() ||
+            player->GetQuestStatus(NoneLeftBehind::QUEST_NONE_LEFT_BEHIND) != QUEST_STATUS_INCOMPLETE)
+        {
+            result = false;
+            return;
+        }
+
+        // npc_spellclick_spells normally applies this before OnSpellClick.
+        // Apply it here as a safeguard for characters with stale client state.
+        if (!player->HasAura(NoneLeftBehind::SPELL_CARRY_SAILOR))
+            player->CastSpell(player, NoneLeftBehind::SPELL_CARRY_SAILOR, true);
+
+        Vehicle* vehicle = player->GetVehicleKit();
+        if (!vehicle || vehicle->GetPassenger(0))
+        {
+            result = false;
+            return;
+        }
+
+        me->EnterVehicle(player, 0, true);
+        if (me->GetVehicleBase() != player)
+        {
+            result = false;
+            return;
+        }
+
+        carrierGuid = player->GetGUID();
+        me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        result = true;
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action != 1 || rescued)
+            return;
+
+        if (Player* player = ObjectAccessor::GetPlayer(*me, carrierGuid))
+            CompleteRescue(player);
+    }
+
+    void CompleteRescue(Player* player)
+    {
+        if (rescued || !player)
+            return;
+
+        rescued = true;
+        me->ExitVehicle();
+        player->RemoveAurasDueToSpell(NoneLeftBehind::SPELL_CARRY_SAILOR);
+        player->KilledMonsterCredit(NoneLeftBehind::NPC_INJURED_SAILOR, me->GetGUID());
+
+        me->SetStandState(UNIT_STAND_STATE_STAND);
+        Talk(0, player);
+        me->DespawnOrUnsummon(5000);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (carrierGuid.IsEmpty() || rescued)
+            return;
+
+        if (checkTimer > diff)
+        {
+            checkTimer -= diff;
+            return;
+        }
+
+        checkTimer = 500;
+        Player* player = ObjectAccessor::GetPlayer(*me, carrierGuid);
+        if (!player || me->GetVehicleBase() != player)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
+        if (player->FindNearestCreature(NoneLeftBehind::NPC_DELORA_LIONHEART, 15.0f, true))
+            CompleteRescue(player);
+    }
+};
+
 struct AreaTrigger_at_rescue_soldiers final : public AreaTriggerScript
 {
     AreaTrigger_at_rescue_soldiers() : AreaTriggerScript("AreaTrigger_at_rescue_soldiers") { }
 
     bool OnTrigger(Player *player, AreaTriggerEntry const* /*trigger*/) override
     {
-        if (player->GetQuestStatus(29794) != QUEST_STATUS_INCOMPLETE)
+        if (player->GetQuestStatus(NoneLeftBehind::QUEST_NONE_LEFT_BEHIND) != QUEST_STATUS_INCOMPLETE)
             return true;
 
-        if (!player->HasAura(129340))
+        if (!player->HasAura(NoneLeftBehind::SPELL_CARRY_SAILOR))
             return true;
 
         auto const vehicleKit = player->GetVehicleKit();
@@ -365,13 +479,8 @@ struct AreaTrigger_at_rescue_soldiers final : public AreaTriggerScript
         if (!soldierUnit)
             return true;
 
-        if (auto const solider = soldierUnit->ToCreature())
-        {
-            solider->AI()->DoAction(1);
-
-            player->RemoveAurasDueToSpell(129340);
-            player->KilledMonsterCredit(55999);
-        }
+        if (Creature* sailor = soldierUnit->ToCreature())
+            sailor->AI()->DoAction(1);
 
         return true;
     }
@@ -1062,6 +1171,7 @@ void AddSC_wandering_island_south()
     new npc_mandori_escort();
     new npc_korga();
     new npc_ji_forest_escort();
+    RegisterCreatureAI(npc_injured_sailor_none_left_behind);
     new AreaTrigger_at_rescue_soldiers();
     new npc_jojo_ironbrow();
     new boss_vordraka();
