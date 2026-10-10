@@ -52,6 +52,14 @@ require("gotankGroupInCombat" in ai and
         "!gotankGroupInCombat" in ai and
         "recoverGotankDeadMaster ? 60.0f : 140.0f" in ai,
         "dead-master recovery must be combat-safe and instance-scoped")
+require("gotankOwnsFormationMovement" in ai and
+        "(!gotankOwnsFormationMovement || recoverGotankDeadMaster)" in ai,
+        "active leadership must not be bounded by distance to a living master")
+require("_currentState == BOT_STATE_COMBAT" in ai and
+        "!gotankGroupHasActiveCombat" in ai and
+        "ChangeEngine(BOT_STATE_NON_COMBAT)" in ai and
+        "CombatStopWithPets(true)" in ai,
+        "gotank must leave stale combat automatically after a completed pull")
 require('PossibleTargetsValue(botAI,' in lead and
         '"instance leadership targets", 160.0f, true' in lead and
         "bot->GetMapId() != MogushanPalaceMap" in lead,
@@ -83,15 +91,17 @@ require("IsInstanceComplete()" in lead and
         "a completed instance must restore ordinary master following")
 
 print(json.dumps({
-    "checks": 15,
+    "checks": 17,
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
     "dead_master": "pause-leadership-and-regroup",
     "active_fight_teleport": "blocked",
+    "living_master_distance_limit": "disabled-during-leadership",
     "generic_route_scan_yards": 160,
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
+    "post_combat_engine": "automatic-non-combat-resume",
     "regroup_grace_ms": 4000,
     "stale_combat_cutoff_yards": 180,
     "instance_complete": "follow-master-restored",

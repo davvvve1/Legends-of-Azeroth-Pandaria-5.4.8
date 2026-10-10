@@ -532,6 +532,49 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         SetNextCheckDelay(0);
     }
 
+    // The core combat flag and combat engine can outlive the final hostile in
+    // a pull. That normally resolves through DropTargetAction, but a stale
+    // pet victim, spell target, or movement generator can keep the selected
+    // leader in the combat engine indefinitely. Re-enter non-combat as soon
+    // as the whole party has no live hostile interaction so "lead instance"
+    // is evaluated again without requiring another gotank toggle.
+    bool const gotankGroupHasActiveCombat =
+        IsInstanceTankLeadershipActive() &&
+        GroupPveCombat::GroupHasActiveCombat(bot);
+    Unit* gotankTrackedTarget = _aiObjectContext ?
+        _aiObjectContext->GetValue<Unit*>("current target")->Get() : nullptr;
+    if (!gotankTrackedTarget && _aiObjectContext)
+        gotankTrackedTarget = GetUnit(_aiObjectContext
+            ->GetValue<ObjectGuid>("pull target")->Get());
+    bool const gotankHasLiveTrackedTarget = gotankTrackedTarget &&
+        gotankTrackedTarget->IsAlive() && gotankTrackedTarget->IsInWorld() &&
+        gotankTrackedTarget->GetMap() == bot->GetMap();
+    if (IsInstanceTankLeadershipActive() &&
+        _currentState == BOT_STATE_COMBAT &&
+        !gotankGroupHasActiveCombat && !gotankHasLiveTrackedTarget)
+    {
+        bot->CombatStopWithPets(true);
+        bot->AttackStop();
+        if (Pet* pet = bot->GetPet())
+            pet->AttackStop();
+
+        if (_aiObjectContext)
+        {
+            _aiObjectContext->GetValue<ObjectGuid>("pull target")
+                ->Set(ObjectGuid::Empty);
+            _aiObjectContext->GetValue<Unit*>("current target")
+                ->Set(nullptr);
+            _aiObjectContext->GetValue<LastMovement&>("last movement")
+                ->Get().clear();
+        }
+        bot->SetTarget(ObjectGuid::Empty);
+        bot->SetSelection(ObjectGuid::Empty);
+        bot->GetMotionMaster()->Clear(false);
+        bot->StopMoving();
+        ChangeEngine(BOT_STATE_NON_COMBAT);
+        SetNextCheckDelay(0);
+    }
+
     // A banner placed during emergency takeover must stop taunting when the
     // marked main tank revives or the diamond is moved to another live tank.
     if (bot->HasAura(114192) &&
@@ -870,12 +913,15 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     Player* distanceRecoveryMaster = GetMaster();
     // Encounter positioning (especially C'Thun's separate stomach floor)
     // must not be undone by generic catch-up teleports to the raid leader.
-    bool const gotankGroupInCombat = IsInstanceTankLeadershipActive() &&
-        GroupPveCombat::GroupHasActiveCombat(bot);
+    bool const gotankGroupInCombat = gotankGroupHasActiveCombat;
     bool const recoverGotankDeadMaster = IsInstanceTankLeadershipActive() &&
         bot->GetMap() && bot->GetMap()->IsDungeon() &&
         distanceRecoveryMaster && !distanceRecoveryMaster->IsAlive() &&
         !gotankGroupInCombat;
+    bool const gotankOwnsFormationMovement =
+        IsInstanceTankLeadershipActive() && bot->GetMap() &&
+        bot->GetMap()->IsDungeon() && distanceRecoveryMaster &&
+        distanceRecoveryMaster->IsAlive();
     bool tooFarFromMaster = !AhnQirajStrategy::IsActive(bot) && distanceRecoveryMaster &&
         !GET_PLAYERBOT_AI(distanceRecoveryMaster) &&
         distanceRecoveryMaster->IsInWorld() &&
@@ -888,6 +934,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         !distanceRecoveryMaster->GetVehicle() &&
         !bot->GetTransport() &&
         !distanceRecoveryMaster->GetTransport() &&
+        (!gotankOwnsFormationMovement || recoverGotankDeadMaster) &&
         bot->GetDistance(distanceRecoveryMaster) >
             (recoverGotankDeadMaster ? 60.0f : 140.0f);
 
