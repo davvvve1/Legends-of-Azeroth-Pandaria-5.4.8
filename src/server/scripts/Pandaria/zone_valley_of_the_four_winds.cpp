@@ -3652,6 +3652,124 @@ public:
     }
 };
 
+namespace LiLisDayOff
+{
+    constexpr uint32 QuestId = 29950;
+    constexpr uint32 Companion = 56549;
+    constexpr uint32 MapId = 870;
+
+    struct ExplorationLocation
+    {
+        uint32 ObjectiveId;
+        uint32 CreditEntry;
+        uint32 AreaId;
+        float X;
+        float Y;
+        float Radius;
+    };
+
+    std::array<ExplorationLocation, 3> const Locations =
+    {{
+        { 258091, 56546, 5986, -485.0f,  232.0f, 55.0f }, // Silken Fields
+        { 258092, 56547, 5973,  198.0f,  279.0f, 55.0f }, // New Cifera
+        { 258093, 56548, 6021,  -18.0f, -301.0f, 55.0f }  // Huangtze Falls
+    }};
+
+    void CreditExploration(Player* player, Creature* liLi)
+    {
+        if (!player || !liLi || !player->IsInWorld() || player->GetMapId() != MapId ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE ||
+            !liLi->IsAlive() || !liLi->IsWithinDistInMap(player, 40.0f))
+            return;
+
+        for (ExplorationLocation const& location : Locations)
+        {
+            if (player->GetQuestObjectiveCounter(location.ObjectiveId) ||
+                (player->GetAreaId() != location.AreaId &&
+                 player->GetExactDist2d(location.X, location.Y) > location.Radius))
+                continue;
+
+            player->KilledMonsterCredit(location.CreditEntry);
+        }
+    }
+}
+
+class npc_li_li_day_off_companion : public CreatureScript
+{
+public:
+    npc_li_li_day_off_companion() : CreatureScript("npc_li_li_day_off_companion") { }
+
+    struct npc_li_li_day_off_companionAI : public ScriptedAI
+    {
+        npc_li_li_day_off_companionAI(Creature* creature) : ScriptedAI(creature) { }
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            Player* player = summoner ? summoner->ToPlayer() : nullptr;
+            if (!player || player->GetQuestStatus(LiLisDayOff::QuestId) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            playerGuid = player->GetGUID();
+
+            // Reusing the Wishing-Stone replaces a lost/stuck companion rather
+            // than leaving several private copies following the player.
+            std::list<TempSummon*> companions;
+            player->GetSummons(companions, LiLisDayOff::Companion);
+            for (TempSummon* companion : companions)
+                if (companion != me)
+                    companion->DespawnOrUnsummon();
+
+            me->SetReactState(REACT_PASSIVE);
+            me->SetFlag(UNIT_FIELD_FLAGS,
+                UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
+            me->GetMotionMaster()->MoveFollow(player, 2.5f, M_PI);
+
+            // Also handles using the stone while already standing inside an
+            // exploration area, which otherwise misses the area transition.
+            LiLisDayOff::CreditExploration(player, me);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (checkTimer > diff)
+            {
+                checkTimer -= diff;
+                return;
+            }
+            checkTimer = 500;
+
+            Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+            if (!player || player->GetMapId() != LiLisDayOff::MapId ||
+                player->GetQuestStatus(LiLisDayOff::QuestId) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            if (!me->IsWithinDistInMap(player, 45.0f))
+            {
+                me->NearTeleportTo(player->GetPositionX(), player->GetPositionY(),
+                    player->GetPositionZ(), player->GetOrientation());
+                me->GetMotionMaster()->MoveFollow(player, 2.5f, M_PI);
+            }
+
+            LiLisDayOff::CreditExploration(player, me);
+        }
+
+    private:
+        ObjectGuid playerGuid;
+        uint32 checkTimer = 500;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_li_li_day_off_companionAI(creature);
+    }
+};
+
 void AddSC_valley_of_the_four_winds()
 {
     // Rare Mobs
@@ -3716,4 +3834,5 @@ void AddSC_valley_of_the_four_winds()
     new player_stoneplow_thirsts_recovery();
     new npc_chen_and_li_li_escort();
     new player_chen_and_li_li_recovery();
+    new npc_li_li_day_off_companion();
 }
