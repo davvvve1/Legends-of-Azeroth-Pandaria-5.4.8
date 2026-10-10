@@ -111,9 +111,41 @@ require("NpcMingTheCunning = 61444" in mechanics and
         "MovementPriority::MOVEMENT_HAZARD" in mechanics and
         "FleePosition(plan.anchor->GetPosition()" in mechanics,
         "every role must leave Ming's Magnetic Field and moving Dervish")
+require(all(token in mechanics for token in (
+            "MapTerraceOfEndlessSpring = 996",
+            "MapMogushanVaults = 1008",
+            "MapHeartOfFear = 1009")),
+        "Tier-14 raid maps are not represented in the shared mechanics layer")
+require(all(token in priority for token in (
+            "60958", "60913", "60776", "60793", "60398",
+            "62531", "65498", "63053", "62711", "62691",
+            "60886", "62969", "62977", "62995", "61034")),
+        "Tier-14 encounter-critical target catalogue is incomplete")
+require(all(token in mechanics for token in (
+            "116417, 10.0f", "123180, 10.0f", "123017, 4.0f",
+            "122835, 30.0f", "122775, 10.0f")),
+        "Tier-14 spread, stack, and kite mechanics are incomplete")
+require("rule.map == bot->GetMapId()" in mechanics and
+        all(token in mechanics for token in (
+            "131788, 2", "123474, 2", "123707, 4",
+            "122752, 2", "123121, 8")),
+        "Tier-14 tank swaps must be map-scoped and complete")
+require("member->IsCharmed()" in mechanics and
+        all(token in mechanics for token in (
+            "117708", "122740", "123713", "145071")),
+        "breakable raid mind-control mechanics are incomplete")
+require(all(token in priority for token in (
+            "56511", "56792", "56754", "56713", "56895",
+            "61623", "61484", "59893", "58664", "58791")),
+        "MoP dungeon encounter-critical target catalogue is incomplete")
+require("constexpr ObjectiveRule EncounterObjectives[]" in mechanics and
+        "IsEncounterObjective(bot->GetMapId(), unit->GetEntry())" in mechanics and
+        "FindNearestCreature(rule.entry, 150.0f, true)" in mechanics and
+        "!trialPriority && !encounterObjective" in mechanics,
+        "victimless phase objectives must be discoverable without becoming free pulls")
 
 print(json.dumps({
-    "checks": 20,
+    "checks": 27,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
@@ -124,5 +156,13 @@ print(json.dumps({
     "trial_boss_order": ["Kuai/Mu'Shiba", "Haiyan", "Ming"],
     "ming_avoidance": ["Magnetic Field", "Whirling Dervish"],
     "generic_fallback": "engaged-healing-add",
+    "tier14": {
+        "priority_targets": "Mogu'shan Vaults, Heart of Fear, Terrace",
+        "role_mechanics": ["spread", "stack", "kite", "tank-swap", "break-control"],
+    },
+    "mop_dungeons": {
+        "priority_targets": "phase adds and attackable encounter objectives",
+        "objective_gate": "map + combat + attackability",
+    },
     "result": "pass",
 }, sort_keys=True))

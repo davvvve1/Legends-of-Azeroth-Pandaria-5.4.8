@@ -21,6 +21,15 @@
 namespace
 {
 constexpr uint32 MapMogushanPalace = 994;
+constexpr uint32 MapTerraceOfEndlessSpring = 996;
+constexpr uint32 MapMogushanVaults = 1008;
+constexpr uint32 MapHeartOfFear = 1009;
+constexpr uint32 MapShadoPanMonastery = 959;
+constexpr uint32 MapTempleOfTheJadeSerpent = 960;
+constexpr uint32 MapGateOfTheSettingSun = 962;
+constexpr uint32 MapScarletMonastery = 1004;
+constexpr uint32 MapScholomance = 1007;
+constexpr uint32 MapSiegeOfNiuzaoTemple = 1011;
 constexpr uint32 MapThroneOfThunder = 1098;
 constexpr uint32 MapSiegeOfOrgrimmar = 1136;
 
@@ -47,8 +56,15 @@ struct AuraRule
 
 struct SwapRule
 {
+    uint32 map;
     uint32 spell;
     uint8 stacks;
+};
+
+struct ObjectiveRule
+{
+    uint32 map;
+    uint32 entry;
 };
 
 // Carrier mechanics verified against the local 5.4.8 encounter scripts and
@@ -56,6 +72,12 @@ struct SwapRule
 // spread handling to older instances without requiring a row for every DoT.
 constexpr AuraRule SpreadAuras[] =
 {
+    // Tier 14
+    { MapMogushanVaults, 116417, 10.0f }, // Feng: Arcane Resonance
+    { MapMogushanVaults, 116784, 10.0f }, // Feng: Wildfire Spark
+    { MapHeartOfFear, 123180, 10.0f }, // Ta'yak: Wind Step
+    { MapHeartOfFear, 124862, 10.0f }, // Shek'zeer: Visions of Demise
+    { MapTerraceOfEndlessSpring, 122775, 10.0f }, // Tsulong: Nightmares
     { MapThroneOfThunder, 137194, 14.0f }, // Focused Lightning target
     { MapThroneOfThunder, 136992, 10.0f }, // Biting Cold
     { MapThroneOfThunder, 139822, 12.0f }, // Cinders
@@ -71,6 +93,9 @@ constexpr AuraRule SpreadAuras[] =
 
 constexpr AuraRule KiteAuras[] =
 {
+    { MapMogushanVaults, 118303, 24.0f }, // Spirit Kings: Undying Shadow fixate
+    { MapHeartOfFear, 122835, 30.0f }, // Garalon: Pheromones
+    { MapHeartOfFear, 125390, 24.0f }, // Shek'zeer: Windblade fixate
     { MapThroneOfThunder, 139857, 28.0f }, // Torrent of Ice
     { MapThroneOfThunder, 140946, 25.0f }, // Dire Fixation
     { MapSiegeOfOrgrimmar, 143445, 32.0f }, // Thok fixate
@@ -82,6 +107,7 @@ constexpr AuraRule KiteAuras[] =
 
 constexpr AuraRule StackAuras[] =
 {
+    { MapHeartOfFear, 123017, 4.0f }, // Ta'yak: Unseen Strike marker
     { MapThroneOfThunder, 136922, 4.0f }, // Frostbite
     { MapThroneOfThunder, 135695, 4.0f }, // Static Shock
     { MapThroneOfThunder, 136295, 4.0f }, // Overcharged
@@ -91,20 +117,31 @@ constexpr AuraRule StackAuras[] =
 
 constexpr SwapRule TankSwapAuras[] =
 {
-    { 138349, 2 }, // Static Wound
-    { 136767, 2 }, // Triple Puncture
-    { 139840, 2 }, // Rot Armor
-    { 136050, 3 }, // Malformed Blood
-    { 138569, 3 }, // Explosive Slam
-    { 134691, 3 }, // Impale
-    { 143436, 2 }, // Corrosive Blast
-    { 144358, 1 }, // Wounded Pride
-    { 144467, 3 }, // Ignite Armor
-    { 144215, 5 }, // Froststorm Strike
-    { 143494, 3 }, // Sundering Blow
-    { 143385, 3 }, // Electrostatic Charge
-    { 143339, 3 }, // Injection
-    { 145183, 3 }  // Gripping Despair
+    // Tier 14. These are the tank-facing debuffs used by the local 5.4.8
+    // scripts; normal and heroic share the same aura ids.
+    { MapMogushanVaults, 131788, 2 }, // Feng: Lightning Lash
+    { MapMogushanVaults, 131790, 2 }, // Feng: Arcane Shock
+    { MapMogushanVaults, 131792, 2 }, // Feng: Shadowburn
+    { MapHeartOfFear, 123474, 2 }, // Ta'yak: Overwhelming Assault
+    { MapHeartOfFear, 123707, 4 }, // Shek'zeer: Eyes of the Empress
+    { MapTerraceOfEndlessSpring, 122752, 2 }, // Tsulong: Shadow Breath
+    { MapTerraceOfEndlessSpring, 123121, 8 }, // Lei Shi: Spray
+    // Throne of Thunder
+    { MapThroneOfThunder, 138349, 2 }, // Static Wound
+    { MapThroneOfThunder, 136767, 2 }, // Triple Puncture
+    { MapThroneOfThunder, 139840, 2 }, // Rot Armor
+    { MapThroneOfThunder, 136050, 3 }, // Malformed Blood
+    { MapThroneOfThunder, 138569, 3 }, // Explosive Slam
+    { MapThroneOfThunder, 134691, 3 }, // Impale
+    // Siege of Orgrimmar
+    { MapSiegeOfOrgrimmar, 143436, 2 }, // Corrosive Blast
+    { MapSiegeOfOrgrimmar, 144358, 1 }, // Wounded Pride
+    { MapSiegeOfOrgrimmar, 144467, 3 }, // Ignite Armor
+    { MapSiegeOfOrgrimmar, 144215, 5 }, // Froststorm Strike
+    { MapSiegeOfOrgrimmar, 143494, 3 }, // Sundering Blow
+    { MapSiegeOfOrgrimmar, 143385, 3 }, // Electrostatic Charge
+    { MapSiegeOfOrgrimmar, 143339, 3 }, // Injection
+    { MapSiegeOfOrgrimmar, 145183, 3 }  // Gripping Despair
 };
 
 constexpr uint32 StopAttackAuras[] =
@@ -116,6 +153,10 @@ constexpr uint32 StopAttackAuras[] =
 
 constexpr uint32 DefensiveCasts[] =
 {
+    122713, // Zor'lok: Force and Verve
+    122949, // Ta'yak: Unseen Strike
+    122774, // Garalon: Crush
+    124845, // Shek'zeer: Calamity
     136894, // Sandstorm
     134380, // Quills
     138763, // Interrupting Jolt
@@ -149,6 +190,54 @@ constexpr uint32 PriorityAdds[] =
     // identical across those difficulties.
     NpcGlintrokIronhide, NpcGlintrokHexxer, NpcGlintrokSkulker,
     NpcGlintrokOracle,
+    // MoP dungeons
+    56511, // Jade Temple: Corrupt Living Water
+    58856, 58865, 59555, // Jade Temple: Haunting Sha variants
+    56762, // Jade Temple: Yu'lon manifestation
+    56792, // Jade Temple: Figment of Doubt
+    56754, // Shado-Pan: Azure Serpent
+    56713, // Shado-Pan: Snowdrift clone
+    66652, // Shado-Pan: Lesser Volatile Energy
+    56895, // Setting Sun: Raigonn Weak Spot
+    59794, // Setting Sun: Krik'thik Disruptor
+    60447, // Setting Sun: Krik'thik Saboteur
+    61623, // Niuzao: Sappling
+    61484, // Niuzao: Amber Sapper
+    61670, // Niuzao: Sik'thik Demolisher
+    59893, // Scarlet Monastery: Empowering Spirit
+    59930, // Scarlet Monastery: Empowered Zombie
+    58664, // Scholomance: Chillheart's Phylactery
+    58791, // Scholomance: Lilian's Soul
+    59099, // Scholomance: Fresh Test Subject
+    // Mogu'shan Vaults. Encounter objects which must die before damage can
+    // return to the boss are ordered before ordinary spawned damage adds.
+    60958, // Pinning Arrow
+    60913, // Elegon Energy Charge
+    60776, // Empyreal Focus
+    60793, // Celestial Protector
+    60398, // Emperor's Courage
+    60397, // Emperor's Strength
+    60396, // Emperor's Rage
+    60480, // Titan Spark
+    60731, // Undying Shadow
+    60240, // Gara'jal Spirit Totem
+    // Heart of Fear
+    62531, // Amber Prison
+    65498, // Zarthik Battle-Mender
+    65499, // Sra'thik Amber-Trapper
+    65500, // Kor'thik Elite Blademaster
+    63053, // Garalon's Leg
+    62711, // Amber Monstrosity
+    62691, // Living Amber
+    64453, // Set'thik Windblade
+    63591, // Kor'thik Reaver
+    // Terrace of Endless Spring
+    60886, // Coalesced Corruption
+    62969, // Embodied Terror
+    62977, // Fright Spawn
+    62995, // Animated Protector
+    61034, // Terror Spawn
+    61038, 61046, 61042, // Sha of Fear outer-platform bowmen
     // Throne of Thunder
     69221, 69164, 69176, 69548, 69480, 67966, 68497, 70095,
     68192, 68193, 70134, 69069, 69070, 69701, 69700, 69699,
@@ -159,6 +248,40 @@ constexpr uint32 PriorityAdds[] =
     71393, 71395, 71405, 71658, 71591, 71788, 71542, 71420,
     71984, 71983, 72154, 72198, 72272
 };
+
+// Some phase objectives never acquire a victim and therefore never enter the
+// ordinary attacker list. They are safe to select while the party is already
+// in combat because the encounter scripts expose them as attackable only in
+// the phase where killing them is required.
+constexpr ObjectiveRule EncounterObjectives[] =
+{
+    { MapTempleOfTheJadeSerpent, 56511 }, // Corrupt Living Water
+    { MapTempleOfTheJadeSerpent, 56762 }, // Yu'lon
+    { MapTempleOfTheJadeSerpent, 56792 }, // Figment of Doubt
+    { MapShadoPanMonastery, 56754 }, // Azure Serpent
+    { MapShadoPanMonastery, 56713 }, // Snowdrift clone
+    { MapGateOfTheSettingSun, 56895 }, // Raigonn Weak Spot
+    { MapSiegeOfNiuzaoTemple, 61623 }, // Sappling
+    { MapScarletMonastery, 59893 }, // Empowering Spirit
+    { MapScholomance, 58664 }, // Chillheart's Phylactery
+    { MapScholomance, 58791 }, // Lilian's Soul
+    { MapMogushanVaults, 60958 }, // Pinning Arrow
+    { MapMogushanVaults, 60913 }, // Energy Charge
+    { MapMogushanVaults, 60776 }, // Empyreal Focus
+    { MapMogushanVaults, 60240 }, // Spirit Totem
+    { MapHeartOfFear, 62531 }, // Amber Prison
+    { MapHeartOfFear, 63053 }, // Garalon's Leg
+    { MapTerraceOfEndlessSpring, 62995 } // Animated Protector
+};
+
+bool IsEncounterObjective(uint32 map, uint32 entry)
+{
+    return std::any_of(std::begin(EncounterObjectives),
+        std::end(EncounterObjectives), [map, entry](ObjectiveRule const& rule)
+        {
+            return rule.map == map && rule.entry == entry;
+        });
+}
 
 bool HasAura(Unit const* unit, uint32 spell)
 {
@@ -278,7 +401,8 @@ bool InstanceMechanics::ShouldTankSwap(Player* bot, Unit* boss)
     if (!currentTank || !PlayerBotSpec::IsTank(currentTank, true))
         return false;
     for (SwapRule const& rule : TankSwapAuras)
-        if (AuraStacks(currentTank, rule.spell) >= rule.stacks)
+        if (rule.map == bot->GetMapId() &&
+            AuraStacks(currentTank, rule.spell) >= rule.stacks)
             return true;
     return false;
 }
@@ -330,6 +454,14 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
             150.0f, true));
     }
 
+    // Phase objects often have no victim and can be absent from the regular
+    // possible-target cache. Discover only the objective entries belonging
+    // to this map; attackability and active-combat checks below still gate
+    // whether they can own skull.
+    for (ObjectiveRule const& rule : EncounterObjectives)
+        if (rule.map == bot->GetMapId())
+            addTarget(bot->FindNearestCreature(rule.entry, 150.0f, true));
+
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
         group = bot->GetGroup();
@@ -359,9 +491,12 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
                 unit->GetEntry() == NpcHaiyanTheUnstoppable);
         bool const activeTrialTarget = trialPriority &&
             IsActiveMogushanTrialTarget(bot, creature);
+        bool const encounterObjective = creature && bot->IsInCombat() &&
+            IsEncounterObjective(bot->GetMapId(), unit->GetEntry()) &&
+            bot->GetDistance(unit) <= 150.0f;
         if (trialPriority && !activeTrialTarget)
             continue;
-        if (!trialPriority &&
+        if (!trialPriority && !encounterObjective &&
             (!unit->IsInCombat() || !GroupPveCombat::IsEngaged(bot, unit)))
             continue;
 
@@ -426,26 +561,34 @@ Unit* InstanceMechanicsAction::FindPriorityAdd(Unit* boss) const
 
 Unit* InstanceMechanicsAction::FindMindControlledMember() const
 {
-    if (bot->GetMapId() != MapSiegeOfOrgrimmar)
-        return nullptr;
-
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
         group = bot->GetGroup();
     if (!group)
         return nullptr;
 
-    // Garrosh's Touch of Y'Shaarj is removed by damaging the controlled
-    // player. Both normal and empowered variants have separate player auras.
-    constexpr uint32 touchAuras[] = { 145071, 145175, 145599 };
+    // These scripted controls are removed by damaging the affected player.
+    // IsCharmed covers the same mechanic in older encounters, while the
+    // explicit auras cover scripts which only temporarily change faction.
+    constexpr uint32 breakableControlAuras[] =
+    {
+        117708, // Spirit Kings: Maddening Shout
+        122740, // Zor'lok: Convert
+        123713, // Shek'zeer: Servant of the Empress
+        145071, 145175, 145599 // Garrosh: Touch of Y'Shaarj variants
+    };
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         if (Player* member = ref->GetSource())
             if (member != bot && member->IsAlive() &&
                 member->GetMap() == bot->GetMap() &&
                 bot->IsValidAttackTarget(member))
-                for (uint32 spell : touchAuras)
+            {
+                if (member->IsCharmed())
+                    return member;
+                for (uint32 spell : breakableControlAuras)
                     if (member->HasAura(spell))
                         return member;
+            }
     return nullptr;
 }
 
