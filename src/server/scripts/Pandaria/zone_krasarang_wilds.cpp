@@ -690,7 +690,9 @@ class npc_koro_mistwalker_unsafe_passage : public CreatureScript
 
 enum CheerUpYiMoData
 {
+    QUEST_FINDING_YI_MO                  = 30080,
     QUEST_CHEER_UP_YI_MO                 = 30082,
+    NPC_YI_MO_FINDING_CREDIT             = 57745,
     NPC_YI_MO_ROLLING                    = 57310,
     NPC_YI_MO_THUNDERBIRD                = 58111,
     SPELL_CHEER_UP_YI_MO_PUSH            = 108175,
@@ -726,6 +728,15 @@ class npc_cheer_up_yi_mo_starter : public CreatureScript
 
         bool OnGossipHello(Player* player, Creature* creature) override
         {
+            // Finding Yi-Mo has a speak-to objective for the invisible
+            // credit entry 57745, while the actual questgiver is 58376.
+            // Without granting that credit first the quest stays incomplete
+            // and PrepareGossipMenu cannot show its reward dialogue, making
+            // Yi-Mo appear completely unresponsive to the player.
+            if (player->GetQuestStatus(QUEST_FINDING_YI_MO) ==
+                QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(NPC_YI_MO_FINDING_CREDIT);
+
             player->PrepareGossipMenu(creature, 13354, true);
             player->SendPreparedGossip(creature);
             return true;
