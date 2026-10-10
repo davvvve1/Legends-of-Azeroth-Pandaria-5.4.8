@@ -5,12 +5,18 @@ checks whether to release. The old proximity rule then made the bot wait for
 resurrection from its living master, even though the party had wiped.
 
 Dungeon auto-release now waits for the instance encounter to finish and for all
-living members in the same map instance to leave combat, then submits the normal
-release request regardless of master's current life state or distance. The core's
-existing instance-entrance recovery handles the return and resurrection without
-resetting dungeon progress. A real resurrection request still takes precedence;
-ghosts do not send duplicate release packets. The check runs in both action
-eligibility and execution. Outdoor and battleground policies remain separate.
+living members in the same map instance to leave combat. A living healer bot then
+gets the first chance to resurrect each corpse; only a party without one submits
+the normal release request. The core's existing instance-entrance recovery still
+handles complete wipes without resetting dungeon progress. A real resurrection
+request takes precedence, and ghosts do not send duplicate release packets. The
+check runs in both action eligibility and execution. Outdoor and battleground
+policies remain separate.
+
+Resurrection target discovery is intentionally independent of cast range and
+line of sight. The healer's reach prerequisite walks toward a remote corpse and
+routes around blocked sight before casting. Active `gotank` leadership pauses
+while a corpse remains recoverable instead of starting the next pull.
 
 Run:
 

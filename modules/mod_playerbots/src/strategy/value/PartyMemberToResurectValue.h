@@ -16,6 +16,7 @@ public:
 
 protected:
     Unit* Calculate() override;
+    bool Check(Unit* player) override;
 };
 
 #endif

@@ -250,6 +250,25 @@ bool InstanceLeadershipAction::GroupHasActiveCombat() const
     return GroupPveCombat::GroupHasActiveCombat(bot);
 }
 
+bool InstanceLeadershipAction::GroupNeedsResurrection() const
+{
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (!group)
+        return false;
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+        if (Player* member = ref->GetSource())
+            if (member != bot && member->IsInWorld() &&
+                member->GetMap() == bot->GetMap() &&
+                member->InSamePhase(bot) &&
+                member->getDeathState() == DeathState::CORPSE)
+                return true;
+
+    return false;
+}
+
 bool InstanceLeadershipAction::IsInstanceComplete() const
 {
     if (!bot || !bot->GetMap() || !bot->GetMap()->IsDungeon())
@@ -695,7 +714,8 @@ bool InstanceLeadershipAction::isUseful()
         return true;
 
     return !realMasterUnavailable &&
-        (SelectNextTarget() || HasMogushanPalaceDestination() ||
+        (GroupNeedsResurrection() || SelectNextTarget() ||
+            HasMogushanPalaceDestination() ||
             HasGenericDestination());
 }
 
@@ -711,6 +731,19 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
     }
 
     ResetCompletedPull();
+
+    // Do not drag the group into the next pack while a healer is returning to
+    // a corpse. Without a healer the dead bot releases on its own next update,
+    // so this pause is naturally removed; with one, it lasts until the normal
+    // resurrection request has been accepted.
+    if (GroupNeedsResurrection())
+    {
+        context->GetValue<LastMovement&>("last movement")->Get().clear();
+        bot->GetMotionMaster()->Clear(false);
+        bot->StopMoving();
+        botAI->SetNextCheckDelay(250);
+        return true;
+    }
 
     if (Unit* target = SelectNextTarget())
     {

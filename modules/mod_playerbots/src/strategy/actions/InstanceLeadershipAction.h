@@ -21,6 +21,7 @@ private:
     Unit* SelectNextTarget() const;
     bool GroupIsReady();
     bool GroupHasActiveCombat() const;
+    bool GroupNeedsResurrection() const;
     bool IsInstanceComplete() const;
     bool HasGenericDestination() const;
     bool FindGenericDestination(Position& destination) const;

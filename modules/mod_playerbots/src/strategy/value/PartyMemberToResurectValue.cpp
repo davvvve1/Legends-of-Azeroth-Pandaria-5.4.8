@@ -46,3 +46,16 @@ Unit* PartyMemberToResurrect::Calculate()
     FindDeadPlayer finder(this);
     return FindPartyMember(finder);
 }
+
+bool PartyMemberToResurrect::Check(Unit* unit)
+{
+    Player* player = unit ? unit->ToPlayer() : nullptr;
+    if (!player || !player->IsInWorld() || player->IsGameMaster())
+        return false;
+
+    // Resurrection has a reach prerequisite, so target discovery must not
+    // itself require spell range or line of sight.  The generic party-member
+    // filter did both and made a corpse behind a corner (or left behind by a
+    // moving dungeon group) invisible to the healer forever.
+    return player->GetMap() == bot->GetMap() && player->InSamePhase(bot);
+}

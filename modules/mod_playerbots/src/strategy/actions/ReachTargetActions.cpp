@@ -202,4 +202,29 @@ ReachPartyMemberToResurrectAction::ReachPartyMemberToResurrectAction(PlayerbotAI
 {
 }
 
+bool ReachPartyMemberToResurrectAction::Execute(Event /*event*/)
+{
+    Unit* target = GetTarget();
+    if (!target)
+        return false;
+
+    // Walk in normal movement steps until both range and line of sight are
+    // valid.  ReachCombatTo only repairs range; when the corpse was behind a
+    // wall it could report no useful movement and the resurrection stalled.
+    float const approachDistance = bot->IsWithinLOSInMap(target) ?
+        distance : sPlayerbotAIConfig->contactDistance;
+    return MoveTo(target, approachDistance,
+        MovementPriority::MOVEMENT_NORMAL);
+}
+
+bool ReachPartyMemberToResurrectAction::isUseful()
+{
+    if (bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL) != nullptr)
+        return false;
+
+    Unit* target = GetTarget();
+    return target && (!bot->IsWithinCombatRange(target, distance) ||
+        !bot->IsWithinLOSInMap(target));
+}
+
 std::string const ReachPartyMemberToResurrectAction::GetTargetName() { return "party member to resurrect"; }

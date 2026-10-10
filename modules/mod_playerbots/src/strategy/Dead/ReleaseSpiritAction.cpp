@@ -12,6 +12,7 @@
 #include "ObjectGuid.h"
 #include "NearestUnitsValue.h"
 #include "Playerbots.h"
+#include "PlayerbotSpec.h"
 #include "ServerFacade.h"
 #include "Corpse.h"
 #include "InstanceScript.h"
@@ -27,12 +28,32 @@ bool CanReleaseDungeonSpirit(Player* bot)
         if (instance->IsEncounterInProgress())
             return false;
 
-    if (Group* group = bot->GetGroup())
+    Group* group = bot->GetGroup();
+    if (group)
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         {
             Player* member = ref->GetSource();
             if (member && member->IsInWorld() && member->IsAlive() &&
                 member->GetMap() == bot->GetMap() && member->IsInCombat())
+                return false;
+        }
+
+    // Once combat ends, give a living healer bot ownership of recovery. The
+    // previous unconditional release changed the dead player to a ghost
+    // before the healer's non-combat resurrection trigger could select the
+    // corpse. A complete wipe still releases normally because no healer is
+    // alive, and a real player is never forced to perform this bot action.
+    if (group)
+        for (GroupReference* ref = group->GetFirstMember(); ref;
+            ref = ref->next())
+        {
+            Player* member = ref->GetSource();
+            PlayerbotAI* memberAI = member ? GET_PLAYERBOT_AI(member) : nullptr;
+            if (member && member != bot && memberAI &&
+                !memberAI->IsRealPlayer() && member->IsAlive() &&
+                member->IsInWorld() && member->GetMap() == bot->GetMap() &&
+                member->InSamePhase(bot) &&
+                PlayerBotSpec::IsHeal(member, true))
                 return false;
         }
     return true;

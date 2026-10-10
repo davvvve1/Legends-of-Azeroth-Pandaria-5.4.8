@@ -89,9 +89,13 @@ require("IsInstanceComplete()" in lead and
         "FinishLeadership();" in lead and
         "ai->SetInstanceTankLeader(0)" in lead,
         "a completed instance must restore ordinary master following")
+require("GroupNeedsResurrection()" in lead and
+        "member->getDeathState() == DeathState::CORPSE" in lead and
+        "SetNextCheckDelay(250)" in lead,
+        "the tank must pause its route while a corpse awaits resurrection")
 
 print(json.dumps({
-    "checks": 17,
+    "checks": 18,
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
@@ -102,6 +106,7 @@ print(json.dumps({
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_engine": "automatic-non-combat-resume",
+    "resurrection_pause": "wait-for-corpse-recovery",
     "regroup_grace_ms": 4000,
     "stale_combat_cutoff_yards": 180,
     "instance_complete": "follow-master-restored",
