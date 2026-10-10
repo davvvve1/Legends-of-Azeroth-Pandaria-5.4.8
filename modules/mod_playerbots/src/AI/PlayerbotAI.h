@@ -228,8 +228,9 @@ public:
     void RequestLfgPreparationBuff() { _lfgPreparationBuffPending.store(true); }
     bool IsLfgAutoQueueReserved() const;
     bool IsLfgAutoQueueControlled() const { return _lfgAutoQueueRequesterGuid.load() != 0; }
-    void SetInstanceTankLeader(uint32 guid) { _instanceTankLeaderGuid.store(guid); }
+    void SetInstanceTankLeader(uint32 guid);
     uint32 GetInstanceTankLeaderGuid() const { return _instanceTankLeaderGuid.load(); }
+    uint32 GetInstanceTankLeadershipGeneration() const { return _instanceTankLeadershipGeneration.load(); }
     bool IsInstanceTankLeadershipActive() const { return GetInstanceTankLeaderGuid() != 0; }
     bool IsInstanceTankLeader() const;
     Player* GetInstanceTankLeader() const;
@@ -315,6 +316,11 @@ protected:
     // Set for every bot in a group by the party/instance "gotank" toggle.
     // The world-thread chat hook writes it while map workers read it.
     std::atomic<uint32> _instanceTankLeaderGuid{ 0 };
+    // Every real toggle gets a generation, including a second activation of
+    // the same tank. Actions use it to discard their old route cursor while
+    // the map thread consumes the movement transition safely.
+    std::atomic<uint32> _instanceTankLeadershipGeneration{ 0 };
+    uint32 _instanceTankLeadershipAppliedGeneration = 0;
     uint32 _invalidFollowPositionSince = 0;
     uint32 _gateSettingSunFollowRecoverySince = 0;
     float _gateSettingSunBestFollowDistance = 0.0f;

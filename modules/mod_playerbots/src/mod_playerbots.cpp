@@ -341,7 +341,8 @@ public:
             command.end());
         std::transform(command.begin(), command.end(), command.begin(),
             [](unsigned char c) { return char(std::tolower(c)); });
-        if (command != "gotank")
+        if (command != "gotank" && command != "go tank" &&
+            command != "go-tank")
             return;
 
         bool active = false;
@@ -356,7 +357,9 @@ public:
                 continue;
             groupBots.push_back(ai);
             active = active || ai->IsInstanceTankLeadershipActive();
-            if (member->IsAlive() && PlayerBotSpec::IsTank(member, true))
+            if (member->IsAlive() && member->IsInWorld() &&
+                member->GetMap() == player->GetMap() &&
+                PlayerBotSpec::IsTank(member, true))
                 tanks.push_back(member);
         }
 

@@ -264,6 +264,13 @@ Player* PlayerbotAI::GetInstanceTankLeader() const
     return nullptr;
 }
 
+void PlayerbotAI::SetInstanceTankLeader(uint32 guid)
+{
+    uint32 const previous = _instanceTankLeaderGuid.exchange(guid);
+    if (previous != guid)
+        _instanceTankLeadershipGeneration.fetch_add(1);
+}
+
 bool PlayerbotAI::IsInstanceTankLeader() const
 {
     return bot && _instanceTankLeaderGuid.load() ==
@@ -484,6 +491,39 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->GetSession()->isLogingOut() ||
         bot->IsDuringRemoveFromWorld())
         return;
+
+    // Chat is handled on the world thread, but movement/action state belongs
+    // to this map thread. Consume gotank transitions here so an old point or
+    // chase generator cannot keep driving the tank after "gotank" is turned
+    // off, and cannot prevent a fresh route choice when it is enabled again.
+    uint32 const leadershipGeneration =
+        _instanceTankLeadershipGeneration.load();
+    if (_instanceTankLeadershipAppliedGeneration != leadershipGeneration)
+    {
+        if (!bot->IsInCombat() && !bot->IsBeingTeleported())
+        {
+            bot->GetMotionMaster()->Clear(false);
+            bot->StopMoving();
+
+            if (_aiObjectContext)
+            {
+                _aiObjectContext->GetValue<ObjectGuid>("pull target")
+                    ->Set(ObjectGuid::Empty);
+                _aiObjectContext->GetValue<Unit*>("current target")
+                    ->Set(nullptr);
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
+            }
+            bot->SetTarget(ObjectGuid::Empty);
+            _instanceTankLeadershipAppliedGeneration =
+                leadershipGeneration;
+        }
+        // A command received during combat is already authoritative for
+        // target/follow selection, but movement ownership cannot be cleared
+        // safely until combat ends.  Keep the generation pending so the first
+        // non-combat map tick performs the reset instead of losing it.
+        SetNextCheckDelay(0);
+    }
 
     // A banner placed during emergency takeover must stop taunting when the
     // marked main tank revives or the diamond is moved to another live tank.
@@ -823,19 +863,42 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     Player* distanceRecoveryMaster = GetMaster();
     // Encounter positioning (especially C'Thun's separate stomach floor)
     // must not be undone by generic catch-up teleports to the raid leader.
+    bool gotankGroupInCombat = false;
+    if (IsInstanceTankLeadershipActive())
+    {
+        Group* group = bot->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = bot->GetGroup();
+        if (group)
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->IsInWorld() && member->GetMap() == bot->GetMap() &&
+                        (member->IsInCombat() || member->GetVictim() ||
+                            !member->getAttackers().empty()))
+                    {
+                        gotankGroupInCombat = true;
+                        break;
+                    }
+    }
+    bool const recoverGotankDeadMaster = IsInstanceTankLeadershipActive() &&
+        bot->GetMap() && bot->GetMap()->IsDungeon() &&
+        distanceRecoveryMaster && !distanceRecoveryMaster->IsAlive() &&
+        !gotankGroupInCombat;
     bool tooFarFromMaster = !AhnQirajStrategy::IsActive(bot) && distanceRecoveryMaster &&
         !GET_PLAYERBOT_AI(distanceRecoveryMaster) &&
         distanceRecoveryMaster->IsInWorld() &&
         distanceRecoveryMaster->GetMap() == bot->GetMap() &&
         bot->IsAlive() &&
-        distanceRecoveryMaster->IsAlive() &&
+        (distanceRecoveryMaster->IsAlive() || recoverGotankDeadMaster) &&
         !bot->IsBeingTeleported() &&
         !distanceRecoveryMaster->IsBeingTeleported() &&
         !bot->GetVehicle() &&
         !distanceRecoveryMaster->GetVehicle() &&
         !bot->GetTransport() &&
         !distanceRecoveryMaster->GetTransport() &&
-        bot->GetDistance(distanceRecoveryMaster) > 140.0f;
+        bot->GetDistance(distanceRecoveryMaster) >
+            (recoverGotankDeadMaster ? 60.0f : 140.0f);
 
     if (tooFarFromMaster)
     {

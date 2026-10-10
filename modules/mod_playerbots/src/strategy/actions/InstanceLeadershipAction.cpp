@@ -12,6 +12,7 @@
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "PlayerbotSpec.h"
+#include "PossibleTargetsValue.h"
 #include "ServerFacade.h"
 #include "Transport.h"
 
@@ -34,33 +35,49 @@ struct RoutePoint
 // opened after Trial of the King and the lift used after Gekkan.
 constexpr RoutePoint TrialRoute[] =
 {
-    { -3969.4f, -2560.0f, 22.4f, 5.0f },
-    { -3969.4f, -2602.0f, 22.4f, 5.0f },
-    { -4025.0f, -2613.6f, 22.4f, 6.0f },
-    { -4072.0f, -2613.6f, 22.4f, 6.0f },
-    { -4140.0f, -2613.6f, 22.4f, 6.0f },
-    { -4185.0f, -2613.6f, 17.6f, 7.0f },
-    { -4215.8f, -2613.6f, 17.6f, 9.0f }
+    { -3969.4f, -2560.0f, 26.0f, 7.0f },
+    { -3995.3f, -2602.7f, 22.4f, 7.0f },
+    { -4032.0f, -2609.6f, 22.4f, 7.0f },
+    { -4074.7f, -2610.5f, 22.4f, 7.0f },
+    { -4117.3f, -2611.4f, 22.4f, 7.0f },
+    { -4147.7f, -2612.1f, 22.4f, 7.0f },
+    { -4160.0f, -2612.4f, 17.9f, 7.0f },
+    { -4202.7f, -2613.3f, 16.5f, 7.0f },
+    { -4215.8f, -2613.6f, 16.5f, 9.0f }
 };
 
 constexpr RoutePoint GekkanRoute[] =
 {
-    { -4215.8f, -2648.0f, 17.6f, 6.0f },
-    { -4216.1f, -2682.0f, 23.2f, 6.0f },
-    { -4217.5f, -2710.0f, 4.0f, 7.0f },
-    { -4219.5f, -2750.0f, -32.0f, 7.0f },
-    { -4220.9f, -2794.2f, -68.9f, 7.0f },
-    { -4254.5f, -2768.5f, -67.0f, 7.0f },
-    { -4283.5f, -2759.4f, -64.0f, 7.0f },
-    { -4309.5f, -2739.9f, -59.0f, 7.0f },
-    { -4300.3f, -2721.9f, -55.3f, 7.0f },
-    { -4300.6f, -2683.1f, -50.3f, 7.0f },
-    { -4322.0f, -2677.0f, -46.8f, 7.0f },
-    { -4339.7f, -2675.1f, -37.1f, 7.0f },
-    { -4348.0f, -2677.3f, -30.5f, 7.0f },
-    { -4372.0f, -2675.0f, -40.0f, 7.0f },
-    { -4398.0f, -2662.0f, -43.5f, 7.0f },
-    { -4398.0f, -2620.0f, -54.5f, 7.0f },
+    // The secret stair does not continue south.  It curls north below the
+    // Trial room, follows the treasure galleries west, and only then turns
+    // south-west toward Gekkan.  These points are sampled from map 994's
+    // actual mmap; the old route accidentally reversed the cosmetic fleeing
+    // Saurok spline and therefore led the tank into a wall.
+    { -4215.8f, -2648.0f, 17.6f, 7.0f },
+    { -4224.0f, -2666.0f, 17.6f, 7.0f },
+    { -4229.1f, -2678.7f, 17.6f, 6.0f },
+    { -4229.0f, -2681.0f, 15.2f, 6.0f },
+    { -4218.0f, -2685.0f, 12.5f, 6.0f },
+    { -4207.0f, -2683.0f, 9.6f, 6.0f },
+    { -4197.0f, -2674.0f, 5.5f, 6.0f },
+    { -4196.0f, -2664.0f, 2.5f, 6.0f },
+    { -4196.0f, -2645.0f, -2.6f, 7.0f },
+    { -4196.0f, -2622.0f, -8.9f, 7.0f },
+    { -4196.0f, -2581.0f, -9.4f, 7.0f },
+    { -4199.0f, -2539.0f, -28.3f, 7.0f },
+    { -4239.2f, -2523.5f, -28.3f, 7.0f },
+    { -4266.7f, -2523.5f, -39.0f, 7.0f },
+    { -4309.3f, -2523.5f, -36.6f, 7.0f },
+    { -4330.7f, -2523.5f, -28.3f, 7.0f },
+    { -4373.3f, -2525.8f, -28.3f, 7.0f },
+    { -4394.1f, -2548.0f, -28.3f, 7.0f },
+    { -4373.3f, -2571.6f, -28.3f, 7.0f },
+    { -4356.5f, -2596.0f, -28.3f, 7.0f },
+    { -4358.8f, -2626.6f, -28.3f, 7.0f },
+    { -4373.3f, -2642.6f, -40.1f, 7.0f },
+    { -4389.1f, -2660.0f, -43.2f, 7.0f },
+    { -4394.7f, -2645.3f, -51.5f, 7.0f },
+    { -4395.8f, -2624.0f, -54.7f, 7.0f },
     { -4397.9f, -2583.0f, -54.5f, 9.0f }
 };
 
@@ -68,21 +85,86 @@ constexpr uint16 MogushanUpperRouteIndex = 5;
 constexpr RoutePoint XinRoute[] =
 {
     { -4397.9f, -2583.0f, -54.5f, 8.0f },
-    { -4398.0f, -2622.0f, -54.5f, 7.0f },
-    { -4398.5f, -2664.0f, -43.5f, 7.0f },
-    { -4399.0f, -2705.0f, -43.0f, 7.0f },
-    { -4399.3f, -2743.0f, -43.0f, 7.0f },
-    { -4399.3f, -2700.0f, 22.4f, 7.0f },
-    { -4428.0f, -2652.0f, 22.3f, 7.0f },
-    { -4431.0f, -2613.6f, 22.3f, 7.0f },
-    { -4462.0f, -2613.6f, 22.4f, 7.0f },
-    { -4505.0f, -2613.6f, 22.4f, 7.0f },
-    { -4532.0f, -2613.6f, 22.4f, 7.0f },
-    { -4576.0f, -2613.6f, 22.2f, 7.0f },
-    { -4618.0f, -2613.6f, 21.9f, 7.0f },
-    { -4658.0f, -2613.6f, 22.0f, 7.0f },
+    { -4398.3f, -2624.0f, -54.6f, 7.0f },
+    { -4398.6f, -2664.3f, -43.8f, 7.0f },
+    { -4399.0f, -2709.3f, -42.0f, 7.0f },
+    { -4399.3f, -2743.0f, -40.0f, 7.0f },
+    // Same X/Y as the lower landing, but on the upper floor.  The moving
+    // transport is the only valid connection between these adjacent nodes.
+    { -4399.0f, -2743.0f, 22.6f, 7.0f },
+    { -4399.0f, -2707.6f, 22.4f, 7.0f },
+    { -4404.3f, -2657.6f, 22.4f, 7.0f },
+    { -4416.3f, -2645.4f, 22.4f, 7.0f },
+    { -4437.3f, -2624.0f, 22.4f, 7.0f },
+    { -4461.3f, -2617.5f, 22.4f, 7.0f },
+    { -4501.3f, -2616.8f, 22.4f, 7.0f },
+    { -4544.0f, -2616.1f, 22.4f, 7.0f },
+    { -4586.7f, -2615.4f, 22.4f, 7.0f },
+    { -4629.3f, -2614.7f, 22.1f, 7.0f },
+    { -4672.0f, -2614.0f, 22.1f, 7.0f },
     { -4694.0f, -2613.6f, 28.0f, 8.0f }
 };
+
+constexpr float RouteDistanceSquared(RoutePoint const& point, float x,
+    float y, float z)
+{
+    float const dx = point.x - x;
+    float const dy = point.y - y;
+    float const dz = point.z - z;
+    return dx * dx + dy * dy + dz * dz;
+}
+
+template <size_t N>
+constexpr size_t ClosestRoutePoint(RoutePoint const (&route)[N], float x,
+    float y, float z)
+{
+    size_t closestIndex = 0;
+    float closestDistance = RouteDistanceSquared(route[0], x, y, z);
+    for (size_t i = 1; i < N; ++i)
+    {
+        float const distance = RouteDistanceSquared(route[i], x, y, z);
+        if (distance < closestDistance)
+        {
+            closestIndex = i;
+            closestDistance = distance;
+        }
+    }
+    return closestIndex;
+}
+
+template <size_t N>
+constexpr bool RouteSegmentsAreContinuous(RoutePoint const (&route)[N],
+    size_t verticalTransportIndex = N)
+{
+    for (size_t i = 1; i < N; ++i)
+    {
+        if (i == verticalTransportIndex)
+            continue;
+        if (RouteDistanceSquared(route[i], route[i - 1].x,
+            route[i - 1].y, route[i - 1].z) > 55.0f * 55.0f)
+            return false;
+    }
+    return true;
+}
+
+// Source-level regressions for enabling gotank in the middle of each section.
+// In particular, the lower gallery must resume on its northern mmap corridor,
+// never on the unrelated cosmetic spline south of the Trial room.
+static_assert(RouteSegmentsAreContinuous(TrialRoute));
+static_assert(RouteSegmentsAreContinuous(GekkanRoute));
+static_assert(RouteSegmentsAreContinuous(XinRoute, MogushanUpperRouteIndex));
+static_assert(RouteDistanceSquared(GekkanRoute[0], TrialRoute[
+    std::size(TrialRoute) - 1].x, TrialRoute[std::size(TrialRoute) - 1].y,
+    TrialRoute[std::size(TrialRoute) - 1].z) < 40.0f * 40.0f);
+static_assert(RouteDistanceSquared(XinRoute[0], GekkanRoute[
+    std::size(GekkanRoute) - 1].x, GekkanRoute[std::size(GekkanRoute) - 1].y,
+    GekkanRoute[std::size(GekkanRoute) - 1].z) < 1.0f);
+static_assert(ClosestRoutePoint(TrialRoute, -4030.0f, -2610.0f, 22.4f) == 2);
+static_assert(ClosestRoutePoint(GekkanRoute, -4196.0f, -2620.0f, -9.0f) == 9);
+static_assert(ClosestRoutePoint(GekkanRoute, -4358.0f, -2625.0f, -28.3f) == 20);
+static_assert(ClosestRoutePoint(XinRoute, -4399.0f, -2742.0f, -40.0f) == 4);
+static_assert(ClosestRoutePoint(XinRoute, -4399.0f, -2742.0f, 22.5f) ==
+    MogushanUpperRouteIndex);
 
 uint8 MogushanEncounterStage(Player* bot)
 {
@@ -152,7 +234,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
     Unit* best = nullptr;
     float bestScore = std::numeric_limits<float>::max();
 
-    for (ObjectGuid const& guid : targets)
+    auto consider = [&](ObjectGuid const& guid)
     {
         Unit* target = botAI->GetUnit(guid);
         Creature* creature = target ? target->ToCreature() : nullptr;
@@ -161,7 +243,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
             !bot->IsValidAttackTarget(creature) ||
             creature->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE) ||
             creature->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-            continue;
+            return;
 
         bool const palace = bot->GetMapId() == MogushanPalaceMap;
         float const distance = bot->GetExactDist(creature);
@@ -170,7 +252,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
         if (distance > maximumDistance ||
             std::fabs(bot->GetPositionZ() - creature->GetPositionZ()) > maximumHeight ||
             (palace && !bot->IsWithinLOSInMap(creature)))
-            continue;
+            return;
 
         // Compare actual navigation distance rather than straight-line
         // distance. This is the generic route guard for every dungeon and
@@ -193,7 +275,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
             float const dy = end.y - creature->GetPositionY();
             float const dz = end.z - creature->GetPositionZ();
             if (dx * dx + dy * dy > 16.0f || std::fabs(dz) > 8.0f)
-                continue;
+                return;
             score = path.getPathLength();
         }
         else
@@ -202,7 +284,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
             // mmap tile. It requires direct sight and almost the same floor.
             if (!bot->IsWithinLOSInMap(creature) ||
                 std::fabs(bot->GetPositionZ() - creature->GetPositionZ()) > 8.0f)
-                continue;
+                return;
             score += 30.0f;
         }
 
@@ -218,7 +300,27 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
             best = creature;
             bestScore = score;
         }
+    };
+
+    for (ObjectGuid const& guid : targets)
+        consider(guid);
+
+    // The ordinary combat target cache intentionally uses the configured
+    // 75-yard sight distance.  That is too short for many empty corridors
+    // between instance packs and made generic gotank leadership stop even
+    // though a clean mmap route existed just beyond the cache.  Only the one
+    // elected leader performs this wider scan, only while out of combat and
+    // only when the cheap normal scan found nothing.  Mogu'shan Palace keeps
+    // its explicit floor-safe route because a radius scan there sees several
+    // vertically overlapping galleries.
+    if (!best && bot->GetMapId() != MogushanPalaceMap)
+    {
+        GuidVector const extended = PossibleTargetsValue(botAI,
+            "instance leadership targets", 160.0f, true).Calculate();
+        for (ObjectGuid const& guid : extended)
+            consider(guid);
     }
+
     return best;
 }
 
@@ -230,6 +332,15 @@ bool InstanceLeadershipAction::HasMogushanPalaceDestination() const
 
 bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
 {
+    uint32 const generation =
+        botAI->GetInstanceTankLeadershipGeneration();
+    if (_leadershipGeneration != generation)
+    {
+        _leadershipGeneration = generation;
+        _mogushanRouteStage = 0xFF;
+        _mogushanRouteIndex = 0;
+    }
+
     uint8 const stage = MogushanEncounterStage(bot);
     RoutePoint const* route = nullptr;
     size_t count = 0;
@@ -243,15 +354,16 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
         _mogushanRouteIndex = 0;
 
         // gotank can be enabled halfway through the dungeon. Resume at the
-        // closest same-floor route point rather than walking back to its
-        // beginning. The stage itself is authoritative and prevents skips.
+        // closest three-dimensional route point rather than walking back to
+        // its beginning. Z is part of the distance so overlapping floors do
+        // not select one another; the stage remains authoritative.
         float closest = std::numeric_limits<float>::max();
         for (uint16 i = 0; i < count; ++i)
         {
-            float const dz = std::fabs(bot->GetPositionZ() - route[i].z);
-            float const distance = bot->GetExactDist(
-                route[i].x, route[i].y, route[i].z);
-            if (dz <= 20.0f && distance < closest)
+            float const distance = RouteDistanceSquared(route[i],
+                bot->GetPositionX(), bot->GetPositionY(),
+                bot->GetPositionZ());
+            if (distance < closest)
             {
                 closest = distance;
                 _mogushanRouteIndex = i;
@@ -332,10 +444,16 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
 
 bool InstanceLeadershipAction::isUseful()
 {
+    Player* master = GetMaster();
+    bool const realMasterUnavailable = master && !GET_PLAYERBOT_AI(master) &&
+        (!master->IsAlive() || !master->IsInWorld() ||
+            master->GetMap() != bot->GetMap());
+
     return bot && bot->IsAlive() && !bot->IsInCombat() &&
         bot->GetMap() && bot->GetMap()->IsDungeon() &&
         botAI->IsInstanceTankLeader() &&
-        PlayerBotSpec::IsTank(bot, true) && GroupIsReady() &&
+        !realMasterUnavailable && PlayerBotSpec::IsTank(bot, true) &&
+        GroupIsReady() &&
         (SelectNextTarget() || HasMogushanPalaceDestination());
 }
 

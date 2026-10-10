@@ -16,9 +16,22 @@
 
 Player* FollowAction::GetFollowTarget()
 {
+    Player* master = GetMaster();
+    if (!botAI->IsInstanceTankLeadershipActive())
+        return master;
+
+    // A dead/ghost real player remains the group's recovery anchor. Without
+    // this fallback active gotank followers wait forever for their living tank
+    // while the tank continues deeper into the instance. Leadership resumes
+    // automatically after the player resurrects and the party regroups.
+    if (master && !GET_PLAYERBOT_AI(master) &&
+        (!master->IsAlive() || !master->IsInWorld() ||
+            master->GetMap() != bot->GetMap()))
+        return master;
+
     if (Player* leader = botAI->GetInstanceTankLeader())
         return leader;
-    return GetMaster();
+    return master;
 }
 
 bool FollowAction::UseGroupFollowFormation()
@@ -68,8 +81,9 @@ bool FollowAction::Execute(Event event)
     if (AhnQirajStrategy::IsActive(bot)) return false;
     if (botAI->IsInstanceTankLeadershipActive())
     {
-        Player* leader = botAI->GetInstanceTankLeader();
-        if (!leader || leader == bot || bot->IsInCombat() ||
+        Player* leader = GetFollowTarget();
+        if (!leader || leader == bot || !leader->IsInWorld() ||
+            leader->GetMap() != bot->GetMap() || bot->IsInCombat() ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
 
@@ -167,8 +181,9 @@ bool FollowAction::isUseful()
     if (AhnQirajStrategy::IsActive(bot)) return false;
     if (botAI->IsInstanceTankLeadershipActive())
     {
-        Player* leader = botAI->GetInstanceTankLeader();
-        if (!leader || leader == bot || bot->IsInCombat() ||
+        Player* leader = GetFollowTarget();
+        if (!leader || leader == bot || !leader->IsInWorld() ||
+            leader->GetMap() != bot->GetMap() || bot->IsInCombat() ||
             leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;

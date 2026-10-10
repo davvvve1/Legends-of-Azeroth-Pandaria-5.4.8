@@ -24,6 +24,11 @@ constexpr uint32 MapMogushanPalace = 994;
 constexpr uint32 MapThroneOfThunder = 1098;
 constexpr uint32 MapSiegeOfOrgrimmar = 1136;
 
+constexpr uint32 NpcGekkan = 61243;
+constexpr uint32 NpcGlintrokIronhide = 61337;
+constexpr uint32 NpcGlintrokSkulker = 61338;
+constexpr uint32 NpcGlintrokOracle = 61339;
+constexpr uint32 NpcGlintrokHexxer = 61340;
 constexpr uint32 NpcMuShiba = 61453;
 constexpr uint32 SpellRavage = 119948;
 
@@ -125,6 +130,13 @@ constexpr uint32 DefensiveCasts[] =
 // unrelated pack or attack passive encounter helpers.
 constexpr uint32 PriorityAdds[] =
 {
+    // Gekkan: Iron Protector makes nearby allies take 50% less damage, then
+    // Hex of Lethargy cripples casters.  Keep Gekkan for last so Inspiring
+    // Cry cannot empower surviving followers.  This ordering is shared by
+    // normal, heroic and challenge mode because map and creature entries are
+    // identical across those difficulties.
+    NpcGlintrokIronhide, NpcGlintrokHexxer, NpcGlintrokSkulker,
+    NpcGlintrokOracle,
     // Mogu'shan Palace: killing Mu'Shiba ends Ravage early.
     NpcMuShiba,
     // Throne of Thunder
@@ -156,6 +168,23 @@ Spell* CurrentSpell(Unit* unit)
     if (Spell* spell = unit->GetCurrentSpell(CURRENT_GENERIC_SPELL))
         return spell;
     return unit->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
+}
+
+bool IsHealingCast(Unit* unit)
+{
+    Spell* spell = CurrentSpell(unit);
+    SpellInfo const* info = spell ? spell->GetSpellInfo() : nullptr;
+    if (!info)
+        return false;
+
+    for (SpellEffectInfo const& effect : info->Effects)
+        if (effect.IsEffect() &&
+            (effect.Effect == SPELL_EFFECT_HEAL ||
+             effect.Effect == SPELL_EFFECT_HEAL_MAX_HEALTH ||
+             effect.Effect == SPELL_EFFECT_HEAL_MECHANICAL ||
+             effect.Effect == SPELL_EFFECT_HEAL_PCT))
+            return true;
+    return false;
 }
 
 bool IsFrontalSpell(SpellInfo const* info)
@@ -278,7 +307,7 @@ Unit* InstanceMechanicsAction::FindPriorityAdd(Unit* boss) const
     GuidVector const& targets = context->GetValue<GuidVector>(
         "possible targets")->Get();
     Unit* best = nullptr;
-    size_t bestRank = std::size(PriorityAdds);
+    size_t bestRank = std::size(PriorityAdds) + 1;
     for (ObjectGuid const& guid : targets)
     {
         Unit* unit = botAI->GetUnit(guid);
@@ -287,9 +316,17 @@ Unit* InstanceMechanicsAction::FindPriorityAdd(Unit* boss) const
             continue;
         auto const found = std::find(std::begin(PriorityAdds),
             std::end(PriorityAdds), unit->GetEntry());
-        if (found == std::end(PriorityAdds))
+        // Known encounter-critical targets retain their documented ordering.
+        // In encounters which do not yet have a dedicated row, an engaged
+        // add currently casting a heal is still a safer switch than tunneling
+        // the boss.  This generic fallback applies to every dungeon/raid and
+        // never pulls an idle pack.
+        bool const genericHealer = found == std::end(PriorityAdds) &&
+            IsHealingCast(unit);
+        if (found == std::end(PriorityAdds) && !genericHealer)
             continue;
-        size_t const rank = size_t(std::distance(std::begin(PriorityAdds), found));
+        size_t const rank = genericHealer ? std::size(PriorityAdds) :
+            size_t(std::distance(std::begin(PriorityAdds), found));
         if (!best || rank < bestRank ||
             (rank == bestRank && bot->GetDistance(unit) < bot->GetDistance(best)))
         {
@@ -418,8 +455,16 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
         boss->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE) ||
         boss->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
     if (Unit* add = FindPriorityAdd(boss))
-        if (bossUnavailable || PlayerBotSpec::IsDps(bot, true))
+    {
+        bool const gekkanEntourage = map == MapMogushanPalace &&
+            boss->GetEntry() == NpcGekkan;
+        // Gekkan's stationary casters and melee followers must be gathered by
+        // the tank as well as focused by damage dealers.  Healers retain their
+        // healing target while the encounter layer coordinates the rest.
+        if (bossUnavailable || PlayerBotSpec::IsDps(bot, true) ||
+            (gekkanEntourage && !PlayerBotSpec::IsHeal(bot, true)))
             return { Reaction::FocusAdd, nullptr, add, 0.0f };
+    }
 
     if (Spell* cast = CurrentSpell(boss))
     {
