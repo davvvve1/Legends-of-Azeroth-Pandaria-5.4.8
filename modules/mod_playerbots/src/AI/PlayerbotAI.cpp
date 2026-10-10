@@ -1887,7 +1887,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                             member->GetMap() == bot->GetMap())
                             member->SendStartTimer(15, 15, TIMER_PVP);
 
-            announcePullCountdown("Pull om 15 sekunder - folj tanken. 15");
+            announcePullCountdown("Pull in 15 seconds - follow the tank. 15");
             TC_LOG_INFO("server",
                 "gotank pull countdown leader=%s guid=%u map=%u instance=%u seconds=15",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -1918,7 +1918,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         if (_instanceTankPullCountdownRemaining)
         {
             _instanceTankPullCountdownRemaining = 0;
-            announcePullCountdown("KOR!");
+            announcePullCountdown("GO!");
             TC_LOG_INFO("server",
                 "gotank pull countdown complete leader=%s guid=%u map=%u instance=%u elapsed-ms=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -2008,8 +2008,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             {
                 _instanceTankWaitingForGroupRecovery = true;
                 announcePullCountdown(recoveryMemberDead ?
-                    "Vantar pa att healer aterupplivar en gruppmedlem." :
-                    "Vantar pa att healer helar gruppen till 80%.");
+                    "Waiting for the healer to resurrect a group member." :
+                    "Waiting for the healer to restore the group to 80% health.");
                 TC_LOG_INFO("server",
                     "gotank waiting for group recovery leader=%s guid=%u member=%s member-guid=%u dead=%u health=%.1f map=%u instance=%u",
                     bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -2037,7 +2037,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             _instanceTankWaitingForGroupRecovery = false;
             _instanceTankRouteProgressAt = 0;
             _instanceTankLastStallLog = 0;
-            announcePullCountdown("Gruppen ar aterupplivad och helad - fortsatter.");
+            announcePullCountdown(
+                "The group is resurrected and healed - continuing.");
             TC_LOG_INFO("server",
                 "gotank group recovery ready leader=%s guid=%u map=%u instance=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -2054,7 +2055,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 _aiObjectContext->GetValue<LastMovement&>("last movement")
                     ->Get().clear();
             _instanceTankRouteProgressAt = 0;
-            announcePullCountdown("Vantar pa healer mana (30%).");
+            announcePullCountdown("Waiting for healer mana (30%).");
             TC_LOG_INFO("server",
                 "gotank waiting for healer mana leader=%s guid=%u healer=%s mana=%.1f map=%u instance=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -2081,7 +2082,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             if (_aiObjectContext)
                 _aiObjectContext->GetValue<LastMovement&>("last movement")
                     ->Get().clear();
-            announcePullCountdown("Healer mana klar - fortsatter.");
+            announcePullCountdown("Healer mana ready - continuing.");
             TC_LOG_INFO("server",
                 "gotank healer mana ready leader=%s guid=%u healer=%s mana=%.1f map=%u instance=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),

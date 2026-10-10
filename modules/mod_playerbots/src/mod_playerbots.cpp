@@ -371,20 +371,20 @@ public:
                 ai->SetInstanceTankLeadershipAutoSuppressed(true);
             }
             ChatHandler(player->GetSession()).SendSysMessage(
-                "gotank: tanken foljer master igen.");
+                "gotank: the tank is following the master again.");
             return;
         }
 
         if (!player->GetMap() || !player->GetMap()->IsDungeon())
         {
             ChatHandler(player->GetSession()).SendSysMessage(
-                "gotank fungerar inne i dungeons och raids.");
+                "gotank is available inside dungeons and raids.");
             return;
         }
         if (tanks.empty())
         {
             ChatHandler(player->GetSession()).SendSysMessage(
-                "gotank: ingen levande bottank hittades i gruppen.");
+                "gotank: no living bot tank was found in the group.");
             return;
         }
 
@@ -405,7 +405,7 @@ public:
         }
 
         std::string response = "gotank: " + tanks.front()->GetName() +
-            " leder gruppen. Skriv gotank igen for att folja master.";
+            " is leading the group. Type gotank again to follow the master.";
         ChatHandler(player->GetSession()).SendSysMessage(response.c_str());
     }
 

@@ -44,6 +44,19 @@ group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
 
 require('command != "gotank"' in chat and 'command != "go tank"' in chat,
         "both documented gotank command spellings must remain accepted")
+require("gotank: the tank is following the master again." in chat and
+        "gotank is available inside dungeons and raids." in chat and
+        "gotank: no living bot tank was found in the group." in chat and
+        " is leading the group. Type gotank again to follow the master." in chat and
+        "Waiting for the healer to resurrect a group member." in ai and
+        "Waiting for the healer to restore the group to 80% health." in ai and
+        "The group is resurrected and healed - continuing." in ai and
+        "Healer mana ready - continuing." in ai and
+        not any(fragment in ai + chat for fragment in (
+            "tanken", "foljer", "fungerar inne", "ingen levande",
+            "leder gruppen", "Skriv gotank", "Pull om", "sekunder",
+            "KOR!", "Vantar", "ateruppliv", "fortsatter")),
+        "all gotank player-facing messages must remain in English")
 require("_instanceTankLeadershipGeneration.fetch_add(1)" in ai,
         "a changed leadership state must publish a fresh generation")
 require("_instanceTankLeadershipAutoSuppressed" in header and
@@ -222,11 +235,11 @@ require("waypoint.z, false, false, false, true" in lead and
         '"gotank Mogu\'shan route leader=' in lead,
         "validated route waypoints must bypass a second fallible path search")
 require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
-        'announcePullCountdown("Pull om 15 sekunder - folj tanken. 15")' in ai and
+        'announcePullCountdown("Pull in 15 seconds - follow the tank. 15")' in ai and
         "PSendSysMessage(" in ai and
         "SendNotification(" in ai and
         "remaining == 10 || remaining <= 5" in ai and
-        'announcePullCountdown("KOR!")' in ai and
+        'announcePullCountdown("GO!")' in ai and
         '"gotank pull countdown complete leader=' in ai and
         "_instanceTankPullCountdownKey" in header and
         "_instanceTankPullCountdownRemaining" in header and
@@ -318,7 +331,7 @@ require("_instanceTankWaitingForHealerMana" in header and
         "lowestHealerMana <= 30.0f" in controller and
         "lowestHealerMana < 80.0f" in controller and
         "!lockedPull" in controller and
-        'announcePullCountdown("Vantar pa healer mana (30%).")' in controller and
+        'announcePullCountdown("Waiting for healer mana (30%).")' in controller and
         "bool const healerManaWait = !groupCombat" in ai and
         "IsInstanceTankWaitingForHealerMana()" in ai and
         "SPELL_CATEGORY_DRINK" in ai and
