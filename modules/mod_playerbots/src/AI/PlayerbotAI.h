@@ -231,7 +231,7 @@ public:
     void SetInstanceTankLeader(uint32 guid);
     uint32 GetInstanceTankLeaderGuid() const { return _instanceTankLeaderGuid.load(); }
     uint32 GetInstanceTankLeadershipGeneration() const { return _instanceTankLeadershipGeneration.load(); }
-    bool IsInstanceTankLeadershipActive() const { return GetInstanceTankLeaderGuid() != 0; }
+    bool IsInstanceTankLeadershipActive() const;
     bool IsInstanceTankLeadershipAutoSuppressed() const
     {
         return _instanceTankLeadershipAutoSuppressed.load();
@@ -334,6 +334,12 @@ protected:
     // the map thread consumes the movement transition safely.
     std::atomic<uint32> _instanceTankLeadershipGeneration{ 0 };
     uint32 _instanceTankLeadershipAppliedGeneration = 0;
+    // One native client countdown is shown when the independently elected
+    // tank first takes control of a new instance.  It is deliberately keyed
+    // by map+instance so combat transitions and strategy rebuilds can never
+    // restart the delay between trash packs.
+    uint64 _instanceTankPullCountdownKey = 0;
+    uint32 _instanceTankPullCountdownStarted = 0;
     uint32 _invalidFollowPositionSince = 0;
     uint32 _gateSettingSunFollowRecoverySince = 0;
     float _gateSettingSunBestFollowDistance = 0.0f;

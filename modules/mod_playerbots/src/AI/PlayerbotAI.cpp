@@ -71,6 +71,43 @@
 #include "Vehicle.h"
 #include "UpdateFields.h"
 
+namespace
+{
+Player* FindIndependentInstanceBotTank(Player* observer)
+{
+    if (!observer || !observer->IsInWorld() || !observer->GetMap() ||
+        !observer->GetMap()->IsDungeon())
+        return nullptr;
+
+    Group* group = observer->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = observer->GetGroup();
+    if (!group)
+        return nullptr;
+
+    Player* selected = nullptr;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        PlayerbotAI* memberAI = member ? GET_PLAYERBOT_AI(member) : nullptr;
+        if (!member || !memberAI || memberAI->IsRealPlayer() ||
+            !member->IsAlive() || !member->IsInWorld() ||
+            member->GetMap() != observer->GetMap() ||
+            !PlayerBotSpec::IsTank(member, true))
+            continue;
+
+        if (!selected ||
+            (PlayerBotSpec::IsMainTank(member) &&
+                !PlayerBotSpec::IsMainTank(selected)) ||
+            (PlayerBotSpec::IsMainTank(member) ==
+                PlayerBotSpec::IsMainTank(selected) &&
+                member->GetGUID() < selected->GetGUID()))
+            selected = member;
+    }
+    return selected;
+}
+}
+
 PlayerbotChatHandler::PlayerbotChatHandler(Player* pMasterPlayer) : ChatHandler(pMasterPlayer->GetSession())
 {
 }
@@ -246,7 +283,8 @@ bool PlayerbotAI::IsPvpActivity() const
 Player* PlayerbotAI::GetInstanceTankLeader() const
 {
     uint32 const leaderGuid = _instanceTankLeaderGuid.load();
-    if (!leaderGuid || !bot)
+    if (!bot || !bot->IsInWorld() || !bot->GetMap() ||
+        !bot->GetMap()->IsDungeon())
         return nullptr;
 
     Group* group = bot->GetGroup(GroupSlot::Instance);
@@ -255,14 +293,26 @@ Player* PlayerbotAI::GetInstanceTankLeader() const
     if (!group)
         return nullptr;
 
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-        if (Player* member = ref->GetSource())
-            if (member->GetGUID().GetCounter() == leaderGuid &&
-                member->IsInWorld() && member->IsAlive() &&
-                member->GetMap() == bot->GetMap())
-                return member;
+    if (leaderGuid)
+        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+            if (Player* member = ref->GetSource())
+                if (member->GetGUID().GetCounter() == leaderGuid &&
+                    member->IsInWorld() && member->IsAlive() &&
+                    member->GetMap() == bot->GetMap())
+                    return member;
 
-    return nullptr;
+    // LFG group/map initialization can briefly clear or lag the published
+    // atomic id. Derive the exact same independent bottank from the live
+    // roster so neither the tank nor its followers fall back to the human
+    // master during that window.
+    if (IsInstanceTankLeadershipAutoSuppressed())
+        return nullptr;
+    return FindIndependentInstanceBotTank(bot);
+}
+
+bool PlayerbotAI::IsInstanceTankLeadershipActive() const
+{
+    return GetInstanceTankLeader() != nullptr;
 }
 
 void PlayerbotAI::SetInstanceTankLeader(uint32 guid)
@@ -285,9 +335,8 @@ bool PlayerbotAI::IsInstanceTankLeader() const
     // not solely from a transient AI flag. LFG map initialization can rebuild
     // strategies between two ticks; leadership must still exist during that
     // window or both route movement and skull ownership disappear together.
-    return !IsInstanceTankLeadershipAutoSuppressed() && bot->IsAlive() &&
-        bot->IsInWorld() && bot->GetMap() && bot->GetMap()->IsDungeon() &&
-        PlayerBotSpec::GetGroupPvePullTank(bot) == bot;
+    return !IsInstanceTankLeadershipAutoSuppressed() &&
+        FindIndependentInstanceBotTank(bot) == bot;
 }
 
 void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
@@ -577,9 +626,11 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     bool const inInstance = bot->GetMap() && bot->GetMap()->IsDungeon();
     if (!inInstance)
     {
-        if (IsInstanceTankLeadershipActive())
+        if (GetInstanceTankLeaderGuid())
             SetInstanceTankLeader(0);
         SetInstanceTankLeadershipAutoSuppressed(false);
+        _instanceTankPullCountdownKey = 0;
+        _instanceTankPullCountdownStarted = 0;
     }
     else if (!IsInstanceTankLeadershipAutoSuppressed())
     {
@@ -587,27 +638,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         if (!group)
             group = bot->GetGroup();
 
-        Player* selectedTank = nullptr;
-        if (group)
-            for (GroupReference* ref = group->GetFirstMember(); ref;
-                ref = ref->next())
-            {
-                Player* member = ref->GetSource();
-                PlayerbotAI* memberAI = member ? GET_PLAYERBOT_AI(member) : nullptr;
-                if (!member || !memberAI || memberAI->IsRealPlayer() ||
-                    !member->IsAlive() || !member->IsInWorld() ||
-                    member->GetMap() != bot->GetMap() ||
-                    !PlayerBotSpec::IsTank(member, true))
-                    continue;
-
-                if (!selectedTank ||
-                    (PlayerBotSpec::IsMainTank(member) &&
-                        !PlayerBotSpec::IsMainTank(selectedTank)) ||
-                    (PlayerBotSpec::IsMainTank(member) ==
-                        PlayerBotSpec::IsMainTank(selectedTank) &&
-                        member->GetGUID() < selectedTank->GetGUID()))
-                    selectedTank = member;
-            }
+        Player* selectedTank = FindIndependentInstanceBotTank(bot);
 
         if (group && selectedTank)
         {
@@ -777,7 +808,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     constexpr uint32 GateOfTheSettingSunMap = 962;
     constexpr uint32 GateOfTheSettingSunElevator = 211013;
     Player* gateFollowMaster = GetMaster();
-    bool gateFollowContext = IsLfgAutoQueueControlled() && gateFollowMaster &&
+    bool gateFollowContext = !IsInstanceTankLeader() &&
+        IsLfgAutoQueueControlled() && gateFollowMaster &&
         !GET_PLAYERBOT_AI(gateFollowMaster) && gateFollowMaster->IsInWorld() &&
         gateFollowMaster->GetMap() == bot->GetMap() &&
         bot->GetMapId() == GateOfTheSettingSunMap &&
@@ -981,7 +1013,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // second. The narrow 2D/vertical limits avoid skipping legitimate paths
     // between different dungeon floors.
     Player* followRecoveryMaster = GetMaster();
-    bool canRecoverFollow = !AhnQirajStrategy::IsActive(bot) && followRecoveryMaster &&
+    bool canRecoverFollow = !IsInstanceTankLeader() &&
+        !AhnQirajStrategy::IsActive(bot) && followRecoveryMaster &&
         !GET_PLAYERBOT_AI(followRecoveryMaster) &&
         followRecoveryMaster->IsInWorld() &&
         followRecoveryMaster->GetMap() == bot->GetMap() &&
@@ -1393,6 +1426,40 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
         !GroupPveCombat::GroupHasActiveCombat(bot))
     {
+        uint64 const countdownKey =
+            (uint64(bot->GetMapId()) << 32) | uint64(bot->GetInstanceId());
+        if (_instanceTankPullCountdownKey != countdownKey)
+        {
+            _instanceTankPullCountdownKey = countdownKey;
+            _instanceTankPullCountdownStarted = getMSTime();
+
+            Group* group = bot->GetGroup(GroupSlot::Instance);
+            if (!group)
+                group = bot->GetGroup();
+            if (group)
+                for (GroupReference* ref = group->GetFirstMember(); ref;
+                    ref = ref->next())
+                    if (Player* member = ref->GetSource())
+                        if (member->IsInWorld() &&
+                            member->GetMap() == bot->GetMap())
+                            member->SendStartTimer(15, 15, TIMER_PVP);
+
+            SayToParty("Pull om 15 sekunder - folj tanken.");
+            TC_LOG_INFO("server",
+                "gotank pull countdown leader=%s guid=%u map=%u instance=%u seconds=15",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                bot->GetMapId(), bot->GetInstanceId());
+        }
+
+        // This delay is only the opening pull timer. It is never reset after
+        // combat, death, a strategy rebuild, or a movement failure.
+        if (getMSTimeDiff(_instanceTankPullCountdownStarted, getMSTime()) <
+            15000)
+        {
+            YieldThread(GetReactDelay());
+            return;
+        }
+
         // MoveTo deliberately reports false while an identical point move is
         // already in flight. That does not mean leadership is finished. The
         // old code then ran the ordinary non-combat engine, whose follow/idle

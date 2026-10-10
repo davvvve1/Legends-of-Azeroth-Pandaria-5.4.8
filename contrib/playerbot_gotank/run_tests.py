@@ -41,10 +41,16 @@ require("_instanceTankLeadershipAutoSuppressed" in header and
         "selectedTank" in ai and
         "PlayerBotSpec::IsTank(member, true)" in ai,
         "instance entry must automatically elect a deterministic living bottank")
-require("PlayerBotSpec::GetGroupPvePullTank(bot) == bot" in ai and
+require("FindIndependentInstanceBotTank" in ai and
+        "FindIndependentInstanceBotTank(bot) == bot" in ai and
+        "memberAI->IsRealPlayer()" in ai and
         "else if (!IsInstanceTankLeadershipAutoSuppressed())" in ai and
         "leadershipChanged" in ai,
-        "live group election must repair transient or stale LFG leadership state")
+        "live group election must repair state and always choose a bottank")
+require("bool PlayerbotAI::IsInstanceTankLeadershipActive() const" in ai and
+        "return GetInstanceTankLeader() != nullptr;" in ai and
+        "return FindIndependentInstanceBotTank(bot);" in ai,
+        "leadership activity must survive a transient missing atomic id")
 require('DoSpecificAction("lead instance", Event(), true)' in ai and
         'DoSpecificAction("lead instance", Event(), true)' in
         ai[:ai.index("// Update internal AI")],
@@ -69,6 +75,10 @@ require("_leadershipGeneration != generation" in lead and
 require("!master->IsAlive()" in follow and
         "return master;" in follow,
         "followers must fall back to a dead real master")
+require(follow.count("if (botAI->IsInstanceTankLeader())") >= 5 and
+        "bool canRecoverFollow = !IsInstanceTankLeader()" in ai and
+        "bool gateFollowContext = !IsInstanceTankLeader()" in ai,
+        "the independent tank must reject every master-follow recovery path")
 require("gotankGroupInCombat" in ai and
         "!gotankGroupInCombat" in ai and
         "!IsInstanceTankLeader()" in ai and
@@ -135,9 +145,14 @@ require("waypoint.z, false, false, false, true" in lead and
         "point.z,\n        false, false, false, true" in lead and
         '"gotank Mogu\'shan route leader=' in lead,
         "validated route waypoints must bypass a second fallible path search")
+require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
+        'SayToParty("Pull om 15 sekunder - folj tanken.")' in ai and
+        "_instanceTankPullCountdownKey" in header and
+        "getMSTimeDiff(_instanceTankPullCountdownStarted, getMSTime())" in ai,
+        "a new instance must have exactly one persistent 15-second pull countdown")
 
 print(json.dumps({
-    "checks": 24,
+    "checks": 27,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -160,5 +175,7 @@ print(json.dumps({
     "tank_kill_order": "skull-follows-selected-target",
     "leadership_state": "re-elected-from-live-instance-group",
     "route_dispatch": "validated-waypoint-direct-to-motion-master",
+    "pull_countdown_seconds": 15,
+    "tank_follow_mode": "fully-independent-from-real-master",
     "result": "pass",
 }, sort_keys=True))

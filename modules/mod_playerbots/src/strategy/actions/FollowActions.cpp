@@ -17,6 +17,12 @@
 
 Player* FollowAction::GetFollowTarget()
 {
+    // The elected tank is an independent navigation anchor. It must never
+    // resolve any ordinary follow action back to the human master (the tank
+    // formation slot is in front, which made this look like leadership).
+    if (botAI->IsInstanceTankLeader())
+        return nullptr;
+
     Player* master = GetMaster();
     if (!botAI->IsInstanceTankLeadershipActive())
         return master;
@@ -80,6 +86,7 @@ WorldLocation FollowAction::GetGroupFollowLocation()
 bool FollowAction::Execute(Event event)
 {
     if (AhnQirajStrategy::IsActive(bot)) return false;
+    if (botAI->IsInstanceTankLeader()) return false;
     if (botAI->IsInstanceTankLeadershipActive())
     {
         Player* leader = GetFollowTarget();
@@ -181,6 +188,7 @@ bool FollowAction::Execute(Event event)
 bool FollowAction::isUseful()
 {
     if (AhnQirajStrategy::IsActive(bot)) return false;
+    if (botAI->IsInstanceTankLeader()) return false;
     if (botAI->IsInstanceTankLeadershipActive())
     {
         Player* leader = GetFollowTarget();
@@ -295,6 +303,9 @@ bool FollowAction::CanDeadFollow(Unit* target)
 
 bool FleeToMasterAction::Execute(Event event)
 {
+    if (botAI->IsInstanceTankLeader())
+        return false;
+
     Unit* fTarget = AI_VALUE(Unit*, "master target");
     bool canFollow = Follow(fTarget);
     if (!canFollow)
@@ -327,6 +338,9 @@ bool FleeToMasterAction::Execute(Event event)
 
 bool FleeToMasterAction::isUseful()
 {
+    if (botAI->IsInstanceTankLeader())
+        return false;
+
     if (!botAI->GetGroupMaster())
         return false;
 
