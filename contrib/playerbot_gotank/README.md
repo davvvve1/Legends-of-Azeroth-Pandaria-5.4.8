@@ -40,6 +40,10 @@ controller advances toward the next route point without another command.
 The elected tank owns the party kill order: its selected mob receives skull
 before the pull, and skull moves to each new target the tank selects inside a
 pack. DPS target selection ranks that skull above unmarked enemies.
+Leadership is re-elected from the live instance group on every update while
+automatic mode is enabled, so an LFG strategy/map reinitialization cannot drop
+the controller. Already validated route steps are dispatched as exact motion
+waypoints instead of being rejected by a second generic path search.
 Outside Mogu'shan Palace, the next incomplete encounter supplies a persistent
 destination and the live mmap is traversed in short steps so intervening trash
 becomes visible and is pulled normally. Finishing all registered encounters

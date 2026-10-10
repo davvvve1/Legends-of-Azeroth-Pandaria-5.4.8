@@ -339,8 +339,15 @@ bool InstanceLeadershipAction::AdvanceGenericRoute()
             break;
     }
 
-    return MoveTo(bot->GetMapId(), waypoint.x, waypoint.y, waypoint.z,
-        false, false, false, false, MovementPriority::MOVEMENT_NORMAL, true);
+    bool const moved = MoveTo(bot->GetMapId(), waypoint.x, waypoint.y,
+        waypoint.z, false, false, false, true,
+        MovementPriority::MOVEMENT_NORMAL, true);
+    if (moved)
+        TC_LOG_INFO("server",
+            "gotank generic route leader=%s map=%u instance=%u waypoint=%.2f,%.2f,%.2f",
+            bot->GetName().c_str(), bot->GetMapId(), bot->GetInstanceId(),
+            waypoint.x, waypoint.y, waypoint.z);
+    return moved;
 }
 
 void InstanceLeadershipAction::ResetCompletedPull()
@@ -556,7 +563,7 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
         RoutePoint const& landing = route[MogushanUpperRouteIndex - 1];
         if (bot->GetExactDist2d(landing.x, landing.y) > landing.radius)
             return MoveTo(bot->GetMapId(), landing.x, landing.y, landing.z,
-                false, false, false, false,
+                false, false, false, true,
                 MovementPriority::MOVEMENT_NORMAL, true);
 
         bot->StopMoving();
@@ -564,8 +571,14 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
     }
 
     RoutePoint const& point = route[_mogushanRouteIndex];
-    return MoveTo(bot->GetMapId(), point.x, point.y, point.z,
-        false, false, false, false, MovementPriority::MOVEMENT_NORMAL, true);
+    bool const moved = MoveTo(bot->GetMapId(), point.x, point.y, point.z,
+        false, false, false, true, MovementPriority::MOVEMENT_NORMAL, true);
+    if (moved)
+        TC_LOG_INFO("server",
+            "gotank Mogu'shan route leader=%s instance=%u stage=%u index=%u waypoint=%.2f,%.2f,%.2f",
+            bot->GetName().c_str(), bot->GetInstanceId(), uint32(stage),
+            uint32(_mogushanRouteIndex), point.x, point.y, point.z);
+    return moved;
 }
 
 bool InstanceLeadershipAction::EngageTarget(Unit* target)

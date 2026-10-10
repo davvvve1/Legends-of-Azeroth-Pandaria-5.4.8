@@ -274,8 +274,20 @@ void PlayerbotAI::SetInstanceTankLeader(uint32 guid)
 
 bool PlayerbotAI::IsInstanceTankLeader() const
 {
-    return bot && _instanceTankLeaderGuid.load() ==
-        bot->GetGUID().GetCounter();
+    if (!bot)
+        return false;
+
+    uint32 const leaderGuid = _instanceTankLeaderGuid.load();
+    if (leaderGuid)
+        return leaderGuid == bot->GetGUID().GetCounter();
+
+    // The elected tank is derived from the live instance group as a fail-safe,
+    // not solely from a transient AI flag. LFG map initialization can rebuild
+    // strategies between two ticks; leadership must still exist during that
+    // window or both route movement and skull ownership disappear together.
+    return !IsInstanceTankLeadershipAutoSuppressed() && bot->IsAlive() &&
+        bot->IsInWorld() && bot->GetMap() && bot->GetMap()->IsDungeon() &&
+        PlayerBotSpec::GetGroupPvePullTank(bot) == bot;
 }
 
 void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
@@ -307,12 +319,31 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
     if (!target && validAttackTarget(bot->GetVictim()))
         target = bot->GetVictim();
 
+    // An enemy can enter melee and place the tank in combat before the normal
+    // target value has run. Publish that real attacker immediately so the
+    // group never spends the opening seconds without a kill marker.
+    if (!target)
+    {
+        for (Unit* attacker : bot->getAttackers())
+            if (validAttackTarget(attacker) &&
+                (!target || bot->GetDistance(attacker) < bot->GetDistance(target)))
+                target = attacker;
+    }
+
     constexpr uint8 skull = 7;
     ObjectGuid const markedGuid = group->GetTargetIcon(skull);
     if (target)
     {
         if (markedGuid != target->GetGUID())
+        {
             group->SetTargetIcon(skull, bot->GetGUID(), target->GetGUID(), 0);
+            TC_LOG_INFO("server",
+                "gotank skull leader=%s guid=%u target=%s entry=%u target-guid=%u map=%u instance=%u",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                target->GetName().c_str(), target->GetEntry(),
+                target->GetGUID().GetCounter(), bot->GetMapId(),
+                bot->GetInstanceId());
+        }
         return;
     }
 
@@ -550,8 +581,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             SetInstanceTankLeader(0);
         SetInstanceTankLeadershipAutoSuppressed(false);
     }
-    else if (!IsInstanceTankLeadershipActive() &&
-        !IsInstanceTankLeadershipAutoSuppressed())
+    else if (!IsInstanceTankLeadershipAutoSuppressed())
     {
         Group* group = bot->GetGroup(GroupSlot::Instance);
         if (!group)
@@ -582,15 +612,20 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         if (group && selectedTank)
         {
             uint32 const tankGuid = selectedTank->GetGUID().GetCounter();
+            bool leadershipChanged = false;
             for (GroupReference* ref = group->GetFirstMember(); ref;
                 ref = ref->next())
                 if (Player* member = ref->GetSource())
                     if (member->GetMap() == bot->GetMap())
                         if (PlayerbotAI* memberAI = GET_PLAYERBOT_AI(member))
                             if (!memberAI->IsRealPlayer())
+                            {
+                                leadershipChanged = leadershipChanged ||
+                                    memberAI->GetInstanceTankLeaderGuid() != tankGuid;
                                 memberAI->SetInstanceTankLeader(tankGuid);
+                            }
 
-            if (bot == selectedTank)
+            if (bot == selectedTank && leadershipChanged)
                 TC_LOG_INFO("server",
                     "gotank auto-started leader=%s guid=%u map=%u instance=%u",
                     bot->GetName().c_str(), tankGuid, bot->GetMapId(),
