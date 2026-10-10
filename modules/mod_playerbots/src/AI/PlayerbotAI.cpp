@@ -1322,9 +1322,22 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // triggers cannot starve the next route step. This makes one automatic
     // activation continue pack-by-pack until the master toggles gotank off.
     if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
-        !GroupPveCombat::GroupHasActiveCombat(bot) &&
-        DoSpecificAction("lead instance", Event(), true))
+        !GroupPveCombat::GroupHasActiveCombat(bot))
     {
+        // MoveTo deliberately reports false while an identical point move is
+        // already in flight. That does not mean leadership is finished. The
+        // old code then ran the ordinary non-combat engine, whose follow/idle
+        // action could replace the route; another gotank toggle appeared to
+        // fix it only because the toggle cleared LastMovement. Leadership
+        // owns the complete safe tick even when no new move packet is needed.
+        InstanceScript* instance = bot->GetInstanceScript();
+        bool const encounterInProgress = instance &&
+            instance->IsEncounterInProgress();
+        if (!encounterInProgress && !bot->isMoving() && _aiObjectContext)
+            _aiObjectContext->GetValue<LastMovement&>("last movement")
+                ->Get().clear();
+
+        DoSpecificAction("lead instance", Event(), true);
         YieldThread(GetReactDelay());
         return;
     }

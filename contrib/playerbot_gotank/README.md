@@ -13,6 +13,12 @@ bottank and starts leadership. The leader action runs as a persistent controller
 before ordinary idle actions, so it cannot be starved between pulls and no
 initial chat command is required.
 
+Leadership owns every safe non-combat AI tick, including ticks where the
+current point movement is still in flight and no duplicate movement command is
+needed. The ordinary follow/idle engine therefore cannot overwrite the route.
+If a point move has stopped but its movement latch remains, the controller
+clears that latch and recalculates the route without a new chat command.
+
 The selected tank keeps leading without regroup or resurrection pauses.
 Repeating `gotank`, `go tank`, or `go-tank` is the only in-instance operation
 which clears leadership, suppresses automatic restart for the current instance,

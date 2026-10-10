@@ -41,6 +41,13 @@ require('DoSpecificAction("lead instance", Event(), true)' in ai and
         'DoSpecificAction("lead instance", Event(), true)' in
         ai[:ai.index("// Update internal AI")],
         "persistent leadership must run before the ordinary non-combat engine")
+controller = ai[ai.index("// Instance leadership is a persistent controller"):
+                ai.index("// Update internal AI")]
+require('&&\n        DoSpecificAction("lead instance"' not in controller and
+        'DoSpecificAction("lead instance", Event(), true);' in controller and
+        'GetValue<LastMovement&>("last movement")' in controller and
+        'YieldThread(GetReactDelay());\n        return;' in controller,
+        "leadership must own the tick while movement is in flight and clear a stationary latch")
 require("_instanceTankLeadershipAppliedGeneration != leadershipGeneration" in ai,
         "the map thread no longer consumes leadership transitions")
 require('GetValue<ObjectGuid>("pull target")' in ai and
@@ -105,7 +112,7 @@ require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
         "manual gotank off/on must suppress and restore automatic leadership")
 
 print(json.dumps({
-    "checks": 20,
+    "checks": 21,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -123,5 +130,6 @@ print(json.dumps({
     "stale_combat_cutoff_yards": 180,
     "instance_complete": "continue-until-manual-gotank",
     "persistent_controller": "direct-before-idle-actions",
+    "route_ownership": "follow-engine-blocked-between-waypoints",
     "result": "pass",
 }, sort_keys=True))
