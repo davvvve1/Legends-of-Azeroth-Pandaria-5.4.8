@@ -47,17 +47,30 @@ require("NpcGlintrokIronhide = 61337" in mechanics, "Ironhide entry changed")
 require("NpcGlintrokSkulker = 61338" in mechanics, "Skulker entry changed")
 require("NpcGlintrokOracle = 61339" in mechanics, "Oracle entry changed")
 require("NpcGlintrokHexxer = 61340" in mechanics, "Hexxer entry changed")
+require("NpcMuShiba = 61453" in mechanics and
+        "NpcHaiyanTheUnstoppable = 61445" in mechanics and
+        priority.find("NpcMuShiba") < priority.find("NpcHaiyanTheUnstoppable"),
+        "Trial target order must remain Mu'Shiba then Haiyan")
 require("gekkanEntourage && !PlayerBotSpec::IsHeal" in mechanics,
         "Gekkan tank/add switch is missing")
 require("IsHealingCast(unit)" in mechanics,
         "generic engaged healer fallback is missing")
-require("!unit->IsAlive() ||\n            !unit->IsInCombat()" in mechanics and
-        "GroupPveCombat::IsEngaged(bot, unit)" in mechanics,
-        "priority selection must remain limited to engaged living targets")
+require("activeTrialTarget" in mechanics and
+        "creature->GetReactState() != REACT_PASSIVE" in mechanics and
+        "UNIT_FLAG_IMMUNE_TO_PC" in mechanics and
+        "trialPriority && !activeTrialTarget" in mechanics and
+        "!trialPriority &&" in mechanics and
+        "!unit->IsInCombat() || !GroupPveCombat::IsEngaged(bot, unit)" in mechanics,
+        "priority selection must accept only active Trial or engaged targets")
+require("FindNearestCreature(NpcMuShiba, 150.0f, true)" in mechanics and
+        "FindNearestCreature(NpcHaiyanTheUnstoppable" in mechanics,
+        "Trial targets must not depend on the shorter target-value cache")
 require("Unit* PriorityTarget(PlayerbotAI* botAI" in mechanics_header and
         "InstanceMechanics::PriorityTarget(this, bot)" in ai and
-        "validAttackTarget(priorityTarget)" in ai,
-        "tank skull ownership must use the shared encounter priority target")
+        "validAttackTarget(priorityTarget)" in ai and
+        'GetValue<ObjectGuid>("pull target")' in ai and
+        "Set(priorityTarget->GetGUID())" in ai,
+        "tank skull and durable pull ownership must use the shared priority target")
 require("add->GetEntry() == NpcMuShiba" in mechanics and
         "muShiba && botAI->IsInstanceTankLeader()" in mechanics,
         "the elected tank must mark and focus Mu'Shiba with the group")
@@ -68,11 +81,12 @@ require("map_type == MAP_SCENARIO" in map_dbc and
         "scenario maps are no longer included by the instance gate")
 
 print(json.dumps({
-    "checks": 14,
+    "checks": 16,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
     "gekkan_target_order": [61337, 61340, 61338, 61339, 61243],
+    "trial_target_order": [61453, 61445],
     "generic_fallback": "engaged-healing-add",
     "result": "pass",
 }, sort_keys=True))

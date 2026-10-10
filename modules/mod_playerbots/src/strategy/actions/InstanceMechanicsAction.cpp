@@ -30,6 +30,7 @@ constexpr uint32 NpcGlintrokSkulker = 61338;
 constexpr uint32 NpcGlintrokOracle = 61339;
 constexpr uint32 NpcGlintrokHexxer = 61340;
 constexpr uint32 NpcMuShiba = 61453;
+constexpr uint32 NpcHaiyanTheUnstoppable = 61445;
 constexpr uint32 SpellRavage = 119948;
 
 struct AuraRule
@@ -130,6 +131,12 @@ constexpr uint32 DefensiveCasts[] =
 // unrelated pack or attack passive encounter helpers.
 constexpr uint32 PriorityAdds[] =
 {
+    // Trial of the King: an active Mu'Shiba must be killed before the active
+    // boss because killing it immediately ends Ravage. Haiyan is the next
+    // explicit Trial target when his scripted turn has made him attackable.
+    // Both entries are checked for active/aggressive state below, so the bot
+    // never attacks the passive yellow versions waiting beside the arena.
+    NpcMuShiba, NpcHaiyanTheUnstoppable,
     // Gekkan: Iron Protector makes nearby allies take 50% less damage, then
     // Hex of Lethargy cripples casters.  Keep Gekkan for last so Inspiring
     // Cry cannot empower surviving followers.  This ordering is shared by
@@ -137,8 +144,6 @@ constexpr uint32 PriorityAdds[] =
     // identical across those difficulties.
     NpcGlintrokIronhide, NpcGlintrokHexxer, NpcGlintrokSkulker,
     NpcGlintrokOracle,
-    // Mogu'shan Palace: killing Mu'Shiba ends Ravage early.
-    NpcMuShiba,
     // Throne of Thunder
     69221, 69164, 69176, 69548, 69480, 67966, 68497, 70095,
     68192, 68193, 70134, 69069, 69070, 69701, 69700, 69699,
@@ -291,6 +296,17 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
         ->GetValue<GuidVector>("possible targets")->Get())
         addTarget(botAI->GetUnit(guid));
 
+    // The normal possible-target cache is intentionally shorter ranged and
+    // can update one tick behind scripted activations. Trial of the King's
+    // actors are already spawned in the arena, so scan the two ordered
+    // targets directly and validate their active state below.
+    if (bot->GetMapId() == MapMogushanPalace)
+    {
+        addTarget(bot->FindNearestCreature(NpcMuShiba, 150.0f, true));
+        addTarget(bot->FindNearestCreature(NpcHaiyanTheUnstoppable,
+            150.0f, true));
+    }
+
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
         group = bot->GetGroup();
@@ -308,10 +324,27 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
     for (Unit* unit : targets)
     {
         if (!unit || unit == boss || !unit->IsAlive() ||
-            !unit->IsInCombat() || unit->GetMap() != bot->GetMap() ||
+            unit->GetMap() != bot->GetMap() ||
             !bot->IsValidAttackTarget(unit) ||
-            !bot->IsWithinLOSInMap(unit) ||
-            !GroupPveCombat::IsEngaged(bot, unit))
+            !bot->IsWithinLOSInMap(unit))
+            continue;
+
+        Creature* creature = unit->ToCreature();
+        bool const trialPriority = creature &&
+            bot->GetMapId() == MapMogushanPalace &&
+            (unit->GetEntry() == NpcMuShiba ||
+                unit->GetEntry() == NpcHaiyanTheUnstoppable);
+        bool const activeTrialTarget = trialPriority &&
+            creature->GetReactState() != REACT_PASSIVE &&
+            !creature->HasFlag(UNIT_FIELD_FLAGS,
+                UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 |
+                UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
+                UNIT_FLAG_PACIFIED) &&
+            bot->GetDistance(unit) <= 150.0f;
+        if (trialPriority && !activeTrialTarget)
+            continue;
+        if (!trialPriority &&
+            (!unit->IsInCombat() || !GroupPveCombat::IsEngaged(bot, unit)))
             continue;
 
         auto const found = std::find(std::begin(PriorityAdds),

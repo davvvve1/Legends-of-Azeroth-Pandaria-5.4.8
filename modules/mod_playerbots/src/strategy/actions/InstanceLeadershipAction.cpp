@@ -7,6 +7,7 @@
 #include "Group.h"
 #include "GameObject.h"
 #include "GroupPveCombat.h"
+#include "InstanceMechanicsAction.h"
 #include "InstanceScript.h"
 #include "LastMovementValue.h"
 #include "Map.h"
@@ -426,6 +427,15 @@ void InstanceLeadershipAction::ResetCompletedPull()
 
 Unit* InstanceLeadershipAction::SelectNextTarget() const
 {
+    // Encounter kill order is stronger than an earlier durable pull lock.
+    // In Trial of the King this lets an active Mu'Shiba replace the boss the
+    // tank initially selected, followed by active Haiyan once Mu'Shiba is no
+    // longer attackable. The helper rejects passive/yellow arena actors.
+    if (Unit* priority = InstanceMechanics::PriorityTarget(botAI, bot))
+        if (IsReadyForAutonomousPull(bot, priority->ToCreature()) &&
+            bot->GetExactDist(priority) <= AutonomousTargetRange)
+            return priority;
+
     // Once a pull has been selected, own it until it dies or becomes invalid.
     // Re-scoring every visible creature while approaching a pack makes the
     // nearest candidate change as the tank moves; that repeatedly reverses
@@ -845,7 +855,13 @@ bool InstanceLeadershipAction::isUseful()
     // flag suppress the only action which can finish the tank's marked pull.
     // Once the tank has a victim, the ordinary combat engine owns the fight.
     if (GroupHasActiveCombat())
-        return GetLockedPullTarget() && !bot->GetVictim();
+    {
+        Unit* pull = GetLockedPullTarget();
+        Unit* priority = InstanceMechanics::PriorityTarget(botAI, bot);
+        if (priority && priority != pull)
+            return true;
+        return pull && bot->GetVictim() != pull;
+    }
 
     return SelectNextTarget() || HasMogushanPalaceDestination() ||
         HasGenericDestination();

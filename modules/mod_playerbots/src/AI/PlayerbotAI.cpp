@@ -402,6 +402,17 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
     Unit* priorityTarget = InstanceMechanics::PriorityTarget(this, bot);
     Unit* target = validAttackTarget(priorityTarget) ? priorityTarget :
         (validAttackTarget(preferredTarget) ? preferredTarget : nullptr);
+    // Make an encounter-priority switch durable, not merely cosmetic. The
+    // leadership controller otherwise keeps its old boss pull lock and puts
+    // skull back on that boss on the next tick before the tank can attack the
+    // marked add. Combat and route controllers now consume the same GUID.
+    if (priorityTarget && target == priorityTarget && _aiObjectContext)
+    {
+        _aiObjectContext->GetValue<ObjectGuid>("pull target")
+            ->Set(priorityTarget->GetGUID());
+        _aiObjectContext->GetValue<Unit*>("current target")
+            ->Set(priorityTarget);
+    }
     // Resolve cached targets by GUID. The Unit* value can outlive a creature
     // removed during a wipe and dereferencing that stale pointer here crashes
     // the map thread before the dead engine gets a chance to release corpses.

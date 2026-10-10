@@ -120,7 +120,6 @@ require("botAI->GetInstanceTankLeader()" in resurrect and
 skull_sync = ai[ai.index("void PlayerbotAI::SyncInstanceTankSkullTarget"):
                 ai.index("bool PlayerbotAI::CanLfgAutoQueueEngage")]
 require("!bot->IsAlive()" in skull_sync and
-        'GetValue<Unit*>("current target")' not in skull_sync and
         'GetValue<ObjectGuid>("pull target")' in skull_sync and
         "GetUnit(pullGuid)" in skull_sync,
         "wipe-time skull sync must reject dead tanks and resolve cached targets by GUID")
@@ -159,10 +158,12 @@ require("GetLockedPullTarget() const" in lead and
         '"gotank pull locked leader=' in lead,
         "the leader must keep one marked pull target throughout its approach")
 require("if (GroupHasActiveCombat())" in lead and
-        "return GetLockedPullTarget() && !bot->GetVictim();" in lead and
+        "InstanceMechanics::PriorityTarget(botAI, bot)" in lead and
+        "priority && priority != pull" in lead and
+        "return pull && bot->GetVictim() != pull;" in lead and
         "reclaimMarkedPull" in ai and
         "(!GroupPveCombat::GroupHasActiveCombat(bot) || reclaimMarkedPull)" in ai,
-        "a follower combat flag must not suppress the tank's unfinished marked pull")
+        "combat must not suppress an unfinished pull or priority-target switch")
 require("pullTank->GetVictim() == target" in ai and
         "GroupPveCombat::IsActivelyAttacking(pullTank" in ai and
         "followers must not" in ai,
