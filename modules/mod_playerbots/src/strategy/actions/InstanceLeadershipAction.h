@@ -18,6 +18,12 @@ public:
 private:
     Unit* SelectNextTarget() const;
     bool GroupIsReady() const;
+    bool HasMogushanPalaceDestination() const;
+    bool AdvanceMogushanPalaceRoute();
+    bool EngageTarget(Unit* target);
+
+    uint8 _mogushanRouteStage = 0xFF;
+    uint16 _mogushanRouteIndex = 0;
 };
 
 #endif
