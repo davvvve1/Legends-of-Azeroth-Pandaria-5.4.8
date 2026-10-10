@@ -617,7 +617,6 @@ struct QuestPOIBlobPoint
 
 struct QuestPOIBlobData
 {
-    uint32 BlobIndex;
     uint32 Idx1;
     int32 ObjectiveIndex;
     uint32 QuestObjectiveId;
@@ -628,9 +627,9 @@ struct QuestPOIBlobData
     uint32 Flags;
     std::vector<QuestPOIBlobPoint> Points;
 
-    QuestPOIBlobData() : BlobIndex(0), Idx1(0), ObjectiveIndex(0), QuestObjectiveId(0), MapId(0), WorldMapAreaId(0), Floor(0), Priority(0), Flags(0) { }
-    QuestPOIBlobData(uint32 blobIndex, uint32 idx1, int32 objectiveIndex, uint32 questObjectiveId, uint32 mapId, uint32 worldMapAreaId, uint32 floor, uint32 priority, uint32 flags, std::vector<QuestPOIBlobPoint> points)
-        : BlobIndex(blobIndex), Idx1(idx1), ObjectiveIndex(objectiveIndex), QuestObjectiveId(questObjectiveId), MapId(mapId), WorldMapAreaId(worldMapAreaId), Floor(floor), Priority(priority), Flags(flags), Points(std::move(points)) { }
+    QuestPOIBlobData() : Idx1(0), ObjectiveIndex(0), QuestObjectiveId(0), MapId(0), WorldMapAreaId(0), Floor(0), Priority(0), Flags(0) { }
+    QuestPOIBlobData(uint32 idx1, int32 objectiveIndex, uint32 questObjectiveId, uint32 mapId, uint32 worldMapAreaId, uint32 floor, uint32 priority, uint32 flags, std::vector<QuestPOIBlobPoint> points)
+        : Idx1(idx1), ObjectiveIndex(objectiveIndex), QuestObjectiveId(questObjectiveId), MapId(mapId), WorldMapAreaId(worldMapAreaId), Floor(floor), Priority(priority), Flags(flags), Points(std::move(points)) { }
 };
 
 struct QuestPOIData
