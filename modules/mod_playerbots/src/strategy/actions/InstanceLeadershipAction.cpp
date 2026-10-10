@@ -676,10 +676,13 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     _forwardSearchStarted = 0;
 
     uint32 const now = getMSTime();
-    uint32 const targetGuid = target->GetGUID().GetCounter();
+    ObjectGuid const targetObjectGuid = target->GetGUID();
+    uint32 const targetGuid = targetObjectGuid.GetCounter();
+    uint32 const targetEntry = target->GetEntry();
+    std::string const targetName = target->GetName();
     float const distance = bot->GetExactDist(target);
     bool const newPullLock = context->GetValue<ObjectGuid>("pull target")
-        ->Get() != target->GetGUID();
+        ->Get() != targetObjectGuid;
     if (_approachTargetGuid != targetGuid || newPullLock)
     {
         _approachTargetGuid = targetGuid;
@@ -696,19 +699,19 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
         group = bot->GetGroup();
-    if (group && group->GetTargetIcon(7) != target->GetGUID())
+    if (group && group->GetTargetIcon(7) != targetObjectGuid)
     {
-        group->SetTargetIcon(7, bot->GetGUID(), target->GetGUID(), 0);
+        group->SetTargetIcon(7, bot->GetGUID(), targetObjectGuid, 0);
         TC_LOG_INFO("server",
             "gotank pull locked leader=%s target=%s entry=%u target-guid=%u map=%u instance=%u",
-            bot->GetName().c_str(), target->GetName().c_str(),
-            target->GetEntry(), target->GetGUID().GetCounter(),
+            bot->GetName().c_str(), targetName.c_str(), targetEntry,
+            targetGuid,
             bot->GetMapId(), bot->GetInstanceId());
     }
 
     context->GetValue<Unit*>("current target")->Set(target);
-    context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());
-    bot->SetTarget(target->GetGUID());
+    context->GetValue<ObjectGuid>("pull target")->Set(targetObjectGuid);
+    bot->SetTarget(targetObjectGuid);
 
     // Publish the kill order for one second, then make the tank itself open
     // that exact locked target. Previously a distant skull only started an
@@ -735,22 +738,33 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     else
     {
         bool const attackIssued = Attack(target);
-        bool const ownsOpeningAttack = bot->GetVictim() == target &&
+        // Attack() enters creature/instance scripts and can synchronously
+        // invalidate the selected Unit. Resolve the durable GUID again before
+        // chasing, moving or logging; never dereference the pre-attack pointer.
+        Unit* liveTarget = botAI->GetUnit(targetObjectGuid);
+        if (!liveTarget || !liveTarget->IsInWorld() ||
+            !liveTarget->IsAlive() || liveTarget->GetMap() != bot->GetMap())
+        {
+            AbandonUnreachableTarget();
+            return true;
+        }
+
+        bool const ownsOpeningAttack = bot->GetVictim() == liveTarget &&
             botAI->GetState() == BOT_STATE_COMBAT;
         // Unit::Attack can establish a victim at long range without creating
         // movement. Until the first hit lands the group has no positive
         // threat, so leadership still owns every tick. Chase explicitly
         // instead of waiting for a combat action which cannot run yet.
         bool const chasing = ownsOpeningAttack &&
-            !bot->IsWithinMeleeRange(target) && ChaseTo(target,
+            !bot->IsWithinMeleeRange(liveTarget) && ChaseTo(liveTarget,
                 sPlayerbotAIConfig->contactDistance);
         issued = attackIssued || ownsOpeningAttack || chasing ||
             bot->isMoving();
         if (ownsOpeningAttack)
             TC_LOG_INFO("server",
                 "gotank opening attack leader=%s target=%s entry=%u target-guid=%u marked-ms=%u distance=%.1f map=%u instance=%u",
-                bot->GetName().c_str(), target->GetName().c_str(),
-                target->GetEntry(), targetGuid, markedFor, distance,
+                bot->GetName().c_str(), targetName.c_str(), targetEntry,
+                targetGuid, markedFor, distance,
                 bot->GetMapId(), bot->GetInstanceId());
         else
         {
@@ -758,7 +772,7 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
             // of pretending that a rejected core attack succeeded.  This
             // also lets proximity-triggered encounter creatures activate
             // before the next attack attempt.
-            bool const approaching = MoveTo(target,
+            bool const approaching = MoveTo(liveTarget,
                 sPlayerbotAIConfig->contactDistance,
                 MovementPriority::MOVEMENT_FORCED);
             issued = approaching || bot->isMoving();
@@ -770,7 +784,9 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     // swing/threat event reaches the creature. Give that opening attack more
     // time than a pure movement approach; otherwise the watchdog cancels a
     // valid pull and selects another marked mob just before the first hit.
-    bool const openingAttack = bot->GetVictim() == target &&
+    Unit* const liveTarget = botAI->GetUnit(targetObjectGuid);
+    bool const openingAttack = liveTarget &&
+        bot->GetVictim() == liveTarget &&
         botAI->GetState() == BOT_STATE_COMBAT;
     uint32 const stalledFor = openingAttack ? 6000 : 4000;
     if (_approachProgressAt &&

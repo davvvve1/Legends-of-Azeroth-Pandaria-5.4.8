@@ -78,9 +78,13 @@ WorldLocation FollowAction::GetGroupFollowLocation()
             (std::sin(orientation) * offset.forward + std::cos(orientation) * offset.sideways);
         float z = master->GetPositionZ();
         if (master->GetMap()->CheckCollisionAndGetValidCoords(master,
-            master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), x, y, z))
+            master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), x, y, z) &&
+            std::fabs(z - master->GetPositionZ()) <= 6.0f)
             return WorldLocation(master->GetMapId(), x, y, z);
     }
+    // Multi-level instances can expose another walkable floor at the same
+    // X/Y. Never accept that lower floor as a formation offset; stacking on
+    // the tank is safer than sending a follower through the visible floor.
     return WorldLocation(master->GetMapId(), master->GetPositionX(),
         master->GetPositionY(), master->GetPositionZ());
 }

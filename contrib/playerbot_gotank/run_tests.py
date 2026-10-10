@@ -86,6 +86,9 @@ require("every bot follows the elected tank" in follow and
         "return nullptr;" in follow and
         "human master" in follow,
         "gotank followers must never fall back to the human master")
+require("std::fabs(z - master->GetPositionZ()) <= 6.0f" in follow and
+        "another walkable floor" in follow,
+        "formation offsets must never snap followers onto another dungeon floor")
 require(follow.count("if (botAI->IsInstanceTankLeader())") >= 5 and
         "bool canRecoverFollow = !IsInstanceTankLeader()" in ai and
         "bool gateFollowContext = !IsInstanceTankLeader()" in ai,
@@ -167,6 +170,16 @@ require("GetLockedPullTarget() const" in lead and
         "bot->GetExactDist(pull) > 240.0f" in lead and
         '"gotank pull locked leader=' in lead,
         "the leader must keep one marked pull target throughout its approach")
+engage = lead[lead.index("bool InstanceLeadershipAction::EngageTarget"):
+              lead.index("void InstanceLeadershipAction::AbandonUnreachableTarget")]
+after_attack = engage[engage.index("bool const attackIssued = Attack(target);"):]
+require("ObjectGuid const targetObjectGuid" in engage and
+        "botAI->GetUnit(targetObjectGuid)" in after_attack and
+        "target->GetName()" not in after_attack and
+        "target->GetEntry()" not in after_attack and
+        "MoveTo(liveTarget" in after_attack and
+        "ChaseTo(liveTarget" in after_attack,
+        "opening attacks must reacquire scripted or despawned targets by GUID")
 require("if (GroupHasActiveCombat())" in lead and
         "InstanceMechanics::PriorityTarget(botAI, bot)" in lead and
         "priority && priority != pull" in lead and
