@@ -7870,6 +7870,12 @@ void ObjectMgr::LoadPointsOfInterest()
 
 void ObjectMgr::LoadQuestPOI()
 {
+    struct LoadedQuestPOIBlobPoints
+    {
+        uint32 BlobIndex = 0;
+        std::vector<QuestPOIBlobPoint> Points;
+    };
+
     uint32 oldMSTime = getMSTime();
 
     _questPOIStore.clear();                              // need for reload case
@@ -7883,10 +7889,10 @@ void ObjectMgr::LoadQuestPOI()
         return;
     }
 
-    //                                                   0        1     2  3
-    QueryResult points = WorldDatabase.Query("SELECT QuestId, Idx1, X, Y FROM quest_poi_points ORDER BY QuestId DESC, Idx1, Idx2");
+    //                                                   0        1          2     3  4
+    QueryResult points = WorldDatabase.Query("SELECT QuestId, BlobIndex, Idx1, X, Y FROM quest_poi_points ORDER BY QuestId DESC, Idx1, Idx2");
 
-    std::unordered_map<uint32, std::map<uint32, std::vector<QuestPOIBlobPoint>>> allPoints;
+    std::unordered_map<uint32, std::map<uint32, LoadedQuestPOIBlobPoints>> allPoints;
 
     if (points)
     {
@@ -7895,11 +7901,21 @@ void ObjectMgr::LoadQuestPOI()
             Field* fields = points->Fetch();
 
             uint32 QuestID            = fields[0].GetUInt32();
-            uint32 Idx1               = fields[1].GetUInt32();
-            int32  X                  = fields[2].GetInt32();
-            int32  Y                  = fields[3].GetInt32();
+            uint32 BlobIndex          = fields[1].GetUInt32();
+            uint32 Idx1               = fields[2].GetUInt32();
+            int32  X                  = fields[3].GetInt32();
+            int32  Y                  = fields[4].GetInt32();
 
-            allPoints[QuestID][Idx1].emplace_back(X, Y);
+            LoadedQuestPOIBlobPoints& blob = allPoints[QuestID][Idx1];
+            if (blob.Points.empty())
+                blob.BlobIndex = BlobIndex;
+            else if (blob.BlobIndex != BlobIndex)
+            {
+                TC_LOG_ERROR("sql.sql", "Table quest_poi_points has inconsistent BlobIndex values for quest %u Idx1 %u", QuestID, Idx1);
+                continue;
+            }
+
+            blob.Points.emplace_back(X, Y);
         } while (points->NextRow());
     }
 
@@ -7920,15 +7936,15 @@ void ObjectMgr::LoadQuestPOI()
         if (!GetQuestTemplate(QuestID))
           TC_LOG_ERROR("sql.sql", "`quest_poi` quest id (%u) Idx1 (%u) does not exist in `quest_template`", QuestID, Idx1);
 
-        if (std::map<uint32, std::vector<QuestPOIBlobPoint>>* blobs = Trinity::Containers::MapGetValuePtr(allPoints, QuestID))
+        if (std::map<uint32, LoadedQuestPOIBlobPoints>* blobs = Trinity::Containers::MapGetValuePtr(allPoints, QuestID))
         {
-            if (std::vector<QuestPOIBlobPoint> *points = Trinity::Containers::MapGetValuePtr(*blobs, Idx1))
+            if (LoadedQuestPOIBlobPoints* points = Trinity::Containers::MapGetValuePtr(*blobs, Idx1))
             {
                 QuestPOIData &poiData = _questPOIStore[QuestID];
                 poiData.QuestID = QuestID;
                 poiData.Blobs.emplace_back(
-                    Idx1, ObjectiveIndex, QuestObjectiveId, MapId,
-                    WorldMapAreaId, Floor, Priority, Flags, std::move(*points));
+                    points->BlobIndex, Idx1, ObjectiveIndex, QuestObjectiveId, MapId,
+                    WorldMapAreaId, Floor, Priority, Flags, std::move(points->Points));
                 continue;
             }
         }

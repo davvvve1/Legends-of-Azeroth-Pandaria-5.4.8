@@ -767,7 +767,7 @@ void WorldSession::HandleQuestPOIQuery(WorldPacket& recvData)
                 {
                     data.WriteBits(blob.Points.size(), 21);     // POI points count bits
 
-                    poiData << uint32(blob.Floor);              // floor id
+                    poiData << uint32(0);                       // world effect id
 
                     for (auto point : blob.Points)
                     {
@@ -776,15 +776,15 @@ void WorldSession::HandleQuestPOIQuery(WorldPacket& recvData)
                     }
 
                     poiData << int32(blob.ObjectiveIndex);      // objective index
-                    poiData << uint32(blob.Idx1);               // POI index
+                    poiData << uint32(blob.BlobIndex);          // POI blob index
                     poiData << uint32(blob.QuestObjectiveId);   // quest objective id
-                    poiData << uint32(0);                       // unknown (new 5.x.x)
+                    poiData << uint32(0);                       // quest object id
                     poiData << uint32(blob.MapId);              // mapid
-                    poiData << uint32(blob.Points.size());      // POI points count
+                    poiData << uint32(blob.Floor);              // floor id
                     poiData << uint32(blob.WorldMapAreaId);     // areaid
-                    poiData << uint32(0);                       // unknown (new 5.x.x)
-                    poiData << uint32(blob.Flags);              // flags
                     poiData << uint32(blob.Priority);           // priority
+                    poiData << uint32(blob.Flags);              // flags
+                    poiData << uint32(0);                       // player condition id
                 }
 
                 poiData << uint32(questId);                     // quest ID
