@@ -483,41 +483,86 @@ class spell_grab_carriage: public SpellScriptLoader
         {
             PrepareSpellScript(spell_grab_carriage_SpellScript);
 
+            Creature* FindPlayerSummon(Player* player, uint32 entry)
+            {
+                std::list<Creature*> summons;
+                GetCreatureListWithEntryInGrid(summons, player, entry, 20.0f);
+
+                for (Creature* summon : summons)
+                    if (summon->ToTempSummon() && summon->ToTempSummon()->GetSummonerGUID() == player->GetGUID())
+                        return summon;
+
+                return nullptr;
+            }
+
             void HandleScriptEffect(SpellEffIndex /*effIndex*/)
             {
-                Unit* caster = GetCaster();
-
-                if (!caster)
+                Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+                if (!player || player->IsOnVehicle())
                     return;
 
-                Creature* carriage = NULL;
-                Creature* yak      = NULL;
+                uint32 carriageEntry = 0;
+                uint32 yakEntry = 0;
+                uint32 creditEntry = 0;
+                Position carriagePosition;
+                Position yakPosition;
 
-                if (caster->GetAreaId() == 5826) // Bassins chantants
+                if (player->GetAreaId() == 5826) // Singing Pools
                 {
-                    carriage = caster->SummonCreature(57208, 979.06f, 2863.87f, 87.88f, 4.7822f, TEMPSUMMON_MANUAL_DESPAWN, 0);
-                    yak      = caster->SummonCreature(57207, 979.37f, 2860.29f, 88.22f, 4.4759f, TEMPSUMMON_MANUAL_DESPAWN, 0);
+                    carriageEntry = 57208;
+                    yakEntry = 57207;
+                    creditEntry = 57710;
+                    carriagePosition.Relocate(979.06f, 2863.87f, 87.88f, 4.7822f);
+                    yakPosition.Relocate(979.37f, 2860.29f, 88.22f, 4.4759f);
                 }
-                else if (caster->GetAreaId() == 5881) // Ferme Dai-Lo
+                else if (player->GetAreaId() == 5881) // Dai-Lo Farmstead
                 {
-                    carriage = caster->SummonCreature(57208, 588.70f, 3165.63f, 88.86f, 4.4156f, TEMPSUMMON_MANUAL_DESPAWN, 0);
-                    yak      = caster->SummonCreature(59499, 587.61f, 3161.91f, 89.31f, 4.3633f, TEMPSUMMON_MANUAL_DESPAWN, 0);
+                    carriageEntry = 59496;
+                    yakEntry = 59498;
+                    creditEntry = 59497;
+                    carriagePosition.Relocate(588.70f, 3165.63f, 88.86f, 4.4156f);
+                    yakPosition.Relocate(587.61f, 3161.91f, 89.31f, 4.3633f);
                 }
-                else if (caster->GetAreaId() == 5833) // Epave du Chercheciel
+                else if (player->GetAreaId() == 5833) // Wreck of the Skyseeker
                 {
-                    carriage = caster->SummonCreature(57208, 264.37f, 3867.60f, 73.56f, 0.9948f, TEMPSUMMON_MANUAL_DESPAWN, 0);
-                    yak      = caster->SummonCreature(57743, 268.38f, 3872.36f, 74.50f, 0.8245f, TEMPSUMMON_MANUAL_DESPAWN, 0);
+                    carriageEntry = 57740;
+                    yakEntry = 57742;
+                    creditEntry = 57741;
+                    carriagePosition.Relocate(264.37f, 3867.60f, 73.56f, 0.9948f);
+                    yakPosition.Relocate(268.38f, 3872.36f, 74.50f, 0.8245f);
                 }
+                else
+                    return;
+
+                // The retail summon spell runs immediately before Cart Cap.
+                // Reuse those player-owned summons and only create a fallback
+                // pair if incomplete DBC data prevented either summon.
+                Creature* carriage = FindPlayerSummon(player, carriageEntry);
+                Creature* yak = FindPlayerSummon(player, yakEntry);
+
+                if (!carriage)
+                    carriage = player->SummonCreature(carriageEntry, carriagePosition, TEMPSUMMON_MANUAL_DESPAWN, 0);
+
+                if (!yak)
+                    yak = player->SummonCreature(yakEntry, yakPosition, TEMPSUMMON_MANUAL_DESPAWN, 0);
 
                 if (!carriage || !yak)
                     return;
 
-                carriage->SetExplicitSeerGuid(caster->GetGUID());
-                yak->SetExplicitSeerGuid(caster->GetGUID());
+                carriage->SetExplicitSeerGuid(player->GetGUID());
+                yak->SetExplicitSeerGuid(player->GetGUID());
 
-                //carriage->CastSpell(yak, 108627, true);
                 carriage->GetMotionMaster()->MoveFollow(yak, 0.0f, M_PI);
-                caster->EnterVehicle(carriage, 0);
+                player->EnterVehicle(carriage, 0);
+
+                // The delivery quests use TALKTO objectives for the
+                // stationary cart, so ordinary kill credit cannot finish it.
+                ObjectGuid creditGuid = ObjectGuid::Empty;
+                if (Unit* clickedCart = GetExplTargetUnit())
+                    if (clickedCart->GetEntry() == creditEntry)
+                        creditGuid = clickedCart->GetGUID();
+
+                player->TalkedToCreature(creditEntry, creditGuid);
             }
 
             void Register() override
