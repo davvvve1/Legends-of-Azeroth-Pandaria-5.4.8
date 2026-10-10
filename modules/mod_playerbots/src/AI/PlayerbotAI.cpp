@@ -741,6 +741,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         _instanceTankPullCountdownRemaining = 0;
         _instanceTankRouteProgressAt = 0;
         _instanceTankLastStallLog = 0;
+        _instanceTankOpeningTargetGuid = 0;
+        _instanceTankOpeningPullAt = 0;
     }
     else if (!IsInstanceTankLeadershipAutoSuppressed())
     {
@@ -816,9 +818,36 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     bool const gotankGroupHasActiveCombat =
         IsInstanceTankLeadershipActive() &&
         GroupPveCombat::GroupHasActiveCombat(bot);
+
+    // Attack() changes the bot engine and starts its melee swing before the
+    // creature necessarily has a victim or a threat-list entry. Without a
+    // short opening grace, the stale-combat recovery below cancels that swing
+    // on the very next update, then leadership starts it again forever. This
+    // was the live "skull is set but everybody stands still" loop.
+    bool gotankOpeningPullGrace = false;
+    if (IsInstanceTankLeader() && !gotankGroupHasActiveCombat &&
+        _currentState == BOT_STATE_COMBAT && _aiObjectContext)
+    {
+        ObjectGuid const pullGuid = _aiObjectContext
+            ->GetValue<ObjectGuid>("pull target")->Get();
+        Unit* pull = pullGuid ? GetUnit(pullGuid) : nullptr;
+        if (pull && pull->IsAlive() && pull->IsInWorld() &&
+            pull->GetMap() == bot->GetMap() && bot->GetVictim() == pull)
+        {
+            uint32 const guid = pullGuid.GetCounter();
+            uint32 const now = getMSTime();
+            if (_instanceTankOpeningTargetGuid != guid)
+            {
+                _instanceTankOpeningTargetGuid = guid;
+                _instanceTankOpeningPullAt = now;
+            }
+            gotankOpeningPullGrace = getMSTimeDiff(
+                _instanceTankOpeningPullAt, now) < 5000;
+        }
+    }
     if (IsInstanceTankLeadershipActive() &&
         _currentState == BOT_STATE_COMBAT &&
-        !gotankGroupHasActiveCombat)
+        !gotankGroupHasActiveCombat && !gotankOpeningPullGrace)
     {
         bot->CombatStopWithPets(true);
         bot->AttackStop();

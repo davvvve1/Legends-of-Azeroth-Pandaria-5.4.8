@@ -343,6 +343,8 @@ protected:
     uint8 _instanceTankPullCountdownRemaining = 0;
     uint32 _instanceTankRouteProgressAt = 0;
     uint32 _instanceTankLastStallLog = 0;
+    uint32 _instanceTankOpeningTargetGuid = 0;
+    uint32 _instanceTankOpeningPullAt = 0;
     float _instanceTankRouteProgressX = 0.0f;
     float _instanceTankRouteProgressY = 0.0f;
     float _instanceTankRouteProgressZ = 0.0f;

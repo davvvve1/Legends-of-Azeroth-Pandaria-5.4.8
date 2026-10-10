@@ -196,13 +196,27 @@ require("_forwardSearchStarted = getMSTime()" in lead and
         "MovementPriority::MOVEMENT_HAZARD" in lead and
         "nextDistance < currentDistance" in lead,
         "post-pack leadership must own a 20-second forward route search")
+require("gotankOpeningPullGrace" in ai and
+        "_instanceTankOpeningTargetGuid" in header and
+        "_instanceTankOpeningPullAt" in header and
+        "bot->GetVictim() == pull" in ai and
+        "< 5000" in ai and
+        "!gotankOpeningPullGrace" in ai,
+        "stale-combat cleanup must not cancel the tank's opening attack")
+require("AbandonUnreachableTarget" in lead and
+        "_approachBestDistance" in lead and
+        "getMSTimeDiff(_approachProgressAt, now) >= 4000" in lead and
+        "_unreachableTargetGuid == guid.GetCounter()" in lead and
+        "getMSTimeDiff(_unreachableTargetAt, getMSTime()) < 20000" in lead and
+        '"gotank abandoned unreachable pull leader=' in lead,
+        "an unreachable marked pull must release the group back to its route")
 require("if (!splineMoving)" in ai and
         'GetValue<LastMovement&>("last movement")' in ai and
         "bot->StopMoving();" in ai,
         "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 36,
+    "checks": 38,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -226,6 +240,8 @@ print(json.dumps({
     "tank_kill_order": "skull-follows-selected-target",
     "target_marker_party_category": "instance",
     "pull_approach": "locked-target-no-nearest-mob-oscillation",
+    "pull_opening_grace_ms": 5000,
+    "unreachable_pull_ignore_ms": 20000,
     "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",
     "route_dispatch": "validated-waypoint-direct-to-motion-master",

@@ -28,12 +28,18 @@ private:
     bool HasMogushanPalaceDestination() const;
     bool AdvanceMogushanPalaceRoute();
     bool EngageTarget(Unit* target);
+    void AbandonUnreachableTarget(Unit* target);
     MovementPriority RouteMovementPriority() const;
 
     uint8 _mogushanRouteStage = 0xFF;
     uint16 _mogushanRouteIndex = 0;
     uint32 _leadershipGeneration = 0;
     uint32 _forwardSearchStarted = 0;
+    uint32 _approachTargetGuid = 0;
+    uint32 _approachProgressAt = 0;
+    float _approachBestDistance = 0.0f;
+    uint32 _unreachableTargetGuid = 0;
+    uint32 _unreachableTargetAt = 0;
 };
 
 #endif

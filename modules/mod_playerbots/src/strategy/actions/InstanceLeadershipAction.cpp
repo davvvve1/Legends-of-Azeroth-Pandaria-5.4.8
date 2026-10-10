@@ -379,6 +379,9 @@ void InstanceLeadershipAction::ResetCompletedPull()
 
     pullValue->Set(ObjectGuid::Empty);
     _forwardSearchStarted = getMSTime();
+    _approachTargetGuid = 0;
+    _approachProgressAt = 0;
+    _approachBestDistance = 0.0f;
     Unit* current = context->GetValue<Unit*>("current target")->Get();
     if (!current || !current->IsAlive() || current->GetGUID() == pullGuid)
         context->GetValue<Unit*>("current target")->Set(nullptr);
@@ -414,6 +417,10 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
 
     auto consider = [&](ObjectGuid const& guid)
     {
+        if (_unreachableTargetGuid == guid.GetCounter() &&
+            getMSTimeDiff(_unreachableTargetAt, getMSTime()) < 20000)
+            return;
+
         Unit* target = botAI->GetUnit(guid);
         Creature* creature = target ? target->ToCreature() : nullptr;
         if (!creature || !creature->IsAlive() || !creature->IsInWorld() ||
@@ -629,6 +636,21 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     // The forward-search window ends as soon as the next real pull is found.
     _forwardSearchStarted = 0;
 
+    uint32 const now = getMSTime();
+    uint32 const targetGuid = target->GetGUID().GetCounter();
+    float const distance = bot->GetExactDist(target);
+    if (_approachTargetGuid != targetGuid)
+    {
+        _approachTargetGuid = targetGuid;
+        _approachProgressAt = now;
+        _approachBestDistance = distance;
+    }
+    else if (distance + 1.5f < _approachBestDistance)
+    {
+        _approachProgressAt = now;
+        _approachBestDistance = distance;
+    }
+
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
         group = bot->GetGroup();
@@ -646,11 +668,58 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());
     bot->SetTarget(target->GetGUID());
 
-    float const distance = bot->GetExactDist(target);
+    bool issued = false;
     if (distance > 22.0f || !bot->IsWithinLOSInMap(target))
-        return MoveTo(target, 18.0f, MovementPriority::MOVEMENT_NORMAL);
+        issued = MoveTo(target, 18.0f, MovementPriority::MOVEMENT_FORCED);
+    else
+        issued = Attack(target);
 
-    return Attack(target);
+    if (_approachProgressAt &&
+        getMSTimeDiff(_approachProgressAt, now) >= 4000)
+    {
+        AbandonUnreachableTarget(target);
+        return true;
+    }
+
+    return issued;
+}
+
+void InstanceLeadershipAction::AbandonUnreachableTarget(Unit* target)
+{
+    if (!target)
+        return;
+
+    ObjectGuid const guid = target->GetGUID();
+    _unreachableTargetGuid = guid.GetCounter();
+    _unreachableTargetAt = getMSTime();
+    _approachTargetGuid = 0;
+    _approachProgressAt = 0;
+    _approachBestDistance = 0.0f;
+    _forwardSearchStarted = _unreachableTargetAt;
+
+    context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
+    if (context->GetValue<Unit*>("current target")->Get() == target)
+        context->GetValue<Unit*>("current target")->Set(nullptr);
+    context->GetValue<LastMovement&>("last movement")->Get().clear();
+    bot->AttackStop();
+    bot->SetTarget(ObjectGuid::Empty);
+    bot->SetSelection(ObjectGuid::Empty);
+    bot->GetMotionMaster()->Clear(false);
+    bot->StopMoving();
+
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (group && group->GetTargetIcon(7) == guid)
+        group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
+
+    TC_LOG_WARN("server",
+        "gotank abandoned unreachable pull leader=%s target=%s entry=%u target-guid=%u map=%u instance=%u position=%.2f,%.2f,%.2f",
+        bot->GetName().c_str(), target->GetName().c_str(),
+        target->GetEntry(), guid.GetCounter(), bot->GetMapId(),
+        bot->GetInstanceId(), bot->GetPositionX(), bot->GetPositionY(),
+        bot->GetPositionZ());
+    botAI->SetNextCheckDelay(0);
 }
 
 MovementPriority InstanceLeadershipAction::RouteMovementPriority() const
