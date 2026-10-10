@@ -4092,6 +4092,28 @@ Spell const* GetInterruptibleCurrentSpell(Unit* target)
     return nullptr;
 }
 
+uint8 GetGroupPveInterruptPriority(Unit* target)
+{
+    Spell const* spell = GetInterruptibleCurrentSpell(target);
+    SpellInfo const* info = spell ? spell->GetSpellInfo() : nullptr;
+    if (!info)
+        return 4;
+
+    // Gekkan's stationary entourage often casts at the same time. Stop the
+    // encounter-wide heal first, then the protection/stacking debuff and the
+    // Skulker stun before spending an interrupt on an ordinary damage bolt.
+    switch (info->Id)
+    {
+        case 118940: return 0; // Glintrok Oracle: Cleansing Flame
+        case 118958: return 1; // Glintrok Ironhide: Iron Protector
+        case 118903: return 1; // Glintrok Hexxer: Hex of Lethargy
+        case 118963: return 2; // Glintrok Skulker: Shank
+        case 118936: return 3; // Glintrok Oracle: Fire Bolt
+        case 118917: return 3; // Glintrok Hexxer: Dark Bolt
+        default:     return 2;
+    }
+}
+
 bool IsCastingNonMeleeSpell(Player* player)
 {
     return player &&
@@ -4504,13 +4526,12 @@ bool PlayerbotAI::IsGroupPveAreaSpellSafe(SpellInfo const* spellInfo, Unit* targ
 bool PlayerbotAI::TryGroupPveCoordinatedInterrupt()
 {
     uint32 requesterGuid = _lfgAutoQueueRequesterGuid.load();
+    bool const autoQueueGroup = requesterGuid != 0;
     if (!bot || !bot->IsAlive() || !IsGroupPveActivity())
         return false;
 
     bool const worldBossRaid =
         GetActivityMode() == BotActivityMode::WorldBossPve;
-    if (!requesterGuid && !worldBossRaid)
-        return false;
 
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
@@ -4566,7 +4587,8 @@ bool PlayerbotAI::TryGroupPveCoordinatedInterrupt()
         return false;
 
     // Every bot computes the same ordering, so only one provider wins without
-    // a cross-thread reservation. Handle the cast closest to completion first.
+    // a cross-thread reservation. Encounter-critical casts outrank ordinary
+    // bolts, then the cast closest to completion wins.
     std::sort(castingTargets.begin(), castingTargets.end(),
         [](Unit* left, Unit* right)
         {
@@ -4576,9 +4598,11 @@ bool PlayerbotAI::TryGroupPveCoordinatedInterrupt()
                 std::numeric_limits<int32>::max();
             int32 rightTimer = rightSpell ? rightSpell->GetCurrentCastTimer() :
                 std::numeric_limits<int32>::max();
-            return std::make_tuple(leftTimer,
+            return std::make_tuple(GetGroupPveInterruptPriority(left),
+                       leftTimer,
                        left->GetGUID().GetCounter()) <
-                std::make_tuple(rightTimer,
+                std::make_tuple(GetGroupPveInterruptPriority(right),
+                    rightTimer,
                     right->GetGUID().GetCounter());
         });
 
@@ -4616,7 +4640,8 @@ bool PlayerbotAI::TryGroupPveCoordinatedInterrupt()
                 if (!candidate->HasWorldBossStagingAccess())
                     continue;
             }
-            else if (candidateAI->_lfgAutoQueueRequesterGuid.load() !=
+            else if (autoQueueGroup &&
+                candidateAI->_lfgAutoQueueRequesterGuid.load() !=
                 requesterGuid)
                 continue;
 

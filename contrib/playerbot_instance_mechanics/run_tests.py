@@ -11,6 +11,7 @@ MECHANICS = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceMechanic
 MECHANICS_HEADER = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceMechanicsAction.h"
 AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 FACTORY = ROOT / "modules/mod_playerbots/src/Factory/AiFactory.cpp"
+MOVEMENT = ROOT / "modules/mod_playerbots/src/strategy/actions/MovementActions.cpp"
 MAP_DBC = ROOT / "src/server/game/DataStores/DBCStructure.h"
 MOGUSHAN_INSTANCE = ROOT / "src/server/scripts/Pandaria/MogushanPalace/instance_mogu_shan_palace.cpp"
 
@@ -24,6 +25,7 @@ mechanics = MECHANICS.read_text(encoding="utf-8")
 mechanics_header = MECHANICS_HEADER.read_text(encoding="utf-8")
 ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 factory = FACTORY.read_text(encoding="utf-8")
+movement = MOVEMENT.read_text(encoding="utf-8-sig")
 map_dbc = MAP_DBC.read_text(encoding="utf-8")
 mogushan_instance = MOGUSHAN_INSTANCE.read_text(encoding="utf-8")
 
@@ -55,6 +57,18 @@ require("NpcMuShiba = 61453" in mechanics and
         "Trial target order must remain Mu'Shiba then Haiyan")
 require("gekkanEntourage && !PlayerBotSpec::IsHeal" in mechanics,
         "Gekkan tank/add switch is missing")
+require('engine->addStrategy("formation", false);' in factory and
+        "desiredRange = std::min(24.0f" in movement and
+        "healerCatchup" in ai and "bot->GetDistance(leader) > 32.0f" in ai,
+        "Gekkan roles must retain tank-centered melee, ranged, and healer positioning")
+require("GetGroupPveInterruptPriority" in ai and
+        "case 118940: return 0" in ai and
+        "case 118958: return 1" in ai and
+        "case 118903: return 1" in ai and
+        "case 118963: return 2" in ai and
+        "autoQueueGroup &&" in ai and
+        "if (!requesterGuid && !worldBossRaid)" not in ai,
+        "manual instance groups must coordinate Gekkan's priority interrupts")
 require("IsHealingCast(unit)" in mechanics,
         "generic engaged healer fallback is missing")
 require("activeTrialTarget" in mechanics and
@@ -99,11 +113,13 @@ require("NpcMingTheCunning = 61444" in mechanics and
         "every role must leave Ming's Magnetic Field and moving Dervish")
 
 print(json.dumps({
-    "checks": 18,
+    "checks": 20,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
     "gekkan_target_order": [61337, 61340, 61338, 61339, 61243],
+    "gekkan_interrupt_order": [118940, 118958, 118903, 118963, 118936, 118917],
+    "gekkan_positioning": "tank stacks mobile enemies on skull; ranged form at 16-24 yards; healer catches tank at 32 yards",
     "trial_target_order": [61453, 61445],
     "trial_boss_order": ["Kuai/Mu'Shiba", "Haiyan", "Ming"],
     "ming_avoidance": ["Magnetic Field", "Whirling Dervish"],
