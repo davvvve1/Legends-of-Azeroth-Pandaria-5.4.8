@@ -242,6 +242,7 @@ public:
     }
     bool IsInstanceTankLeader() const;
     Player* GetInstanceTankLeader() const;
+    void SyncInstanceTankSkullTarget(Unit* preferredTarget = nullptr);
     bool CanLfgAutoQueueEngage(Unit const* target) const;
     bool IsGroupPveAreaSpellSafe(SpellInfo const* spellInfo, Unit* target);
     bool IsGroupPveTauntAllowed(SpellInfo const* spellInfo, Unit* target);

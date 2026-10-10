@@ -37,6 +37,9 @@ an instance script's broad `IN_PROGRESS` state cannot pause the route between
 waves or phases. Only a real nearby hostile interaction (victim or threat)
 holds the tank in combat; as soon as that interaction ends the same leadership
 controller advances toward the next route point without another command.
+The elected tank owns the party kill order: its selected mob receives skull
+before the pull, and skull moves to each new target the tank selects inside a
+pack. DPS target selection ranks that skull above unmarked enemies.
 Outside Mogu'shan Palace, the next incomplete encounter supplies a persistent
 destination and the live mmap is traversed in short steps so intervening trash
 becomes visible and is pulled normally. Finishing all registered encounters

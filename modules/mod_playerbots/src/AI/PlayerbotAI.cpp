@@ -278,6 +278,52 @@ bool PlayerbotAI::IsInstanceTankLeader() const
         bot->GetGUID().GetCounter();
 }
 
+void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
+{
+    if (!bot || !bot->IsInWorld() || !IsInstanceTankLeader() ||
+        !bot->GetMap() || !bot->GetMap()->IsDungeon())
+        return;
+
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (!group)
+        return;
+
+    auto validAttackTarget = [this](Unit* target)
+    {
+        return target && target->IsAlive() && target->IsInWorld() &&
+            target->GetMap() == bot->GetMap() &&
+            bot->IsValidAttackTarget(target);
+    };
+
+    Unit* target = validAttackTarget(preferredTarget) ? preferredTarget : nullptr;
+    if (!target && _aiObjectContext)
+    {
+        Unit* current = _aiObjectContext->GetValue<Unit*>("current target")->Get();
+        if (validAttackTarget(current))
+            target = current;
+    }
+    if (!target && validAttackTarget(bot->GetVictim()))
+        target = bot->GetVictim();
+
+    constexpr uint8 skull = 7;
+    ObjectGuid const markedGuid = group->GetTargetIcon(skull);
+    if (target)
+    {
+        if (markedGuid != target->GetGUID())
+            group->SetTargetIcon(skull, bot->GetGUID(), target->GetGUID(), 0);
+        return;
+    }
+
+    // Do not erase a valid encounter-specific mark just because the tank is
+    // between target-selection ticks. Only remove a skull which can no
+    // longer be attacked; the next selected target is marked immediately.
+    Unit* markedTarget = markedGuid ? GetUnit(markedGuid) : nullptr;
+    if (markedGuid && !validAttackTarget(markedTarget))
+        group->SetTargetIcon(skull, bot->GetGUID(), ObjectGuid::Empty, 0);
+}
+
 bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
 {
     if (AhnQirajStrategy::IsActive(bot))
@@ -619,6 +665,11 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         ChangeEngine(BOT_STATE_NON_COMBAT);
         SetNextCheckDelay(0);
     }
+
+    // The elected tank owns the party kill order. Keep skull on the exact
+    // live target it has selected, including target switches inside the same
+    // pack; followers already rank skull above every unmarked attacker.
+    SyncInstanceTankSkullTarget();
 
     // A banner placed during emergency takeover must stop taunting when the
     // marked main tank revives or the diamond is moved to another live tank.

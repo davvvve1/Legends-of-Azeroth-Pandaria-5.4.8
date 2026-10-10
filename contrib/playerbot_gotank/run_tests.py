@@ -11,6 +11,7 @@ AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 CHAT_SOURCE = ROOT / "modules/mod_playerbots/src/mod_playerbots.cpp"
 FOLLOW_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/FollowActions.cpp"
 LEAD_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceLeadershipAction.cpp"
+ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackActions.cpp"
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
 
@@ -25,6 +26,7 @@ ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 chat = CHAT_SOURCE.read_text(encoding="utf-8-sig")
 follow = FOLLOW_SOURCE.read_text(encoding="utf-8-sig")
 lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
+attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
@@ -117,9 +119,15 @@ require("instance->IsEncounterInProgress()" not in lead and
 require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
         "SetInstanceTankLeadershipAutoSuppressed(false)" in chat,
         "manual gotank off/on must suppress and restore automatic leadership")
+require("SyncInstanceTankSkullTarget(Unit* preferredTarget" in header and
+        "void PlayerbotAI::SyncInstanceTankSkullTarget" in ai and
+        "SyncInstanceTankSkullTarget();" in ai and
+        "botAI->SyncInstanceTankSkullTarget(target);" in attack and
+        "GetTargetIcon(skull)" in ai and "SetTargetIcon(skull" in ai,
+        "the leader tank must continuously publish its kill target as skull")
 
 print(json.dumps({
-    "checks": 21,
+    "checks": 22,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -139,5 +147,6 @@ print(json.dumps({
     "instance_complete": "continue-until-manual-gotank",
     "persistent_controller": "direct-before-idle-actions",
     "route_ownership": "follow-engine-blocked-between-waypoints",
+    "tank_kill_order": "skull-follows-selected-target",
     "result": "pass",
 }, sort_keys=True))

@@ -167,6 +167,7 @@ bool AttackAction::Attack(Unit* target, bool with_pet /*true*/)
     context->GetValue<Unit*>("old target")->Set(oldTarget);
 
     context->GetValue<Unit*>("current target")->Set(target);
+    botAI->SyncInstanceTankSkullTarget(target);
     //context->GetValue<LootObjectStack*>("available loot")->Get()->Add(guid);
 
     LastMovement& lastMovement = AI_VALUE(LastMovement&, "last movement");
