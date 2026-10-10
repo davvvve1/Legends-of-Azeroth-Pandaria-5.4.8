@@ -146,6 +146,15 @@ require("GetLockedPullTarget() const" in lead and
         "bot->GetExactDist(pull) > 240.0f" in lead and
         '"gotank pull locked leader=' in lead,
         "the leader must keep one marked pull target throughout its approach")
+require("if (GroupHasActiveCombat())" in lead and
+        "return GetLockedPullTarget() && !bot->GetVictim();" in lead and
+        "reclaimMarkedPull" in ai and
+        "(!GroupPveCombat::GroupHasActiveCombat(bot) || reclaimMarkedPull)" in ai,
+        "a follower combat flag must not suppress the tank's unfinished marked pull")
+require("pullTank->GetVictim() == target" in ai and
+        "GroupPveCombat::IsActivelyAttacking(pullTank" in ai and
+        "followers must not" in ai,
+        "followers must wait for the tank to open a skull or cross target")
 require("GroupIsReady" not in lead and "_groupWaitStarted" not in lead and
         "GroupNeedsResurrection" not in lead,
         "leadership must not pause between packs for regrouping or resurrection")
@@ -240,7 +249,7 @@ require("if (!splineMoving)" in ai and
         "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 42,
+    "checks": 44,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

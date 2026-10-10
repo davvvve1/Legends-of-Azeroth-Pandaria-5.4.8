@@ -560,14 +560,19 @@ bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
         target->GetMap() != requester->GetMap())
         return false;
 
-    // Skull and cross assigned by the party leader/assistant form an explicit
-    // kill order. Let managed LFG fillers engage them even before the
-    // requester has generated combat or threat; all regular target, range and
-    // movement checks are still performed by the selecting action.
+    // Skull and cross publish the tank's kill order, but followers must not
+    // turn a marker into the opening attack. That race made the group combat
+    // flag suppress leadership while the tank still had no victim. Release
+    // followers only after the elected tank has actually started that pull.
     if ((group->GetTargetIcon(7) == target->GetGUID() ||
          group->GetTargetIcon(6) == target->GetGUID()) &&
         bot->IsValidAttackTarget(target))
-        return true;
+        if (Player* pullTank = GetInstanceTankLeader())
+            if (pullTank->IsAlive() &&
+                (pullTank->GetVictim() == target ||
+                    GroupPveCombat::IsActivelyAttacking(pullTank,
+                        const_cast<Unit*>(target))))
+                return true;
 
     // The old check allowed every hostile target as soon as the requester was
     // in combat. That let a filler chain-pull unrelated packs while the real
@@ -1661,8 +1666,21 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // Run it directly after combat/cast handling so ordinary non-combat
     // triggers cannot starve the next route step. This makes one automatic
     // activation continue pack-by-pack until the master toggles gotank off.
+    bool reclaimMarkedPull = false;
     if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
-        !GroupPveCombat::GroupHasActiveCombat(bot))
+        GroupPveCombat::GroupHasActiveCombat(bot) && _aiObjectContext &&
+        !bot->GetVictim())
+    {
+        ObjectGuid const pullGuid = _aiObjectContext
+            ->GetValue<ObjectGuid>("pull target")->Get();
+        Unit* pull = pullGuid ? GetUnit(pullGuid) : nullptr;
+        reclaimMarkedPull = pull && pull->IsAlive() && pull->IsInWorld() &&
+            pull->GetMap() == bot->GetMap() &&
+            bot->IsValidAttackTarget(pull);
+    }
+
+    if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
+        (!GroupPveCombat::GroupHasActiveCombat(bot) || reclaimMarkedPull))
     {
         auto announcePullCountdown = [&](std::string const& message)
         {

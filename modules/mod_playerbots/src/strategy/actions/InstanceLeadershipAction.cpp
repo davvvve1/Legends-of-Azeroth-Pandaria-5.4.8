@@ -751,10 +751,17 @@ bool InstanceLeadershipAction::isUseful()
 {
     if (!bot || !bot->IsAlive() || !bot->GetMap() ||
         !bot->GetMap()->IsDungeon() || !botAI->IsInstanceTankLeader() ||
-        !PlayerBotSpec::IsTank(bot, true) || GroupHasActiveCombat())
+        !PlayerBotSpec::IsTank(bot, true))
         return false;
 
     ResetCompletedPull();
+
+    // A follower can enter combat from the published skull a fraction before
+    // the approaching tank owns a victim. Do not let that group-wide combat
+    // flag suppress the only action which can finish the tank's marked pull.
+    // Once the tank has a victim, the ordinary combat engine owns the fight.
+    if (GroupHasActiveCombat())
+        return GetLockedPullTarget() && !bot->GetVictim();
 
     return SelectNextTarget() || HasMogushanPalaceDestination() ||
         HasGenericDestination();
