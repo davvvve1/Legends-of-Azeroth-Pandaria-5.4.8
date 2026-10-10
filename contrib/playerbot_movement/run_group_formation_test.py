@@ -49,7 +49,11 @@ namespace PlayerBotSpec {
 bool IsTank(Player* p,bool) {return p->tank;}
 bool IsHeal(Player* p,bool) {return p->healer;}
 }
-struct AI {int state=BOT_STATE_NON_COMBAT;int GetState(){return state;}};
+struct AI {
+    int state=BOT_STATE_NON_COMBAT; bool leadership=false;
+    int GetState(){return state;}
+    bool IsInstanceTankLeadershipActive(){return leadership;}
+};
 struct WorldLocation {
     unsigned map; float x,y,z;
     WorldLocation(unsigned m,float a,float b,float c):map(m),x(a),y(b),z(c){}
@@ -77,6 +81,10 @@ int main() {
     p=action.GetGroupFollowLocation();
     assert(std::abs(p.x-100)<0.001f && std::abs(p.y-108)<0.001f);
     master.orientation=0;
+    ai.leadership=true;
+    p=action.GetGroupFollowLocation();
+    assert(p.x==99.0f && p.y==103.0f);
+    ai.leadership=false;
     std::vector<WorldLocation> positions;
     for(Player* bot:{&dps1,&dps2}) {
         action.bot=bot; p=action.GetGroupFollowLocation();
@@ -114,6 +122,10 @@ int main() {
     for(unsigned i=0;i<12;++i) {
         auto a=GroupFollowFormation::GetHealerOffset(i);
         assert(a.forward<=-2.5f);
+    }
+    for(unsigned i=0;i<12;++i) {
+        auto a=GroupFollowFormation::GetOffTankOffset(i);
+        assert(a.forward<=-1.0f && std::abs(a.sideways)==3.0f);
     }
     std::cout<<"Group formation: tank lead, spacing, rotation, collision and combat guards passed\n";
 }

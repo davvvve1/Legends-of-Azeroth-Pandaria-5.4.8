@@ -1650,10 +1650,14 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         bool const healerCatchup = leader && leader->IsAlive() &&
             PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
             bot->GetDistance(leader) > 32.0f;
+        bool const idleCombatCatchup = leader && leader->IsAlive() &&
+            !PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            !bot->GetVictim() && bot->GetDistance(leader) > 8.0f;
         if (leader && leader->IsAlive() && leader->IsInWorld() &&
             leader->GetMap() == bot->GetMap() &&
-            (!groupCombat || healerCatchup) &&
-            bot->GetDistance(leader) > (healerCatchup ? 32.0f : 4.0f) &&
+            (!groupCombat || healerCatchup || idleCombatCatchup) &&
+            bot->GetDistance(leader) > (healerCatchup ? 32.0f :
+                (idleCombatCatchup ? 8.0f : 4.0f)) &&
             !bot->IsNonMeleeSpellCasted(true, false, true) &&
             DoSpecificAction("follow", Event(), true))
         {

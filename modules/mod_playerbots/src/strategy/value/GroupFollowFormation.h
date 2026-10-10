@@ -30,6 +30,16 @@ inline Offset GetHealerOffset(std::size_t slot)
     float const sideways = static_cast<float>(static_cast<int>((slot + 1) % 3) - 1) * 2.5f;
     return {-2.5f - row, sideways};
 }
+
+inline Offset GetOffTankOffset(std::size_t slot)
+{
+    // During gotank the elected main tank owns navigation. Additional tanks
+    // travel on its rear flanks instead of using the ordinary +8 yard tank
+    // lead row, which would put them in front of the route owner.
+    float const row = static_cast<float>(slot / 2) * 3.0f;
+    float const sideways = slot % 2 ? -3.0f : 3.0f;
+    return {-1.0f - row, sideways};
+}
 }
 
 #endif

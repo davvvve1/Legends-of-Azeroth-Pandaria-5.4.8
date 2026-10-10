@@ -65,7 +65,9 @@ WorldLocation FollowAction::GetGroupFollowLocation()
 
     auto const offset = healer ?
         GroupFollowFormation::GetHealerOffset(slot) :
-        GroupFollowFormation::GetOffset(tank, slot);
+        (tank && botAI->IsInstanceTankLeadershipActive() ?
+            GroupFollowFormation::GetOffTankOffset(slot) :
+            GroupFollowFormation::GetOffset(tank, slot));
     float const orientation = master->GetOrientation();
     // Narrow the formation if a wall blocks a slot; never use unchecked coordinates.
     for (float scale : {1.0f, 0.5f, 0.25f})
@@ -94,9 +96,12 @@ bool FollowAction::Execute(Event event)
         bool const healerCatchup = leader && leader->IsAlive() &&
             PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
             bot->GetDistance(leader) > 32.0f;
+        bool const idleCombatCatchup = leader && leader->IsAlive() &&
+            !PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            !bot->GetVictim() && bot->GetDistance(leader) > 8.0f;
         if (!leader || leader == bot || !leader->IsInWorld() ||
             leader->GetMap() != bot->GetMap() ||
-            (groupCombat && !healerCatchup) ||
+            (groupCombat && !healerCatchup && !idleCombatCatchup) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
 
@@ -104,6 +109,8 @@ bool FollowAction::Execute(Event event)
         // stable 20-yard casting position before selecting its next heal.
         if (healerCatchup)
             return Follow(leader, 20.0f, static_cast<float>(M_PI));
+        if (idleCombatCatchup)
+            return Follow(leader, 6.0f, static_cast<float>(M_PI));
 
         if (UseGroupFollowFormation())
         {
@@ -205,13 +212,16 @@ bool FollowAction::isUseful()
         bool const healerCatchup = leader && leader->IsAlive() &&
             PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
             bot->GetDistance(leader) > 32.0f;
+        bool const idleCombatCatchup = leader && leader->IsAlive() &&
+            !PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            !bot->GetVictim() && bot->GetDistance(leader) > 8.0f;
         if (!leader || leader == bot || !leader->IsInWorld() ||
             leader->GetMap() != bot->GetMap() ||
-            (groupCombat && !healerCatchup) ||
+            (groupCombat && !healerCatchup && !idleCombatCatchup) ||
             leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
-        if (healerCatchup)
+        if (healerCatchup || idleCombatCatchup)
             return true;
         if (UseGroupFollowFormation())
         {
