@@ -24,6 +24,141 @@
 
 #define GOSSIP_WIND "I would like to go back on the top of the temple"
 
+namespace DoNoEvil
+{
+    enum Creatures
+    {
+        NPC_RUK_RUK    = 55634,
+        NPC_JI_FIREPAW = 56134
+    };
+
+    enum Quests
+    {
+        QUEST_DO_NO_EVIL = 29780
+    };
+
+    enum Spells
+    {
+        SPELL_AIM          = 125609,
+        SPELL_OOKSPLOSIONS = 125699
+    };
+
+    enum Events
+    {
+        EVENT_AIM = 1,
+        EVENT_OOKSPLOSIONS,
+        EVENT_JI_TAUNT_ONE,
+        EVENT_JI_TAUNT_TWO
+    };
+}
+
+// Quest 29780 "Do No Evil" is a small assisted boss encounter.  Ji is meant
+// to join the player against Ruk-Ruk; without him the encounter is both much
+// harder than intended and can fail to award credit when an NPC gets the last
+// hit.  Keep the boss shared, but give every nearby quest participant credit.
+struct boss_ruk_ruk : public ScriptedAI
+{
+    boss_ruk_ruk(Creature* creature) : ScriptedAI(creature), summons(me) { }
+
+    void Reset() override
+    {
+        events.Reset();
+        summons.DespawnAll();
+        jiGuid.Clear();
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        events.ScheduleEvent(DoNoEvil::EVENT_AIM, urand(2000, 5000));
+        events.ScheduleEvent(DoNoEvil::EVENT_OOKSPLOSIONS, urand(8000, 10000));
+
+        Player* player = who ? who->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        if (!player || player->GetQuestStatus(DoNoEvil::QUEST_DO_NO_EVIL) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        if (Creature* ji = me->SummonCreature(DoNoEvil::NPC_JI_FIREPAW,
+            1170.43f, 4414.15f, 210.92f, 0.75f, TEMPSUMMON_MANUAL_DESPAWN))
+        {
+            jiGuid = ji->GetGUID();
+            ji->SetUInt32Value(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+            ji->SetReactState(REACT_AGGRESSIVE);
+            ji->AI()->AttackStart(me);
+            me->AddThreat(ji, 1.0f);
+            sCreatureTextMgr->SendChat(ji, 0);
+
+            events.ScheduleEvent(DoNoEvil::EVENT_JI_TAUNT_ONE, 7000);
+            events.ScheduleEvent(DoNoEvil::EVENT_JI_TAUNT_TWO, 14000);
+        }
+    }
+
+    void JustSummoned(Creature* summon) override
+    {
+        summons.Summon(summon);
+    }
+
+    void EnterEvadeMode() override
+    {
+        if (_EnterEvadeMode())
+            Reset();
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (Creature* ji = me->GetMap()->GetCreature(jiGuid))
+        {
+            sCreatureTextMgr->SendChat(ji, 3);
+            ji->CombatStop(true);
+            ji->DespawnOrUnsummon(5000);
+        }
+
+        std::list<Player*> players;
+        GetPlayerListInGrid(players, me, 60.0f);
+        for (Player* player : players)
+            if (player->GetQuestStatus(DoNoEvil::QUEST_DO_NO_EVIL) == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(DoNoEvil::NPC_RUK_RUK, me->GetGUID());
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case DoNoEvil::EVENT_AIM:
+                    DoCastVictim(DoNoEvil::SPELL_AIM);
+                    events.ScheduleEvent(DoNoEvil::EVENT_AIM, urand(12000, 20000));
+                    break;
+                case DoNoEvil::EVENT_OOKSPLOSIONS:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 40.0f, true))
+                        DoCast(target, DoNoEvil::SPELL_OOKSPLOSIONS);
+                    events.ScheduleEvent(DoNoEvil::EVENT_OOKSPLOSIONS, urand(20000, 25000));
+                    break;
+                case DoNoEvil::EVENT_JI_TAUNT_ONE:
+                    if (Creature* ji = me->GetMap()->GetCreature(jiGuid))
+                        sCreatureTextMgr->SendChat(ji, 1);
+                    break;
+                case DoNoEvil::EVENT_JI_TAUNT_TWO:
+                    if (Creature* ji = me->GetMap()->GetCreature(jiGuid))
+                        sCreatureTextMgr->SendChat(ji, 2);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    EventMap events;
+    SummonList summons;
+    ObjectGuid jiGuid;
+};
+
 class npc_master_shang_xi_temple : public CreatureScript
 {
     public:
@@ -1492,6 +1627,7 @@ public:
 
 void AddSC_wandering_island_west()
 {
+    RegisterCreatureAI(boss_ruk_ruk);
     new npc_master_shang_xi_temple();
     new npc_wind_vehicle();
     new AreaTrigger_at_wind_temple_entrance();
