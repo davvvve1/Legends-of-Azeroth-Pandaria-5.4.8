@@ -4318,9 +4318,71 @@ bool PlayerbotAI::TryGroupPveTankRescue()
     if (!group) group = bot->GetGroup();
     if (!group) return false;
 
-    // Cross is an explicit off-tank assignment. Acquire it before generic
-    // rescue arbitration, including when the enemy already attacks the main
-    // tank (a state which is not considered an emergency rescue).
+    std::vector<Unit*> targets;
+    auto addRescueTarget = [&](Unit* attacker)
+    {
+        if (GroupPveCombat::NeedsRescue(bot, attacker) &&
+            std::find(targets.begin(), targets.end(), attacker) ==
+                targets.end())
+            targets.push_back(attacker);
+    };
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+        if (Player* member = ref->GetSource())
+            if (member->IsAlive() && member->IsInWorld() && member->GetMap() == bot->GetMap())
+            {
+                for (Unit* attacker : member->getAttackers())
+                    addRescueTarget(attacker);
+
+                // Spell/ranged enemies can own threat without appearing in
+                // Unit::getAttackers().  Read the healer's hostile references
+                // as well so the rescue path sees the same live aggro the
+                // healer and server threat manager see.
+                for (HostileReference* hostile =
+                        member->getHostileRefManager().getFirst(); hostile;
+                    hostile = hostile->next())
+                    if (ThreatManager* manager = hostile->GetSource())
+                        addRescueTarget(manager->GetOwner());
+            }
+    auto attacksHealer = [group](Unit* target)
+    {
+        Unit* victim = target ? target->GetVictim() : nullptr;
+        Player* owner = victim ?
+            victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        return owner && group->IsMember(owner->GetGUID()) &&
+            PlayerBotSpec::IsHeal(owner, true);
+    };
+    std::sort(targets.begin(), targets.end(), [&](Unit* a, Unit* b)
+    {
+        bool const aHealer = attacksHealer(a);
+        bool const bHealer = attacksHealer(b);
+        if (aHealer != bHealer)
+            return aHealer;
+        return std::make_pair(bot->GetDistance(a), a->GetGUID()) <
+            std::make_pair(bot->GetDistance(b), b->GetGUID());
+    });
+    for (Unit* target : targets)
+        if (CanLfgAutoQueueEngage(target) && GroupPveCombat::RescueTank(bot, target) == bot)
+        {
+            uint32 spell = GroupPveCombat::TauntSpell(bot);
+            if (CastSpell(spell, target))
+            {
+                Unit* victim = target->GetVictim();
+                Player* owner = victim ?
+                    victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+                TC_LOG_INFO("server",
+                    "gotank rescued group member tank=%s target=%s entry=%u target-guid=%u victim=%s healer=%u map=%u instance=%u",
+                    bot->GetName().c_str(), target->GetName().c_str(),
+                    target->GetEntry(), target->GetGUID().GetCounter(),
+                    owner ? owner->GetName().c_str() : "none",
+                    owner && PlayerBotSpec::IsHeal(owner, true) ? 1u : 0u,
+                    bot->GetMapId(), bot->GetInstanceId());
+                return true;
+            }
+        }
+
+    // Cross remains the off-tank's normal assignment, but an enemy actively
+    // attacking a healer is resolved first above.  Raid-marker ownership must
+    // never delay an emergency healer rescue.
     if (IsInstanceTankLeadershipActive() && !IsInstanceTankLeader() &&
         FindIndependentInstanceOffTank(bot) == bot)
     {
@@ -4337,21 +4399,6 @@ bool PlayerbotAI::TryGroupPveTankRescue()
                 return true;
         }
     }
-
-    std::vector<Unit*> targets;
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-        if (Player* member = ref->GetSource())
-            if (member->IsAlive() && member->IsInWorld() && member->GetMap() == bot->GetMap())
-                for (Unit* attacker : member->getAttackers())
-                    if (GroupPveCombat::NeedsRescue(bot, attacker) &&
-                        std::find(targets.begin(), targets.end(), attacker) == targets.end()) targets.push_back(attacker);
-    std::sort(targets.begin(), targets.end(), [](Unit* a, Unit* b) { return a->GetGUID() < b->GetGUID(); });
-    for (Unit* target : targets)
-        if (CanLfgAutoQueueEngage(target) && GroupPveCombat::RescueTank(bot, target) == bot)
-        {
-            uint32 spell = GroupPveCombat::TauntSpell(bot);
-            if (CastSpell(spell, target)) return true;
-        }
     return false;
 }
 

@@ -636,18 +636,23 @@ bool GroupPveCombat::NeedsRescue(Player* player, Unit* target)
 {
     if (!IsEngaged(player, target) || !target->CanHaveThreatList() ||
         target->HasBreakableByDamageCrowdControlAura()) return false;
-    // A successful taunt changes the attack victim before the threat manager
-    // necessarily refreshes its cached reference. Do not send a second taunt.
+    Group* group = GetActiveGroup(player);
+
+    // The live victim is authoritative.  ThreatManager's cached current
+    // reference can lag a victim change by a bot tick; preferring that stale
+    // reference made a mob visibly hit the healer while every tank still
+    // believed it belonged to the previous tank.
     Unit* attacking = target->GetVictim();
     Player* attackingOwner = attacking ? attacking->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
     if (attackingOwner && attackingOwner->IsAlive() &&
-        GetActiveGroup(player)->IsMember(attackingOwner->GetGUID()) &&
-        PlayerBotSpec::IsTank(attackingOwner, true)) return false;
-    // Threat victim, not the temporary target of a scripted boss ability.
+        group->IsMember(attackingOwner->GetGUID()))
+        return !PlayerBotSpec::IsTank(attackingOwner, true);
+
+    // Fall back to the threat reference for ranged/casting enemies which do
+    // not currently expose a melee victim.
     HostileReference* reference = target->GetThreatManager().getCurrentVictim();
-    Unit* victim = reference ? reference->getTarget() : target->GetVictim();
+    Unit* victim = reference ? reference->getTarget() : nullptr;
     Player* owner = victim ? victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
-    Group* group = GetActiveGroup(player);
     return owner && owner->IsAlive() && group->IsMember(owner->GetGUID()) &&
         !PlayerBotSpec::IsTank(owner, true);
 }

@@ -15,6 +15,8 @@ ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackAction
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
 TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TargetValue.cpp"
+TANK_TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TankTargetValue.cpp"
+ATTACKERS_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/AttackersValue.cpp"
 RESURRECT_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/PartyMemberToResurectValue.cpp"
 GROUP_SOURCE = ROOT / "src/server/game/Groups/Group.cpp"
 
@@ -33,6 +35,8 @@ attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
 target = TARGET_SOURCE.read_text(encoding="utf-8-sig")
+tank_target = TANK_TARGET_SOURCE.read_text(encoding="utf-8-sig")
+attackers = ATTACKERS_SOURCE.read_text(encoding="utf-8-sig")
 resurrect = RESURRECT_SOURCE.read_text(encoding="utf-8-sig")
 group = GROUP_SOURCE.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
@@ -211,7 +215,7 @@ require("FindIndependentInstanceOffTank" in ai and
         "the leader must mark one engaged non-CC target for a real bottank")
 require("group->GetTargetIcon(6) == target->GetGUID()" in ai and
         "FindIndependentInstanceOffTank(bot) == bot" in ai and
-        "Cross is an explicit off-tank assignment" in ai,
+        "Cross remains the off-tank's normal assignment" in ai,
         "only the elected off-tank may taunt and acquire cross")
 require("bool const offTank = PlayerBotSpec::IsTank(bot, true)" in target and
         "if (offTank && crossGuid)" in target and
@@ -294,6 +298,22 @@ require("_instanceTankWaitingForHealerMana" in header and
         '"AiPlayerbot.FreeFood", true' in ai and
         "bot->ModifyPower(POWER_MANA" in ai,
         "gotank must pause between pulls for low healer mana and preserve the healer's recovery tick")
+require("GetGroup(GroupSlot::Instance)" in attackers and
+        "groupAwarenessRange" in attackers and
+        "150.0f" in attackers,
+        "gotank threat discovery must include the complete instance group")
+require("candidateRescuePriority" in tank_target and
+        "PlayerBotSpec::IsHeal(owner, true) ? 2 : 1" in tank_target and
+        "rescuePriority || foundHighPriority" in tank_target,
+        "healer rescue must temporarily outrank the skull kill order")
+require("member->getHostileRefManager().getFirst()" in ai and
+        "attacksHealer" in ai and
+        '"gotank rescued group member tank=' in ai,
+        "tank rescue must discover ranged healer aggro and prioritize it")
+require("Unit* attacking = target->GetVictim()" in combat and
+        "return !PlayerBotSpec::IsTank(attackingOwner, true)" in combat and
+        "reference ? reference->getTarget() : nullptr" in combat,
+        "the live healer victim must override a stale threat-manager victim")
 
 print(json.dumps({
     "checks": 47,

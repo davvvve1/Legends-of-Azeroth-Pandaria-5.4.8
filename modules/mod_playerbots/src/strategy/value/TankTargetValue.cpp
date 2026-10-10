@@ -58,11 +58,15 @@ protected:
 class FindTankTargetSmartStrategy : public FindTargetStrategy
 {
 public:
-    FindTankTargetSmartStrategy(PlayerbotAI* botAI) : FindTargetStrategy(botAI) {}
+    FindTankTargetSmartStrategy(PlayerbotAI* botAI)
+        : FindTargetStrategy(botAI), rescuePriority(0) {}
 
     void CheckAttacker(Unit* attacker, ThreatManager* threatMgr) override
     {
-        if (Group* group = botAI->GetBot()->GetGroup())
+        Group* group = botAI->GetBot()->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = botAI->GetBot()->GetGroup();
+        if (group)
         {
             ObjectGuid guid = group->GetTargetIcon(4);
             if (guid && attacker->GetGUID() == guid)
@@ -72,7 +76,22 @@ public:
         {
             return;
         }
-        if (foundHighPriority)
+        uint8 const candidateRescuePriority = GetRescuePriority(attacker);
+        if (candidateRescuePriority)
+        {
+            // Protecting a healer (then any non-tank) is an emergency and
+            // must temporarily outrank skull/cross.  Once the mob is back on
+            // a tank NeedsRescue becomes false and normal kill order resumes.
+            if (!rescuePriority || candidateRescuePriority > rescuePriority ||
+                (candidateRescuePriority == rescuePriority &&
+                    (!result || IsBetter(attacker, result))))
+            {
+                result = attacker;
+                rescuePriority = candidateRescuePriority;
+            }
+            return;
+        }
+        if (rescuePriority || foundHighPriority)
             return;
         if (IsHighPriority(attacker))
         {
@@ -84,6 +103,18 @@ public:
         {
             result = attacker;
         }
+    }
+    uint8 GetRescuePriority(Unit* unit)
+    {
+        Player* bot = botAI->GetBot();
+        if (!botAI->IsGroupPveActivity() ||
+            !GroupPveCombat::NeedsRescue(bot, unit))
+            return 0;
+
+        Unit* victim = unit->GetVictim();
+        Player* owner = victim ?
+            victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        return owner && PlayerBotSpec::IsHeal(owner, true) ? 2 : 1;
     }
     bool IsBetter(Unit* new_unit, Unit* old_unit)
     {
@@ -131,6 +162,9 @@ public:
         }
         return 0;
     }
+
+private:
+    uint8 rescuePriority;
 };
 
 Unit* TankTargetValue::Calculate()

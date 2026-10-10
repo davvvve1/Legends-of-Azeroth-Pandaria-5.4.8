@@ -26,8 +26,11 @@ GuidVector AttackersValue::Calculate()
 
     AddAttackersOf(bot, targets);
 
-    if (Group* group = bot->GetGroup())
-        AddAttackersOf(group, targets);
+    Group* activeGroup = bot->GetGroup(GroupSlot::Instance);
+    if (!activeGroup)
+        activeGroup = bot->GetGroup();
+    if (activeGroup)
+        AddAttackersOf(activeGroup, targets);
 
     // The master's first ranged shot or cast may not have produced threat
     // yet, and distance/LOS caches can therefore hide it from only some bots.
@@ -54,7 +57,7 @@ GuidVector AttackersValue::Calculate()
             targets.insert(unit);
         }
     }
-    if (Group* group = bot->GetGroup())
+    if (Group* group = activeGroup)
     {
         ObjectGuid skullGuid = group->GetTargetIcon(7);
         skullTarget = botAI->GetUnit(skullGuid);
@@ -106,12 +109,15 @@ GuidVector AttackersValue::Calculate()
 
 void AttackersValue::AddAttackersOf(Group* group, std::unordered_set<Unit*>& targets)
 {
+    float const groupAwarenessRange =
+        botAI->IsInstanceTankLeadershipActive() ? 150.0f :
+        sPlayerbotAIConfig->sightDistance;
     Group::MemberSlotList const& groupSlot = group->GetMemberSlots();
     for (Group::member_citerator itr = groupSlot.begin(); itr != groupSlot.end(); itr++)
     {
         Player* member = ObjectAccessor::FindPlayer(itr->guid);
         if (!member || !member->IsAlive() || member == bot || member->GetMapId() != bot->GetMapId() ||
-            sServerFacade->GetDistance2d(bot, member) > sPlayerbotAIConfig->sightDistance)
+            sServerFacade->GetDistance2d(bot, member) > groupAwarenessRange)
             continue;
 
         AddAttackersOf(member, targets);
