@@ -314,9 +314,19 @@ require("Unit* attacking = target->GetVictim()" in combat and
         "return !PlayerBotSpec::IsTank(attackingOwner, true)" in combat and
         "reference ? reference->getTarget() : nullptr" in combat,
         "the live healer victim must override a stale threat-manager victim")
+require("bool IsReadyForAutonomousPull" in lead and
+        "creature->GetReactState() == REACT_PASSIVE" in lead and
+        "creature->IsHostileTo(bot) || creature->IsInCombat()" in lead and
+        "UNIT_FLAG_IMMUNE_TO_PC" in lead and
+        "UNIT_FLAG_PACIFIED" in lead,
+        "gotank must ignore yellow passive actors and select the active red encounter target")
+require("if (!IsReadyForAutonomousPull(bot, creature))" in lead and
+        "bot->GetVictim()->GetGUID() == pullGuid" in lead and
+        "bot->AttackStop()" in lead,
+        "a stale yellow pull lock must be cancelled before selecting the red target")
 
 print(json.dumps({
-    "checks": 47,
+    "checks": 56,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

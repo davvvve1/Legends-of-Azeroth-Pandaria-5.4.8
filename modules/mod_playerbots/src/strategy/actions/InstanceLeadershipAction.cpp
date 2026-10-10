@@ -205,6 +205,29 @@ void GetMogushanRoute(uint8 stage, RoutePoint const*& points, size_t& count)
         count = 0;
     }
 }
+
+bool IsReadyForAutonomousPull(Player* bot, Creature* creature)
+{
+    if (!bot || !creature || !creature->IsAlive() ||
+        !creature->IsInWorld() || creature->GetMap() != bot->GetMap() ||
+        !bot->IsValidAttackTarget(creature) ||
+        creature->HasFlag(UNIT_FIELD_FLAGS,
+            UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 |
+            UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
+            UNIT_FLAG_PACIFIED))
+        return false;
+
+    // Yellow/passive encounter actors are often present beside the active
+    // red boss. They are technically attackable in the core, but pulling one
+    // skips the encounter's scripted order. A scripted neutral boss becomes
+    // eligible once it is both active and aggressive/in combat; ordinary red
+    // hostile packs remain eligible before combat so gotank can pull them.
+    if (creature->GetReactState() == REACT_PASSIVE &&
+        !creature->IsInCombat())
+        return false;
+
+    return creature->IsHostileTo(bot) || creature->IsInCombat();
+}
 }
 
 bool InstanceLeadershipAction::GroupHasActiveCombat() const
@@ -356,11 +379,8 @@ Unit* InstanceLeadershipAction::GetLockedPullTarget() const
     ObjectGuid const pullGuid =
         context->GetValue<ObjectGuid>("pull target")->Get();
     Unit* pull = pullGuid ? botAI->GetUnit(pullGuid) : nullptr;
-    if (!pull || !pull->ToCreature() || !pull->IsAlive() ||
-        !pull->IsInWorld() || pull->GetMap() != bot->GetMap() ||
-        !bot->IsValidAttackTarget(pull) ||
-        pull->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE) ||
-        pull->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE) ||
+    Creature* creature = pull ? pull->ToCreature() : nullptr;
+    if (!IsReadyForAutonomousPull(bot, creature) ||
         bot->GetExactDist(pull) > 240.0f)
         return nullptr;
 
@@ -387,6 +407,8 @@ void InstanceLeadershipAction::ResetCompletedPull()
     // processed.  Never dereference the cached Unit* during pull teardown.
     context->GetValue<Unit*>("current target")->Set(nullptr);
     context->GetValue<LastMovement&>("last movement")->Get().clear();
+    if (bot->GetVictim() && bot->GetVictim()->GetGUID() == pullGuid)
+        bot->AttackStop();
     bot->SetTarget(ObjectGuid::Empty);
     bot->SetSelection(ObjectGuid::Empty);
     bot->GetMotionMaster()->Clear(false);
@@ -425,11 +447,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
 
         Unit* target = botAI->GetUnit(guid);
         Creature* creature = target ? target->ToCreature() : nullptr;
-        if (!creature || !creature->IsAlive() || !creature->IsInWorld() ||
-            creature->GetMap() != bot->GetMap() || creature->IsInCombat() ||
-            !bot->IsValidAttackTarget(creature) ||
-            creature->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE) ||
-            creature->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
+        if (!IsReadyForAutonomousPull(bot, creature))
             return;
 
         bool const palace = bot->GetMapId() == MogushanPalaceMap;
@@ -632,7 +650,7 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
 
 bool InstanceLeadershipAction::EngageTarget(Unit* target)
 {
-    if (!target)
+    if (!target || !IsReadyForAutonomousPull(bot, target->ToCreature()))
         return false;
 
     // The forward-search window ends as soon as the next real pull is found.
