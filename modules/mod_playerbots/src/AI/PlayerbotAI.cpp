@@ -395,7 +395,13 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
             bot->IsValidAttackTarget(target);
     };
 
-    Unit* target = validAttackTarget(preferredTarget) ? preferredTarget : nullptr;
+    // Encounter-critical adds own skull even while the tank's durable pull
+    // lock still points at the boss. Mu'Shiba is the important Palace case:
+    // killing it ends Ravage, and all roles must receive that target before
+    // the leader's ordinary boss selection can overwrite the marker.
+    Unit* priorityTarget = InstanceMechanics::PriorityTarget(this, bot);
+    Unit* target = validAttackTarget(priorityTarget) ? priorityTarget :
+        (validAttackTarget(preferredTarget) ? preferredTarget : nullptr);
     // Resolve cached targets by GUID. The Unit* value can outlive a creature
     // removed during a wipe and dereferencing that stale pointer here crashes
     // the map thread before the dead engine gets a chance to release corpses.

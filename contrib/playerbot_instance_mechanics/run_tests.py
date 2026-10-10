@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MECHANICS = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceMechanicsAction.cpp"
+MECHANICS_HEADER = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceMechanicsAction.h"
+AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 FACTORY = ROOT / "modules/mod_playerbots/src/Factory/AiFactory.cpp"
 MAP_DBC = ROOT / "src/server/game/DataStores/DBCStructure.h"
 
@@ -18,6 +20,8 @@ def require(condition: bool, message: str) -> None:
 
 
 mechanics = MECHANICS.read_text(encoding="utf-8")
+mechanics_header = MECHANICS_HEADER.read_text(encoding="utf-8")
+ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 factory = FACTORY.read_text(encoding="utf-8")
 map_dbc = MAP_DBC.read_text(encoding="utf-8")
 
@@ -47,8 +51,16 @@ require("gekkanEntourage && !PlayerBotSpec::IsHeal" in mechanics,
         "Gekkan tank/add switch is missing")
 require("IsHealingCast(unit)" in mechanics,
         "generic engaged healer fallback is missing")
-require("!unit->IsAlive() || !unit->IsInCombat()" in mechanics,
+require("!unit->IsAlive() ||\n            !unit->IsInCombat()" in mechanics and
+        "GroupPveCombat::IsEngaged(bot, unit)" in mechanics,
         "priority selection must remain limited to engaged living targets")
+require("Unit* PriorityTarget(PlayerbotAI* botAI" in mechanics_header and
+        "InstanceMechanics::PriorityTarget(this, bot)" in ai and
+        "validAttackTarget(priorityTarget)" in ai,
+        "tank skull ownership must use the shared encounter priority target")
+require("add->GetEntry() == NpcMuShiba" in mechanics and
+        "muShiba && botAI->IsInstanceTankLeader()" in mechanics,
+        "the elected tank must mark and focus Mu'Shiba with the group")
 require('engine->addStrategy("avoid aoe", false);' in factory,
         "shared mechanics strategy is not loaded by default")
 require("map_type == MAP_SCENARIO" in map_dbc and
@@ -56,7 +68,7 @@ require("map_type == MAP_SCENARIO" in map_dbc and
         "scenario maps are no longer included by the instance gate")
 
 print(json.dumps({
-    "checks": 12,
+    "checks": 14,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",

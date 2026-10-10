@@ -273,6 +273,72 @@ bool InstanceMechanics::ShouldTankSwap(Player* bot, Unit* boss)
     return false;
 }
 
+Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
+    Unit* boss)
+{
+    if (!botAI || !bot || !bot->IsAlive() || !bot->IsInWorld())
+        return nullptr;
+
+    std::vector<Unit*> targets;
+    auto addTarget = [&](Unit* unit)
+    {
+        if (unit && std::find(targets.begin(), targets.end(), unit) ==
+            targets.end())
+            targets.push_back(unit);
+    };
+
+    for (ObjectGuid const& guid : botAI->GetAiObjectContext()
+        ->GetValue<GuidVector>("possible targets")->Get())
+        addTarget(botAI->GetUnit(guid));
+
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (group)
+        for (GroupReference* ref = group->GetFirstMember(); ref;
+            ref = ref->next())
+            if (Player* member = ref->GetSource())
+                if (member->IsAlive() && member->IsInWorld() &&
+                    member->GetMap() == bot->GetMap())
+                    for (Unit* attacker : member->getAttackers())
+                        addTarget(attacker);
+
+    Unit* best = nullptr;
+    size_t bestRank = std::size(PriorityAdds) + 1;
+    for (Unit* unit : targets)
+    {
+        if (!unit || unit == boss || !unit->IsAlive() ||
+            !unit->IsInCombat() || unit->GetMap() != bot->GetMap() ||
+            !bot->IsValidAttackTarget(unit) ||
+            !bot->IsWithinLOSInMap(unit) ||
+            !GroupPveCombat::IsEngaged(bot, unit))
+            continue;
+
+        auto const found = std::find(std::begin(PriorityAdds),
+            std::end(PriorityAdds), unit->GetEntry());
+        // Known encounter-critical targets retain their documented ordering.
+        // In encounters which do not yet have a dedicated row, an engaged
+        // add currently casting a heal is still a safer switch than tunneling
+        // the boss. This generic fallback applies to every dungeon/raid and
+        // never pulls an idle pack.
+        bool const genericHealer = found == std::end(PriorityAdds) &&
+            IsHealingCast(unit);
+        if (found == std::end(PriorityAdds) && !genericHealer)
+            continue;
+
+        size_t const rank = genericHealer ? std::size(PriorityAdds) :
+            size_t(std::distance(std::begin(PriorityAdds), found));
+        if (!best || rank < bestRank ||
+            (rank == bestRank &&
+                bot->GetDistance(unit) < bot->GetDistance(best)))
+        {
+            best = unit;
+            bestRank = rank;
+        }
+    }
+    return best;
+}
+
 Unit* InstanceMechanicsAction::FindEncounterBoss() const
 {
     Unit* current = context->GetValue<Unit*>("current target")->Get();
@@ -304,37 +370,7 @@ Unit* InstanceMechanicsAction::FindEncounterBoss() const
 
 Unit* InstanceMechanicsAction::FindPriorityAdd(Unit* boss) const
 {
-    GuidVector const& targets = context->GetValue<GuidVector>(
-        "possible targets")->Get();
-    Unit* best = nullptr;
-    size_t bestRank = std::size(PriorityAdds) + 1;
-    for (ObjectGuid const& guid : targets)
-    {
-        Unit* unit = botAI->GetUnit(guid);
-        if (!unit || unit == boss || !unit->IsAlive() || !unit->IsInCombat() ||
-            !bot->IsValidAttackTarget(unit) || !bot->IsWithinLOSInMap(unit))
-            continue;
-        auto const found = std::find(std::begin(PriorityAdds),
-            std::end(PriorityAdds), unit->GetEntry());
-        // Known encounter-critical targets retain their documented ordering.
-        // In encounters which do not yet have a dedicated row, an engaged
-        // add currently casting a heal is still a safer switch than tunneling
-        // the boss.  This generic fallback applies to every dungeon/raid and
-        // never pulls an idle pack.
-        bool const genericHealer = found == std::end(PriorityAdds) &&
-            IsHealingCast(unit);
-        if (found == std::end(PriorityAdds) && !genericHealer)
-            continue;
-        size_t const rank = genericHealer ? std::size(PriorityAdds) :
-            size_t(std::distance(std::begin(PriorityAdds), found));
-        if (!best || rank < bestRank ||
-            (rank == bestRank && bot->GetDistance(unit) < bot->GetDistance(best)))
-        {
-            best = unit;
-            bestRank = rank;
-        }
-    }
-    return best;
+    return InstanceMechanics::PriorityTarget(botAI, bot, boss);
 }
 
 Unit* InstanceMechanicsAction::FindMindControlledMember() const
@@ -458,11 +494,16 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
     {
         bool const gekkanEntourage = map == MapMogushanPalace &&
             boss->GetEntry() == NpcGekkan;
+        bool const muShiba = map == MapMogushanPalace &&
+            add->GetEntry() == NpcMuShiba;
         // Gekkan's stationary casters and melee followers must be gathered by
-        // the tank as well as focused by damage dealers.  Healers retain their
-        // healing target while the encounter layer coordinates the rest.
+        // the tank as well as focused by damage dealers. Mu'Shiba is also the
+        // explicit kill target during Ravage, so the elected leader switches
+        // with the group after publishing skull. Healers retain their healing
+        // target while the encounter layer coordinates the rest.
         if (bossUnavailable || PlayerBotSpec::IsDps(bot, true) ||
-            (gekkanEntourage && !PlayerBotSpec::IsHeal(bot, true)))
+            (gekkanEntourage && !PlayerBotSpec::IsHeal(bot, true)) ||
+            (muShiba && botAI->IsInstanceTankLeader()))
             return { Reaction::FocusAdd, nullptr, add, 0.0f };
     }
 

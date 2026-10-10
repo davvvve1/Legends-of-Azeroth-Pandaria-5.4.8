@@ -8,6 +8,11 @@ namespace InstanceMechanics
 // Shared with PlayerbotAI's taunt safety gate so scripted tank swaps can use
 // the ordinary class taunt without enabling arbitrary off-tank taunts.
 bool ShouldTankSwap(Player* bot, Unit* boss);
+
+// Returns the highest-priority engaged add for the shared kill order. Tank
+// marker ownership and combat mechanics use the same result so skull cannot
+// remain on a boss while damage dealers correctly switch to a critical add.
+Unit* PriorityTarget(PlayerbotAI* botAI, Player* bot, Unit* boss = nullptr);
 }
 
 // A data-driven encounter layer used in every dungeon and raid. It handles
