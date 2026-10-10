@@ -1,0 +1,450 @@
+-- Server-wide quest navigation and objective-visual audit.
+--
+-- Sources:
+--   * exact 5.4.8 legacy POIs omitted by the merged POI baseline;
+--   * direct creature/gameobject objectives with actual spawns;
+--   * negative-chance quest loot with an unambiguous spawned source;
+--   * official objective visual effects missing from the live table.
+--
+-- No marker is invented for currency, reputation, money, crafting,
+-- spell-learning, test/placeholder, or source-less script objectives.
+-- Quest loot gameobjects sparkle through GameObject::ActivateToQuest.
+
+CREATE TABLE IF NOT EXISTS `_backup_quest_poi_navigation_20261010` LIKE `quest_poi`;
+CREATE TABLE IF NOT EXISTS `_backup_quest_poi_points_navigation_20261010` LIKE `quest_poi_points`;
+CREATE TABLE IF NOT EXISTS `_backup_quest_objective_effects_navigation_20261010` LIKE `quest_objective_effects`;
+
+INSERT IGNORE INTO `_backup_quest_poi_navigation_20261010`
+SELECT * FROM `quest_poi` WHERE `QuestID` IN (2201,4982,5001,7488,9626,9640,10901,11972,13189,13431,13799,14027,14317,24612,24716,24899,25047,25335,25376,25557,25631,25632,25932,26282,26427,26458,26459,26461,26471,26522,27419,28017,28021,28082,28083,28240,28255,28274,28642,28778,28800,28801,28802,29043,29058,29184,29187,29372,29373,29441,29572,29584,29597,29683,29810,30442,30673,30680,30681,30918,30986,30990,31027,31058,31518,32280,32281,32411,32707,32722,32724,33020,33222);
+INSERT IGNORE INTO `_backup_quest_poi_points_navigation_20261010`
+SELECT * FROM `quest_poi_points` WHERE `QuestID` IN (2201,4982,5001,7488,9626,9640,10901,11972,13189,13431,13799,14027,14317,24612,24716,24899,25047,25335,25376,25557,25631,25632,25932,26282,26427,26458,26459,26461,26471,26522,27419,28017,28021,28082,28083,28240,28255,28274,28642,28778,28800,28801,28802,29043,29058,29184,29187,29372,29373,29441,29572,29584,29597,29683,29810,30442,30673,30680,30681,30918,30986,30990,31027,31058,31518,32280,32281,32411,32707,32722,32724,33020,33222);
+INSERT IGNORE INTO `_backup_quest_objective_effects_navigation_20261010`
+SELECT qoe.* FROM `quest_objective_effects` qoe
+WHERE (qoe.`objectiveId`,qoe.`visualEffect`) IN ((251728,506),(251728,507),(251728,508),(251728,509),(251728,510),(251728,511),(251728,512),(251728,513),(251728,514),(251728,515),(265825,898),(267731,505),(267732,520),(267734,538),(267925,550),(268296,553),(268296,899),(268296,900),(268296,901),(268296,1130),(268297,553),(268297,899),(268297,900),(268297,901),(268297,1130),(268298,553),(268298,899),(268298,900),(268298,901),(268298,1130),(268299,553),(268299,899),(268299,900),(268299,901),(268299,1130),(268300,553),(268300,899),(268300,900),(268300,901),(268300,1130),(269145,1053),(269147,1071),(269148,1073),(269149,1072),(269150,1069),(269176,1076),(269177,1077),(269178,1078),(269179,1079),(269180,1080),(269586,1288),(269586,1289),(269586,1290),(269586,1291),(269586,1292),(269586,1293),(269586,1294),(269586,1295),(269586,1296),(269586,1297),(269598,1290),(269598,1294),(269598,1296),(269631,1349),(269864,1459),(269925,1531),(269934,1474),(269934,1475),(269934,1476),(269934,1479),(269944,1473),(269995,1484),(269995,1485),(269995,1549),(269995,1550),(270006,1493),(270006,1494),(270013,1495),(270021,538),(270022,538),(270031,1484),(270031,1485),(270031,1549),(270031,1550),(270070,1473),(270071,1474),(270071,1475),(270071,1476),(270071,1479),(270108,1564),(270173,1493),(270173,1521),(270174,1495),(270175,538),(270176,538),(270204,1538),(270241,1527),(270244,1527),(270923,1758));
+
+START TRANSACTION;
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(7488,0,-1,0,1,121,0,0,1,0),
+(9626,0,-1,0,1,321,0,0,3,0),
+(11972,0,-1,0,0,24,0,0,1,0),
+(13189,0,-1,0,1,321,0,0,3,0),
+(24612,0,-1,0,1,321,0,0,3,0),
+(2201,0,0,256240,70,692,0,0,1,0),
+(2201,1,1,256241,70,692,0,0,1,0),
+(2201,2,2,256242,70,692,0,0,1,0),
+(4982,0,0,256838,229,721,0,0,1,0),
+(5001,0,0,257372,229,721,0,0,1,0),
+(9640,0,0,262296,532,799,0,0,1,0),
+(10901,0,0,260686,565,776,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(13431,0,0,264400,565,776,0,0,1,0),
+(13799,0,1,258967,530,477,0,0,1,0),
+(14027,0,0,265136,654,679,0,0,1,0),
+(14317,0,0,266103,654,679,0,0,1,0),
+(24716,0,0,265833,1,201,0,0,1,0),
+(24899,0,0,267226,47,761,0,0,1,0),
+(25047,0,1,258703,0,614,0,0,1,0),
+(25335,0,0,265189,1,121,0,0,1,0),
+(25335,1,1,265190,1,121,0,0,1,0),
+(25335,2,2,265191,1,121,0,0,1,0),
+(25335,3,3,265192,1,121,0,0,1,0),
+(25376,0,0,264896,1,121,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(25557,0,0,267593,209,686,0,0,1,0),
+(25631,0,0,266893,0,615,0,0,1,0),
+(25632,0,0,265507,0,615,0,0,1,0),
+(25932,0,0,265906,0,27,0,0,1,0),
+(26282,0,0,255762,0,26,0,0,1,0),
+(26427,0,1,267648,0,610,0,0,1,0),
+(26458,0,0,252084,48,688,0,0,1,0),
+(26459,0,0,251950,48,688,0,0,1,0),
+(26461,0,0,266846,48,688,0,0,1,0),
+(26471,0,0,251913,48,688,0,0,1,0),
+(26522,0,0,266858,0,26,0,0,1,0),
+(27419,0,0,267182,1,907,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(27419,1,1,267183,1,907,0,0,1,0),
+(27419,2,2,267184,1,907,0,0,1,0),
+(28017,0,0,268843,1001,871,0,0,1,0),
+(28021,0,0,268842,1001,871,0,0,1,0),
+(28082,0,0,268838,1007,898,0,0,1,0),
+(28083,0,0,268839,1007,898,0,0,1,0),
+(28240,0,0,251677,1,748,0,0,1,0),
+(28255,0,0,251784,1,748,0,0,1,0),
+(28274,0,0,253670,1,748,0,0,1,0),
+(28642,0,0,260472,1,281,0,0,1,0),
+(28778,0,1,256591,1,748,0,0,1,0),
+(28800,0,0,263745,1,748,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(28801,0,0,263683,1,748,0,0,1,0),
+(28802,0,0,263917,1,748,0,0,1,0),
+(29043,0,0,256707,1,121,0,0,1,0),
+(29058,0,0,256497,1,121,0,0,1,0),
+(29184,0,1,256366,568,781,0,0,1,0),
+(29184,1,2,256367,568,781,0,0,1,0),
+(29187,0,0,257634,568,781,0,0,1,0),
+(29372,0,0,252455,0,770,0,0,1,0),
+(29373,0,0,252460,0,770,0,0,1,0),
+(29441,0,0,252214,0,21,0,0,1,0),
+(29441,1,1,252215,0,21,0,0,1,0),
+(29441,2,2,252216,0,21,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(29572,0,0,262058,557,732,0,0,1,0),
+(29572,1,1,262059,557,732,0,0,1,0),
+(29572,2,2,262060,557,732,0,0,1,0),
+(29572,3,3,262061,557,732,0,0,1,0),
+(29584,0,0,258478,870,806,0,0,1,0),
+(29597,0,0,257775,558,722,0,0,1,0),
+(29683,0,0,263958,585,798,0,0,1,0),
+(29810,0,0,262449,619,522,0,0,1,0),
+(29810,1,1,262450,619,522,0,0,1,0),
+(30442,0,2,252356,1005,878,0,0,1,0),
+(30673,0,0,252884,870,809,0,0,1,0),
+(30673,1,1,252885,870,809,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(30673,2,2,252886,870,809,0,0,1,0),
+(30673,3,3,252887,870,809,0,0,1,0),
+(30680,0,0,253758,870,809,0,0,1,0),
+(30680,1,1,253759,870,809,0,0,1,0),
+(30680,2,2,253760,870,809,0,0,1,0),
+(30680,3,3,253761,870,809,0,0,1,0),
+(30681,0,0,253762,870,809,0,0,1,0),
+(30681,1,1,253763,870,809,0,0,1,0),
+(30681,2,2,253764,870,809,0,0,1,0),
+(30681,3,3,253765,870,809,0,0,1,0),
+(30918,0,0,267711,1024,880,0,0,1,0),
+(30986,0,0,267895,1030,900,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(30990,0,0,267896,1030,900,0,0,1,0),
+(31027,0,0,267927,1030,900,0,0,1,0),
+(31058,0,2,268004,1048,882,0,0,1,0),
+(31518,0,0,268654,870,809,0,0,1,0),
+(32280,0,0,270001,1064,928,0,0,1,0),
+(32281,0,0,270002,1064,928,0,0,1,0),
+(32411,0,0,269792,1106,924,0,0,1,0),
+(32411,1,1,269793,1106,924,0,0,1,0),
+(32411,2,2,269794,1106,924,0,0,1,0),
+(32411,3,3,269795,1106,924,0,0,1,0),
+(32411,4,4,269796,1106,924,0,0,1,0),
+(32707,0,0,270301,1064,928,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi`
+(`QuestID`,`Idx1`,`ObjectiveIndex`,`QuestObjectiveId`,`MapID`,`WorldMapAreaId`,`Floor`,`Priority`,`Flags`,`VerifiedBuild`) VALUES
+(32722,0,0,270292,1064,928,0,0,1,0),
+(32722,1,1,270291,1064,928,0,0,1,0),
+(32724,0,0,270296,1064,928,0,0,1,0),
+(32724,1,1,270295,1064,928,0,0,1,0),
+(33020,0,0,270947,960,867,0,0,1,0),
+(33222,0,0,270994,870,862,0,0,1,0)
+ON DUPLICATE KEY UPDATE
+`ObjectiveIndex`=VALUES(`ObjectiveIndex`),`QuestObjectiveId`=VALUES(`QuestObjectiveId`),
+`MapID`=VALUES(`MapID`),`WorldMapAreaId`=VALUES(`WorldMapAreaId`),`Floor`=VALUES(`Floor`),
+`Priority`=VALUES(`Priority`),`Flags`=VALUES(`Flags`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(7488,0,0,0,-4506,3330,0),
+(9626,0,0,0,1929,-4157,0),
+(11972,0,0,0,-92,-111,0),
+(13189,0,0,0,1926,-4158,0),
+(24612,0,0,0,1929,-4165,0),
+(2201,0,0,0,21,414,0),
+(2201,1,1,0,57,455,0),
+(2201,2,2,0,-351,83,0),
+(4982,0,0,0,35,-518,0),
+(5001,0,0,0,35,-518,0),
+(9640,0,0,0,-11165,-1912,0),
+(10901,0,0,0,235,360,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(13431,0,0,0,235,360,0),
+(13799,0,0,0,-2189,6401,0),
+(14027,0,0,0,-1960,2310,0),
+(14317,0,0,0,-1904,2187,0),
+(24716,0,0,0,-6454,-1828,0),
+(24899,0,0,0,2133,1982,0),
+(25047,0,0,0,-6063,6126,0),
+(25335,0,0,0,-4775,625,0),
+(25335,1,1,0,-4449,621,0),
+(25335,2,2,0,-5538,1530,0),
+(25335,3,3,0,-5132,720,0),
+(25376,0,0,0,-3782,66,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(25557,0,0,0,1727,1018,0),
+(25631,0,0,0,-6874,4790,0),
+(25632,0,0,0,-6887,4672,0),
+(25932,0,0,0,-5539,-1312,0),
+(26282,0,0,0,-198,-4051,0),
+(26427,0,0,0,-4900,3403,0),
+(26458,0,0,0,-763,-61,0),
+(26459,0,0,0,-504,155,0),
+(26461,0,0,0,-819,-156,0),
+(26471,0,0,0,-331,212,0),
+(26522,0,0,0,-405,-4027,0),
+(27419,0,0,0,-4389,-3318,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(27419,1,1,0,-4385,-3189,0),
+(27419,2,2,0,-4620,-3535,0),
+(28017,0,0,0,838,619,0),
+(28021,0,0,0,838,619,0),
+(28082,0,0,0,204,103,0),
+(28083,0,0,0,204,103,0),
+(28240,0,0,0,-9755,-943,0),
+(28255,0,0,0,-10638,1047,0),
+(28274,0,0,0,-8931,608,0),
+(28642,0,0,0,8068,-3838,0),
+(28778,0,0,0,-10322,-2669,0),
+(28800,0,0,0,-9419,-1475,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(28801,0,0,0,-9419,-1475,0),
+(28802,0,0,0,-9419,-1475,0),
+(29043,0,0,0,-5781,541,0),
+(29058,0,0,0,-5672,186,0),
+(29184,0,0,0,-51,1150,0),
+(29184,1,1,0,370,1088,0),
+(29187,0,0,0,-79,1199,0),
+(29372,0,0,0,-4612,-6497,0),
+(29373,0,0,0,-4612,-6497,0),
+(29441,0,0,0,-551,1513,0),
+(29441,1,1,0,-551,1513,0),
+(29441,2,2,0,-551,1513,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(29572,0,0,0,-100,-94,0),
+(29572,1,1,0,-373,-126,0),
+(29572,2,2,0,-159,-219,0),
+(29572,3,3,0,-314,8,0),
+(29584,0,0,0,260,-1608,0),
+(29597,0,0,0,66,-388,0),
+(29683,0,0,0,232,-272,0),
+(29810,0,0,0,523,-521,0),
+(29810,1,1,0,520,-453,0),
+(30442,0,0,0,2232,-1017,0),
+(30673,0,0,0,2023,2094,0),
+(30673,1,1,0,1990,2271,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(30673,2,2,0,2043,2159,0),
+(30673,3,3,0,1933,2152,0),
+(30680,0,0,0,2023,2094,0),
+(30680,1,1,0,1990,2271,0),
+(30680,2,2,0,2043,2159,0),
+(30680,3,3,0,1933,2152,0),
+(30681,0,0,0,2023,2094,0),
+(30681,1,1,0,1990,2271,0),
+(30681,2,2,0,2043,2159,0),
+(30681,3,3,0,1933,2152,0),
+(30918,0,0,0,2257,-1836,0),
+(30986,0,0,0,797,2486,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(30990,0,0,0,736,2354,0),
+(31027,0,0,0,750,2354,0),
+(31058,0,0,0,-2645,734,0),
+(31518,0,0,0,1794,1399,0),
+(32280,0,0,0,7250,5418,0),
+(32281,0,0,0,7087,5359,0),
+(32411,0,0,0,5877,470,0),
+(32411,1,1,0,5989,551,0),
+(32411,2,2,0,5871,497,0),
+(32411,3,3,0,5913,565,0),
+(32411,4,4,0,5939,506,0),
+(32707,0,0,0,5982,5855,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT INTO `quest_poi_points`
+(`QuestID`,`BlobIndex`,`Idx1`,`Idx2`,`X`,`Y`,`VerifiedBuild`) VALUES
+(32722,0,0,0,7087,5359,0),
+(32722,1,1,0,7210,5264,0),
+(32724,0,0,0,7087,5359,0),
+(32724,1,1,0,7210,5264,0),
+(33020,0,0,0,894,-2671,0),
+(33222,0,0,0,-733,-4914,0)
+ON DUPLICATE KEY UPDATE `X`=VALUES(`X`),`Y`=VALUES(`Y`);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(251728,506),
+(251728,507),
+(251728,508),
+(251728,509),
+(251728,510),
+(251728,511),
+(251728,512),
+(251728,513),
+(251728,514),
+(251728,515),
+(265825,898),
+(267731,505);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(267732,520),
+(267734,538),
+(267925,550),
+(268296,553),
+(268296,899),
+(268296,900),
+(268296,901),
+(268296,1130),
+(268297,553),
+(268297,899),
+(268297,900),
+(268297,901);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(268297,1130),
+(268298,553),
+(268298,899),
+(268298,900),
+(268298,901),
+(268298,1130),
+(268299,553),
+(268299,899),
+(268299,900),
+(268299,901),
+(268299,1130),
+(268300,553);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(268300,899),
+(268300,900),
+(268300,901),
+(268300,1130),
+(269145,1053),
+(269147,1071),
+(269148,1073),
+(269149,1072),
+(269150,1069),
+(269176,1076),
+(269177,1077),
+(269178,1078);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(269179,1079),
+(269180,1080),
+(269586,1288),
+(269586,1289),
+(269586,1290),
+(269586,1291),
+(269586,1292),
+(269586,1293),
+(269586,1294),
+(269586,1295),
+(269586,1296),
+(269586,1297);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(269598,1290),
+(269598,1294),
+(269598,1296),
+(269631,1349),
+(269864,1459),
+(269925,1531),
+(269934,1474),
+(269934,1475),
+(269934,1476),
+(269934,1479),
+(269944,1473),
+(269995,1484);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(269995,1485),
+(269995,1549),
+(269995,1550),
+(270006,1493),
+(270006,1494),
+(270013,1495),
+(270021,538),
+(270022,538),
+(270031,1484),
+(270031,1485),
+(270031,1549),
+(270031,1550);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(270070,1473),
+(270071,1474),
+(270071,1475),
+(270071,1476),
+(270071,1479),
+(270108,1564),
+(270173,1493),
+(270173,1521),
+(270174,1495),
+(270175,538),
+(270176,538),
+(270204,1538);
+
+INSERT IGNORE INTO `quest_objective_effects` (`objectiveId`,`visualEffect`) VALUES
+(270241,1527),
+(270244,1527),
+(270923,1758);
+
+COMMIT;
+
+-- Generated 102 POI headers and 102 point rows
+-- for 73 quests; restored 99 official objective effects.
