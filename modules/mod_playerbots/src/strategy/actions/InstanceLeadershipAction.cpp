@@ -24,6 +24,7 @@ namespace
 {
 constexpr uint32 MogushanPalaceMap = 994;
 constexpr uint32 MogushanElevator = 212162;
+constexpr float AutonomousTargetRange = 150.0f;
 
 struct RoutePoint
 {
@@ -452,7 +453,7 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
 
         bool const palace = bot->GetMapId() == MogushanPalaceMap;
         float const distance = bot->GetExactDist(creature);
-        float const maximumDistance = palace ? 48.0f : 160.0f;
+        float const maximumDistance = AutonomousTargetRange;
         float const maximumHeight = palace ? 8.0f : 35.0f;
         if (distance > maximumDistance ||
             std::fabs(bot->GetPositionZ() - creature->GetPositionZ()) > maximumHeight ||
@@ -511,17 +512,18 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
         consider(guid);
 
     // The ordinary combat target cache intentionally uses the configured
-    // 75-yard sight distance.  That is too short for many empty corridors
+    // 75-yard sight distance. That is too short for many empty corridors
     // between instance packs and made generic gotank leadership stop even
-    // though a clean mmap route existed just beyond the cache.  Only the one
-    // elected leader performs this wider scan, only while out of combat and
-    // only when the cheap normal scan found nothing.  Mogu'shan Palace keeps
-    // its explicit floor-safe route because a radius scan there sees several
-    // vertically overlapping galleries.
-    if (!best && bot->GetMapId() != MogushanPalaceMap)
+    // though a clean mmap route existed just beyond the cache. Only the one
+    // elected leader performs this wider 150-yard scan, only while out of
+    // combat and only when the cheap normal scan found nothing. Palace uses
+    // the same range now; its strict height, LOS and mmap endpoint checks
+    // above still reject mobs on overlapping floors or behind walls.
+    if (!best)
     {
         GuidVector const extended = PossibleTargetsValue(botAI,
-            "instance leadership targets", 160.0f, true).Calculate();
+            "instance leadership targets", AutonomousTargetRange,
+            true).Calculate();
         for (ObjectGuid const& guid : extended)
             consider(guid);
     }
@@ -695,8 +697,8 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     // that exact locked target. Previously a distant skull only started an
     // out-of-combat approach and Attack() was deferred until 22 yards; in
     // live groups this looked like the tank was waiting for somebody else to
-    // pull. Starting combat after the marker preview gives the combat engine
-    // ownership of the chase while followers remain gated on the tank.
+    // pull. Starting combat after the marker preview and explicitly chasing
+    // gives the tank ownership while followers remain gated on its attack.
     uint32 const markedFor = _pullMarkedAt
         ? getMSTimeDiff(_pullMarkedAt, now) : 1000;
     bool issued = false;
@@ -704,17 +706,29 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
         issued = MoveTo(target, 18.0f, MovementPriority::MOVEMENT_FORCED);
     else if (markedFor < 1000)
     {
-        if (distance > 22.0f)
-            issued = MoveTo(target, 18.0f,
-                MovementPriority::MOVEMENT_FORCED);
+        // Follow a moving patrol during the one-second marker preview. A
+        // point move aimed at its old coordinates lets it walk away while
+        // the tank waits to issue the attack.
+        if (!bot->IsWithinMeleeRange(target))
+            issued = ChaseTo(target,
+                sPlayerbotAIConfig->contactDistance);
         botAI->SetNextCheckDelay(0);
         issued = true;
     }
     else
     {
-        issued = Attack(target);
+        bool const attackIssued = Attack(target);
         bool const ownsOpeningAttack = bot->GetVictim() == target &&
             botAI->GetState() == BOT_STATE_COMBAT;
+        // Unit::Attack can establish a victim at long range without creating
+        // movement. Until the first hit lands the group has no positive
+        // threat, so leadership still owns every tick. Chase explicitly
+        // instead of waiting for a combat action which cannot run yet.
+        bool const chasing = ownsOpeningAttack &&
+            !bot->IsWithinMeleeRange(target) && ChaseTo(target,
+                sPlayerbotAIConfig->contactDistance);
+        issued = attackIssued || ownsOpeningAttack || chasing ||
+            bot->isMoving();
         if (ownsOpeningAttack)
             TC_LOG_INFO("server",
                 "gotank opening attack leader=%s target=%s entry=%u target-guid=%u marked-ms=%u distance=%.1f map=%u instance=%u",

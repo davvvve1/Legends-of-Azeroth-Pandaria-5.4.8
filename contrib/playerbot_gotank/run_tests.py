@@ -131,10 +131,11 @@ require("_currentState == BOT_STATE_COMBAT" in ai and
         "ChangeEngine(BOT_STATE_NON_COMBAT)" in ai and
         "CombatStopWithPets(true)" in ai,
         "gotank must leave stale combat even during a scripted encounter")
-require('PossibleTargetsValue(botAI,' in lead and
-        '"instance leadership targets", 160.0f, true' in lead and
-        "bot->GetMapId() != MogushanPalaceMap" in lead,
-        "generic leadership must scan the next mmap-reachable corridor pack")
+require("constexpr float AutonomousTargetRange = 150.0f" in lead and
+        'PossibleTargetsValue(botAI,' in lead and
+        '"instance leadership targets", AutonomousTargetRange' in lead and
+        "if (!best)" in lead,
+        "instance leadership must scan 150 yards for the next mmap-reachable pack")
 require("GroupHasActiveCombat(Player* observer)" in combat_header and
         "GroupPveCombat::GroupHasActiveCombat(bot)" in lead and
         "GroupPveCombat::GroupHasActiveCombat(bot)" in follow and
@@ -273,12 +274,16 @@ require("if (!splineMoving)" in ai and
         "a finalized spline must release stale movement before the next route step")
 require("_pullMarkedAt = now" in lead and
         "markedFor < 1000" in lead and
-        "issued = Attack(target);" in lead and
+        "bool const attackIssued = Attack(target);" in lead and
         "ownsOpeningAttack" in lead and
         "sPlayerbotAIConfig->contactDistance" in lead and
         '"gotank opening attack leader=' in lead and
         "botAI->SetNextCheckDelay(0)" in lead,
         "the tank must open its locked skull target one second after marking it")
+require("bool const chasing = ownsOpeningAttack" in lead and
+        "ChaseTo(target," in lead and
+        "attackIssued || ownsOpeningAttack || chasing" in lead,
+        "a successful ranged attack order must immediately chase into melee range")
 require("bot->RemoveAurasByType(SPELL_AURA_MOUNTED)" in attack and
         "bool const attackStarted = bot->Attack(target, melee)" in attack and
         "if (!attackStarted && !ownsVictim)" in attack and
@@ -334,7 +339,7 @@ print(json.dumps({
     "master_anchor_during_gotank": "disabled-even-when-master-is-dead",
     "active_fight_teleport": "blocked",
     "living_master_distance_limit": "disabled-during-leadership",
-    "generic_route_scan_yards": 160,
+    "generic_route_scan_yards": 150,
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_forward_search_ms": 20000,
