@@ -3226,6 +3226,179 @@ public:
     }
 };
 
+namespace BarrelingAlong
+{
+    constexpr uint32 QuestId = 30172;
+    constexpr uint32 MudmugEscort = 58341;
+    constexpr uint32 MapId = 870;
+    constexpr uint32 GossipActionResume = GOSSIP_ACTION_INFO_DEF + 1;
+    constexpr float ArrivalX = -233.034f;
+    constexpr float ArrivalY = 509.152f;
+    constexpr float ArrivalRadius = 35.0f;
+
+    void EnsureEscort(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != MapId ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        std::list<TempSummon*> mudmugs;
+        player->GetSummons(mudmugs, MudmugEscort);
+        if (!mudmugs.empty())
+            return;
+
+        player->SummonCreature(MudmugEscort, player->GetPosition(),
+            TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID());
+    }
+}
+
+class npc_mudmug_barreling_along_questgiver : public CreatureScript
+{
+public:
+    npc_mudmug_barreling_along_questgiver() : CreatureScript("npc_mudmug_barreling_along_questgiver") { }
+
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == BarrelingAlong::QuestId)
+            BarrelingAlong::EnsureEscort(player);
+        return true;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(BarrelingAlong::QuestId) == QUEST_STATUS_INCOMPLETE)
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Let's head back to Halfhill, Mudmug.",
+                GOSSIP_SENDER_MAIN, BarrelingAlong::GossipActionResume);
+
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+        if (sender == GOSSIP_SENDER_MAIN && action == BarrelingAlong::GossipActionResume &&
+            player->IsWithinDistInMap(creature, INTERACTION_DISTANCE))
+            BarrelingAlong::EnsureEscort(player);
+        return true;
+    }
+};
+
+class npc_mudmug_barreling_along_escort : public CreatureScript
+{
+public:
+    npc_mudmug_barreling_along_escort() : CreatureScript("npc_mudmug_barreling_along_escort") { }
+
+    struct npc_mudmug_barreling_along_escortAI : public ScriptedAI
+    {
+        npc_mudmug_barreling_along_escortAI(Creature* creature) : ScriptedAI(creature) { }
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            Player* player = summoner ? summoner->ToPlayer() : nullptr;
+            if (!player || player->GetQuestStatus(BarrelingAlong::QuestId) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            playerGuid = player->GetGUID();
+            me->SetReactState(REACT_PASSIVE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
+            me->GetMotionMaster()->MoveFollow(player, 3.0f, M_PI);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (completed)
+                return;
+
+            if (checkTimer > diff)
+            {
+                checkTimer -= diff;
+                return;
+            }
+            checkTimer = 1000;
+
+            Player* player = ObjectAccessor::GetPlayer(*me, playerGuid);
+            if (!player || player->GetQuestStatus(BarrelingAlong::QuestId) != QUEST_STATUS_INCOMPLETE)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            if (player->GetMapId() != BarrelingAlong::MapId)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            if (player->GetExactDist2d(BarrelingAlong::ArrivalX, BarrelingAlong::ArrivalY) <=
+                BarrelingAlong::ArrivalRadius)
+            {
+                completed = true;
+                player->KilledMonsterCredit(BarrelingAlong::MudmugEscort, me->GetGUID());
+                me->DespawnOrUnsummon(5 * IN_MILLISECONDS);
+                return;
+            }
+
+            if (!me->IsWithinDistInMap(player, 60.0f))
+            {
+                me->NearTeleportTo(player->GetPositionX(), player->GetPositionY(),
+                    player->GetPositionZ(), player->GetOrientation());
+                me->GetMotionMaster()->MoveFollow(player, 3.0f, M_PI);
+            }
+        }
+
+    private:
+        ObjectGuid playerGuid;
+        uint32 checkTimer = 1000;
+        bool completed = false;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_mudmug_barreling_along_escortAI(creature);
+    }
+};
+
+class player_barreling_along_recovery : public PlayerScript
+{
+public:
+    player_barreling_along_recovery() : PlayerScript("player_barreling_along_recovery") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == BarrelingAlong::QuestId)
+            ScheduleRecovery(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        ScheduleRecovery(player);
+    }
+
+    void OnMapChanged(Player* player) override
+    {
+        ScheduleRecovery(player);
+    }
+
+private:
+    static void ScheduleRecovery(Player* player)
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1000, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                BarrelingAlong::EnsureEscort(onlinePlayer);
+        });
+    }
+};
+
 namespace ChenAndLiLi
 {
     constexpr uint32 QuestId = 29907;
@@ -3429,6 +3602,9 @@ void AddSC_valley_of_the_four_winds()
     new player_sunsong_ranch();
     new player_lesson_in_bravery();
     new player_hop_hunting_recovery();
+    new npc_mudmug_barreling_along_questgiver();
+    new npc_mudmug_barreling_along_escort();
+    new player_barreling_along_recovery();
     new npc_chen_and_li_li_escort();
     new player_chen_and_li_li_recovery();
 }
