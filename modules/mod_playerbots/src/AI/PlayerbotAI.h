@@ -352,6 +352,9 @@ protected:
     // The leader publishes this so the healer can own its tick and drink
     // without a low-priority follow/buff action immediately standing it up.
     std::atomic<bool> _instanceTankWaitingForHealerMana{ false };
+    // Between pulls, keep the route stopped while a bot is being resurrected
+    // and until the recovered formation has enough health for the next pull.
+    bool _instanceTankWaitingForGroupRecovery = false;
     uint32 _instanceHealerLastDrinkAttempt = 0;
     uint32 _instanceHealerLastFreeDrinkTick = 0;
     bool _instanceHealerUsingFreeDrink = false;

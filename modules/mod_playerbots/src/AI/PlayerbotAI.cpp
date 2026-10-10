@@ -785,6 +785,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         _instanceTankOpeningTargetGuid = 0;
         _instanceTankOpeningPullAt = 0;
         _instanceTankWaitingForHealerMana.store(false);
+        _instanceTankWaitingForGroupRecovery = false;
         _instanceHealerLastDrinkAttempt = 0;
         _instanceHealerLastFreeDrinkTick = 0;
         _instanceHealerUsingFreeDrink = false;
@@ -1944,6 +1945,9 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 
         Player* lowestManaHealer = nullptr;
         float lowestHealerMana = 100.0f;
+        Player* recoveryMember = nullptr;
+        bool recoveryMemberDead = false;
+        float recoveryHealth = 100.0f;
         Group* manaGroup = bot->GetGroup(GroupSlot::Instance);
         if (!manaGroup)
             manaGroup = bot->GetGroup();
@@ -1953,8 +1957,30 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 ref = ref->next())
             {
                 Player* member = ref->GetSource();
-                if (!member || !member->IsAlive() || !member->IsInWorld() ||
-                    member->GetMap() != bot->GetMap() ||
+                if (!member || !member->IsInWorld() ||
+                    member->GetMap() != bot->GetMap())
+                    continue;
+
+                PlayerbotAI* memberAI = GET_PLAYERBOT_AI(member);
+                bool const managedBot = memberAI && !memberAI->IsRealPlayer();
+                if (managedBot && !member->IsAlive() &&
+                    (member->getDeathState() == DeathState::CORPSE ||
+                        member->IsRessurectRequested()))
+                {
+                    recoveryMember = member;
+                    recoveryMemberDead = true;
+                    recoveryHealth = 0.0f;
+                }
+                else if (managedBot && member->IsAlive() &&
+                    member->GetHealthPct() < 80.0f &&
+                    (!recoveryMember || !recoveryMemberDead) &&
+                    member->GetHealthPct() < recoveryHealth)
+                {
+                    recoveryMember = member;
+                    recoveryHealth = member->GetHealthPct();
+                }
+
+                if (!member->IsAlive() ||
                     !PlayerBotSpec::IsHeal(member, true) ||
                     !member->GetMaxPower(POWER_MANA))
                     continue;
@@ -1966,6 +1992,56 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                     lowestHealerMana = mana;
                 }
             }
+        }
+
+        // A resurrection request can become accepted on the dead bot's map
+        // tick immediately before the leader runs. Checking both corpses and
+        // sub-80% living bots closes that transition window: the tank cannot
+        // start a distant pull while the healer is casting or topping up the
+        // newly resurrected member. Only managed bots gate autonomous
+        // leadership; a deliberately dead human master remains independent.
+        bool const needsGroupRecovery = !lockedPull && lowestManaHealer &&
+            recoveryMember;
+        if (needsGroupRecovery)
+        {
+            if (!_instanceTankWaitingForGroupRecovery)
+            {
+                _instanceTankWaitingForGroupRecovery = true;
+                announcePullCountdown(recoveryMemberDead ?
+                    "Vantar pa att healer aterupplivar en gruppmedlem." :
+                    "Vantar pa att healer helar gruppen till 80%.");
+                TC_LOG_INFO("server",
+                    "gotank waiting for group recovery leader=%s guid=%u member=%s member-guid=%u dead=%u health=%.1f map=%u instance=%u",
+                    bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                    recoveryMember->GetName().c_str(),
+                    recoveryMember->GetGUID().GetCounter(),
+                    recoveryMemberDead ? 1u : 0u, recoveryHealth,
+                    bot->GetMapId(), bot->GetInstanceId());
+            }
+
+            if (bot->isMoving())
+            {
+                bot->StopMoving();
+                bot->GetMotionMaster()->Clear(false);
+            }
+            if (_aiObjectContext)
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
+            _instanceTankRouteProgressAt = 0;
+            YieldThread(GetReactDelay());
+            return;
+        }
+
+        if (_instanceTankWaitingForGroupRecovery)
+        {
+            _instanceTankWaitingForGroupRecovery = false;
+            _instanceTankRouteProgressAt = 0;
+            _instanceTankLastStallLog = 0;
+            announcePullCountdown("Gruppen ar aterupplivad och helad - fortsatter.");
+            TC_LOG_INFO("server",
+                "gotank group recovery ready leader=%s guid=%u map=%u instance=%u",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                bot->GetMapId(), bot->GetInstanceId());
         }
 
         if (!_instanceTankWaitingForHealerMana.load() && !lockedPull &&

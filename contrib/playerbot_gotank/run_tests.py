@@ -104,6 +104,13 @@ require("PlayerBotSpec::IsHeal(bot, true)" in follow and
         "Follow(leader, 20.0f" in follow and
         "healerCatchup" in ai,
         "a gotank healer must catch the tank at a safe casting distance during combat")
+require("_instanceTankWaitingForGroupRecovery" in header and
+        "member->getDeathState() == DeathState::CORPSE" in ai and
+        "member->IsRessurectRequested()" in ai and
+        "member->GetHealthPct() < 80.0f" in ai and
+        "gotank waiting for group recovery" in ai and
+        "gotank group recovery ready" in ai,
+        "the tank must wait for bot resurrection and 80-percent recovery between pulls")
 require("idleCombatCatchup" in ai and "idleCombatCatchup" in follow and
         "!bot->GetVictim()" in follow and
         "bot->GetDistance(leader) > 8.0f" in follow and
@@ -335,7 +342,7 @@ require("if (!IsReadyForAutonomousPull(bot, creature))" in lead and
         "a stale yellow pull lock must be cancelled before selecting the red target")
 
 print(json.dumps({
-    "checks": 56,
+    "checks": 57,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -350,7 +357,7 @@ print(json.dumps({
     "post_combat_engine": "automatic-non-combat-resume",
     "stale_live_trash_target": "always-cleared-without-hostile-interaction",
     "encounter_intermission": "route-continues-without-hostile-interaction",
-    "resurrection_pause": "disabled",
+    "resurrection_pause": "between-pulls-until-80-percent-health",
     "regroup_grace_ms": 0,
     "stale_combat_cutoff_yards": 180,
     "instance_complete": "continue-until-manual-gotank",
@@ -370,5 +377,6 @@ print(json.dumps({
     "waypoint_wakeup": "immediate-on-spline-finish",
     "stalled_route_recovery_ms": 4000,
     "healer_mana_wait": {"stop_percent": 30, "resume_percent": 80},
+    "group_recovery_wait": {"dead_bots": True, "resume_health_percent": 80},
     "result": "pass",
 }, sort_keys=True))
