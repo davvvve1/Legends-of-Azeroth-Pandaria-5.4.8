@@ -3440,6 +3440,72 @@ private:
     }
 };
 
+namespace StoneplowThirsts
+{
+    constexpr uint32 QuestId = 30117;
+    constexpr uint32 LoonMai = 56720;
+    constexpr uint32 MapId = 870;
+    constexpr float LoonMaiX = -392.342f;
+    constexpr float LoonMaiY = 1911.94f;
+    constexpr float LoonMaiZ = 134.199f;
+    constexpr float LoonMaiO = 3.05433f;
+
+    void EnsureLoonMai(Player* player)
+    {
+        if (!player || !player->IsInWorld() || player->GetMapId() != MapId ||
+            player->GetQuestStatus(QuestId) != QUEST_STATUS_INCOMPLETE ||
+            player->GetExactDist2d(LoonMaiX, LoonMaiY) > 120.0f ||
+            player->FindNearestCreature(LoonMai, 120.0f, true))
+            return;
+
+        Position position = { LoonMaiX, LoonMaiY, LoonMaiZ, LoonMaiO };
+        if (TempSummon* loonMai = player->SummonCreature(LoonMai, position,
+            TEMPSUMMON_TIMED_DESPAWN, 30 * MINUTE * IN_MILLISECONDS, 0, player->GetGUID()))
+        {
+            loonMai->SetPhaseMask(player->GetPhaseMask(), true);
+            loonMai->SetPrivateObjectOwner(player->GetGUID());
+        }
+    }
+}
+
+class player_stoneplow_thirsts_recovery : public PlayerScript
+{
+public:
+    player_stoneplow_thirsts_recovery() : PlayerScript("player_stoneplow_thirsts_recovery") { }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == StoneplowThirsts::QuestId)
+            ScheduleRecovery(player);
+    }
+
+    void OnLogin(Player* player) override
+    {
+        ScheduleRecovery(player);
+    }
+
+    void OnMapChanged(Player* player) override
+    {
+        ScheduleRecovery(player);
+    }
+
+    void OnUpdateZone(Player* player, uint32 /*newZone*/, uint32 /*newArea*/) override
+    {
+        StoneplowThirsts::EnsureLoonMai(player);
+    }
+
+private:
+    static void ScheduleRecovery(Player* player)
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1000, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                StoneplowThirsts::EnsureLoonMai(onlinePlayer);
+        });
+    }
+};
+
 namespace ChenAndLiLi
 {
     constexpr uint32 QuestId = 29907;
@@ -3647,6 +3713,7 @@ void AddSC_valley_of_the_four_winds()
     new npc_mudmug_barreling_along_questgiver();
     new npc_mudmug_barreling_along_escort();
     new player_barreling_along_recovery();
+    new player_stoneplow_thirsts_recovery();
     new npc_chen_and_li_li_escort();
     new player_chen_and_li_li_recovery();
 }
