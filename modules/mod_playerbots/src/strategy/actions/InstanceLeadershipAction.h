@@ -3,6 +3,8 @@
 
 #include "AttackActions.h"
 
+#include <unordered_map>
+
 struct Position;
 
 // Out-of-combat half of the party/instance "gotank" toggle. The selected
@@ -38,8 +40,10 @@ private:
     uint32 _approachTargetGuid = 0;
     uint32 _approachProgressAt = 0;
     float _approachBestDistance = 0.0f;
-    uint32 _unreachableTargetGuid = 0;
-    uint32 _unreachableTargetAt = 0;
+    // Keep every recently failed candidate suppressed independently. A
+    // single remembered GUID makes two unreachable creatures continually
+    // replace one another, so the tank just moves the skull back and forth.
+    std::unordered_map<uint32, uint32> _unreachableTargets;
 };
 
 #endif

@@ -417,8 +417,9 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
 
     auto consider = [&](ObjectGuid const& guid)
     {
-        if (_unreachableTargetGuid == guid.GetCounter() &&
-            getMSTimeDiff(_unreachableTargetAt, getMSTime()) < 20000)
+        auto const unreachable = _unreachableTargets.find(guid.GetCounter());
+        if (unreachable != _unreachableTargets.end() &&
+            getMSTimeDiff(unreachable->second, getMSTime()) < 20000)
             return;
 
         Unit* target = botAI->GetUnit(guid);
@@ -674,8 +675,15 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     else
         issued = Attack(target);
 
+    // Attack() puts the bot in combat and assigns its victim before the first
+    // swing/threat event reaches the creature. Give that opening attack more
+    // time than a pure movement approach; otherwise the watchdog cancels a
+    // valid pull and selects another marked mob just before the first hit.
+    bool const openingAttack = bot->GetVictim() == target &&
+        botAI->GetState() == BOT_STATE_COMBAT;
+    uint32 const stalledFor = openingAttack ? 6000 : 4000;
     if (_approachProgressAt &&
-        getMSTimeDiff(_approachProgressAt, now) >= 4000)
+        getMSTimeDiff(_approachProgressAt, now) >= stalledFor)
     {
         AbandonUnreachableTarget(target);
         return true;
@@ -690,12 +698,20 @@ void InstanceLeadershipAction::AbandonUnreachableTarget(Unit* target)
         return;
 
     ObjectGuid const guid = target->GetGUID();
-    _unreachableTargetGuid = guid.GetCounter();
-    _unreachableTargetAt = getMSTime();
+    uint32 const now = getMSTime();
+    for (auto it = _unreachableTargets.begin();
+        it != _unreachableTargets.end();)
+    {
+        if (getMSTimeDiff(it->second, now) >= 20000)
+            it = _unreachableTargets.erase(it);
+        else
+            ++it;
+    }
+    _unreachableTargets[guid.GetCounter()] = now;
     _approachTargetGuid = 0;
     _approachProgressAt = 0;
     _approachBestDistance = 0.0f;
-    _forwardSearchStarted = _unreachableTargetAt;
+    _forwardSearchStarted = now;
 
     context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
     if (context->GetValue<Unit*>("current target")->Get() == target)

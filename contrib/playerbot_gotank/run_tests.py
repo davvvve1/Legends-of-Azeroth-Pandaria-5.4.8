@@ -155,9 +155,11 @@ require("waypoint.z, false, false, false, true" in lead and
         '"gotank Mogu\'shan route leader=' in lead,
         "validated route waypoints must bypass a second fallible path search")
 require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
-        'SayToParty("Pull om 15 sekunder - folj tanken. 15")' in ai and
+        'announcePullCountdown("Pull om 15 sekunder - folj tanken. 15")' in ai and
+        "PSendSysMessage(" in ai and
+        "SendNotification(" in ai and
         "remaining == 10 || remaining <= 5" in ai and
-        'SayToParty("KOR!")' in ai and
+        'announcePullCountdown("KOR!")' in ai and
         '"gotank pull countdown complete leader=' in ai and
         "_instanceTankPullCountdownKey" in header and
         "_instanceTankPullCountdownRemaining" in header and
@@ -200,14 +202,14 @@ require("gotankOpeningPullGrace" in ai and
         "_instanceTankOpeningTargetGuid" in header and
         "_instanceTankOpeningPullAt" in header and
         "bot->GetVictim() == pull" in ai and
-        "< 5000" in ai and
+        "< 7000" in ai and
         "!gotankOpeningPullGrace" in ai,
         "stale-combat cleanup must not cancel the tank's opening attack")
 require("AbandonUnreachableTarget" in lead and
         "_approachBestDistance" in lead and
-        "getMSTimeDiff(_approachProgressAt, now) >= 4000" in lead and
-        "_unreachableTargetGuid == guid.GetCounter()" in lead and
-        "getMSTimeDiff(_unreachableTargetAt, getMSTime()) < 20000" in lead and
+        "openingAttack ? 6000 : 4000" in lead and
+        "_unreachableTargets.find(guid.GetCounter())" in lead and
+        "_unreachableTargets[guid.GetCounter()] = now" in lead and
         '"gotank abandoned unreachable pull leader=' in lead,
         "an unreachable marked pull must release the group back to its route")
 require("if (!splineMoving)" in ai and
@@ -240,7 +242,7 @@ print(json.dumps({
     "tank_kill_order": "skull-follows-selected-target",
     "target_marker_party_category": "instance",
     "pull_approach": "locked-target-no-nearest-mob-oscillation",
-    "pull_opening_grace_ms": 5000,
+    "pull_opening_grace_ms": 7000,
     "unreachable_pull_ignore_ms": 20000,
     "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",

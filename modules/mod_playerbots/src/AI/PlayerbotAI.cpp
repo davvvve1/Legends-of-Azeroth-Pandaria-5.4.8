@@ -34,6 +34,7 @@
 
 #include "AiFactory.h"
 #include "ChannelMgr.h"
+#include "Chat.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -53,6 +54,7 @@
 #include "Player.h"
 #include "PositionValue.h"
 #include "PointMovementGenerator.h"
+#include "WorldSession.h"
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotSpec.h"
@@ -842,7 +844,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 _instanceTankOpeningPullAt = now;
             }
             gotankOpeningPullGrace = getMSTimeDiff(
-                _instanceTankOpeningPullAt, now) < 5000;
+                _instanceTankOpeningPullAt, now) < 7000;
         }
     }
     if (IsInstanceTankLeadershipActive() &&
@@ -1630,6 +1632,33 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
         !GroupPveCombat::GroupHasActiveCombat(bot))
     {
+        auto announcePullCountdown = [&](std::string const& message)
+        {
+            Group* group = bot->GetGroup(GroupSlot::Instance);
+            if (!group)
+                group = bot->GetGroup();
+            if (!group)
+                return;
+
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+            {
+                Player* member = ref->GetSource();
+                if (!member || !member->IsInWorld() ||
+                    member->GetMap() != bot->GetMap() ||
+                    !member->GetSession())
+                    continue;
+
+                // SayToParty is intentionally disabled in this module, so
+                // deliver both a chat-system line and a centre-screen notice
+                // directly to every connected instance member.
+                ChatHandler(member->GetSession()).PSendSysMessage(
+                    "|cffffcc00Gotank:|r %s", message.c_str());
+                member->GetSession()->SendNotification(
+                    "Gotank: %s", message.c_str());
+            }
+        };
+
         uint64 const countdownKey =
             (uint64(bot->GetMapId()) << 32) | uint64(bot->GetInstanceId());
         if (_instanceTankPullCountdownKey != countdownKey)
@@ -1649,7 +1678,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                             member->GetMap() == bot->GetMap())
                             member->SendStartTimer(15, 15, TIMER_PVP);
 
-            SayToParty("Pull om 15 sekunder - folj tanken. 15");
+            announcePullCountdown("Pull om 15 sekunder - folj tanken. 15");
             TC_LOG_INFO("server",
                 "gotank pull countdown leader=%s guid=%u map=%u instance=%u seconds=15",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -1667,7 +1696,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             {
                 _instanceTankPullCountdownRemaining = remaining;
                 if (remaining == 10 || remaining <= 5)
-                    SayToParty(std::to_string(remaining));
+                    announcePullCountdown(std::to_string(remaining));
             }
 
             // This return is the hard opening gate: no route selection,
@@ -1680,7 +1709,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         if (_instanceTankPullCountdownRemaining)
         {
             _instanceTankPullCountdownRemaining = 0;
-            SayToParty("KOR!");
+            announcePullCountdown("KOR!");
             TC_LOG_INFO("server",
                 "gotank pull countdown complete leader=%s guid=%u map=%u instance=%u elapsed-ms=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
