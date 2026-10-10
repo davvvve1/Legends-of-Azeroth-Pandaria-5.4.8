@@ -1012,6 +1012,15 @@ class npc_mu_shiba : public CreatureScript
                 events.ScheduleEvent(1, 7000);
             }
 
+            void JustDied(Unit* /*killer*/) override
+            {
+                // The encounter journal explicitly ends Ravage when Mu'Shiba
+                // is defeated.  Remove the player aura here instead of
+                // relying on generic caster-death cleanup timing.
+                if (InstanceScript* instance = me->GetInstanceScript())
+                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_RAVAGE);
+            }
+
             void DoAction(int32 actionId) override
             {
                 switch (actionId)

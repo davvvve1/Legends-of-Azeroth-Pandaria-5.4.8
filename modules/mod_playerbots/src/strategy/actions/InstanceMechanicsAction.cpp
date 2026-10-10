@@ -20,8 +20,12 @@
 
 namespace
 {
+constexpr uint32 MapMogushanPalace = 994;
 constexpr uint32 MapThroneOfThunder = 1098;
 constexpr uint32 MapSiegeOfOrgrimmar = 1136;
+
+constexpr uint32 NpcMuShiba = 61453;
+constexpr uint32 SpellRavage = 119948;
 
 struct AuraRule
 {
@@ -121,6 +125,8 @@ constexpr uint32 DefensiveCasts[] =
 // unrelated pack or attack passive encounter helpers.
 constexpr uint32 PriorityAdds[] =
 {
+    // Mogu'shan Palace: killing Mu'Shiba ends Ravage early.
+    NpcMuShiba,
     // Throne of Thunder
     69221, 69164, 69176, 69548, 69480, 67966, 68497, 70095,
     68192, 68193, 70134, 69069, 69070, 69701, 69700, 69699,
@@ -324,6 +330,22 @@ Unit* InstanceMechanicsAction::FindFriendlyEncounterUnit() const
     if (!PlayerBotSpec::IsHeal(bot, true))
         return nullptr;
 
+    // Ravage deals physical damage every second for ten seconds.  Keep its
+    // victim alive while the damage dealers kill Mu'Shiba to end it early.
+    if (bot->GetMapId() == MapMogushanPalace)
+    {
+        Group* group = bot->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = bot->GetGroup();
+        if (group)
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->IsAlive() && member->GetMap() == bot->GetMap() &&
+                        member->HasAura(SpellRavage))
+                        return member;
+    }
+
     // Immerseus contaminated puddles and Tsulong's day phase are the two MoP
     // raid objectives whose progress explicitly requires healing an NPC.
     uint32 const entries[] = { 71604u, 73260u, 62442u };
@@ -396,7 +418,7 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
         boss->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE) ||
         boss->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
     if (Unit* add = FindPriorityAdd(boss))
-        if (bossUnavailable || !PlayerBotSpec::IsTank(bot, true))
+        if (bossUnavailable || PlayerBotSpec::IsDps(bot, true))
             return { Reaction::FocusAdd, nullptr, add, 0.0f };
 
     if (Spell* cast = CurrentSpell(boss))
