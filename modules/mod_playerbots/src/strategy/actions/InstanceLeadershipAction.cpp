@@ -206,88 +206,9 @@ void GetMogushanRoute(uint8 stage, RoutePoint const*& points, size_t& count)
 }
 }
 
-bool InstanceLeadershipAction::GroupIsReady()
-{
-    Group* group = bot->GetGroup(GroupSlot::Instance);
-    if (!group)
-        group = bot->GetGroup();
-    if (!group)
-        return false;
-
-    bool together = true;
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-    {
-        Player* member = ref->GetSource();
-        if (!member || member == bot || !member->IsAlive() ||
-            !member->IsInWorld() || member->GetMap() != bot->GetMap())
-            continue;
-
-        if (bot->GetDistance(member) > 60.0f)
-            together = false;
-    }
-
-    if (together)
-    {
-        _groupWaitStarted = 0;
-        return true;
-    }
-
-    // A slow real player or a follower caught on geometry must not veto the
-    // complete run forever. Give the formation a short regroup window, then
-    // let the leader continue; follower catch-up remains active in parallel.
-    uint32 const now = getMSTime();
-    if (!_groupWaitStarted)
-    {
-        _groupWaitStarted = now;
-        return false;
-    }
-
-    return getMSTimeDiff(_groupWaitStarted, now) >= 4000;
-}
-
 bool InstanceLeadershipAction::GroupHasActiveCombat() const
 {
     return GroupPveCombat::GroupHasActiveCombat(bot);
-}
-
-bool InstanceLeadershipAction::GroupNeedsResurrection() const
-{
-    Group* group = bot->GetGroup(GroupSlot::Instance);
-    if (!group)
-        group = bot->GetGroup();
-    if (!group)
-        return false;
-
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-        if (Player* member = ref->GetSource())
-            if (member != bot && member->IsInWorld() &&
-                member->GetMap() == bot->GetMap() &&
-                member->InSamePhase(bot) &&
-                member->getDeathState() == DeathState::CORPSE)
-                return true;
-
-    return false;
-}
-
-bool InstanceLeadershipAction::IsInstanceComplete() const
-{
-    if (!bot || !bot->GetMap() || !bot->GetMap()->IsDungeon())
-        return false;
-
-    InstanceScript* instance = bot->GetInstanceScript();
-    DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(
-        bot->GetMapId(), bot->GetMap()->GetDifficulty());
-    if (!instance || !encounters || encounters->empty())
-        return false;
-
-    uint32 const completed = instance->GetCompletedEncounterMask();
-    for (DungeonEncounter const* encounter : *encounters)
-        if (encounter && encounter->dbcEntry &&
-            encounter->dbcEntry->encounterIndex < 32 &&
-            !(completed & (1u << encounter->dbcEntry->encounterIndex)))
-            return false;
-
-    return true;
 }
 
 bool InstanceLeadershipAction::HasGenericDestination() const
@@ -443,7 +364,6 @@ void InstanceLeadershipAction::ResetCompletedPull()
     bot->SetSelection(ObjectGuid::Empty);
     bot->GetMotionMaster()->Clear(false);
     bot->StopMoving();
-    _groupWaitStarted = 0;
 
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
@@ -452,38 +372,6 @@ void InstanceLeadershipAction::ResetCompletedPull()
         group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
 
     botAI->SetNextCheckDelay(0);
-}
-
-void InstanceLeadershipAction::FinishLeadership()
-{
-    Group* group = bot->GetGroup(GroupSlot::Instance);
-    if (!group)
-        group = bot->GetGroup();
-
-    if (group)
-    {
-        group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
-        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-            if (Player* member = ref->GetSource())
-                if (PlayerbotAI* ai = GET_PLAYERBOT_AI(member))
-                {
-                    ai->SetInstanceTankLeader(0);
-                    ai->SetInstanceTankLeadershipAutoSuppressed(true);
-                }
-    }
-    else
-    {
-        botAI->SetInstanceTankLeader(0);
-        botAI->SetInstanceTankLeadershipAutoSuppressed(true);
-    }
-
-    context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
-    context->GetValue<Unit*>("current target")->Set(nullptr);
-    context->GetValue<LastMovement&>("last movement")->Get().clear();
-    bot->SetTarget(ObjectGuid::Empty);
-    bot->SetSelection(ObjectGuid::Empty);
-    bot->GetMotionMaster()->Clear(false);
-    bot->StopMoving();
 }
 
 Unit* InstanceLeadershipAction::SelectNextTarget() const
@@ -693,7 +581,6 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     context->GetValue<Unit*>("current target")->Set(target);
     context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());
     bot->SetTarget(target->GetGUID());
-    _groupWaitStarted = 0;
 
     float const distance = bot->GetExactDist(target);
     if (distance > 22.0f || !bot->IsWithinLOSInMap(target))
@@ -704,11 +591,6 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
 
 bool InstanceLeadershipAction::isUseful()
 {
-    Player* master = GetMaster();
-    bool const realMasterUnavailable = master && !GET_PLAYERBOT_AI(master) &&
-        (!master->IsAlive() || !master->IsInWorld() ||
-            master->GetMap() != bot->GetMap());
-
     if (!bot || !bot->IsAlive() || !bot->GetMap() ||
         !bot->GetMap()->IsDungeon() || !botAI->IsInstanceTankLeader() ||
         !PlayerBotSpec::IsTank(bot, true) || GroupHasActiveCombat())
@@ -722,13 +604,8 @@ bool InstanceLeadershipAction::isUseful()
 
     ResetCompletedPull();
 
-    if (IsInstanceComplete())
-        return true;
-
-    return !realMasterUnavailable &&
-        (GroupNeedsResurrection() || SelectNextTarget() ||
-            HasMogushanPalaceDestination() ||
-            HasGenericDestination());
+    return SelectNextTarget() || HasMogushanPalaceDestination() ||
+        HasGenericDestination();
 }
 
 bool InstanceLeadershipAction::Execute(Event /*event*/)
@@ -736,36 +613,10 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
     if (!isUseful())
         return false;
 
-    if (IsInstanceComplete())
-    {
-        FinishLeadership();
-        return true;
-    }
-
     ResetCompletedPull();
 
-    // Do not drag the group into the next pack while a healer is returning to
-    // a corpse. Without a healer the dead bot releases on its own next update,
-    // so this pause is naturally removed; with one, it lasts until the normal
-    // resurrection request has been accepted.
-    if (GroupNeedsResurrection())
-    {
-        context->GetValue<LastMovement&>("last movement")->Get().clear();
-        bot->GetMotionMaster()->Clear(false);
-        bot->StopMoving();
-        botAI->SetNextCheckDelay(250);
-        return true;
-    }
-
     if (Unit* target = SelectNextTarget())
-    {
-        if (!GroupIsReady())
-            return true;
         return EngageTarget(target);
-    }
-
-    // Regrouping gates the next pull, never travel through an empty corridor.
-    _groupWaitStarted = 0;
 
     if (bot->GetMapId() == MogushanPalaceMap)
         return AdvanceMogushanPalaceRoute();

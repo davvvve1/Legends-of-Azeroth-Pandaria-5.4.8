@@ -19,15 +19,11 @@ public:
 
 private:
     Unit* SelectNextTarget() const;
-    bool GroupIsReady();
     bool GroupHasActiveCombat() const;
-    bool GroupNeedsResurrection() const;
-    bool IsInstanceComplete() const;
     bool HasGenericDestination() const;
     bool FindGenericDestination(Position& destination) const;
     bool AdvanceGenericRoute();
     void ResetCompletedPull();
-    void FinishLeadership();
     bool HasMogushanPalaceDestination() const;
     bool AdvanceMogushanPalaceRoute();
     bool EngageTarget(Unit* target);
@@ -35,7 +31,6 @@ private:
     uint8 _mogushanRouteStage = 0xFF;
     uint16 _mogushanRouteIndex = 0;
     uint32 _leadershipGeneration = 0;
-    uint32 _groupWaitStarted = 0;
 };
 
 #endif

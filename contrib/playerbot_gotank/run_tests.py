@@ -54,13 +54,11 @@ require("_leadershipGeneration != generation" in lead and
 require("!master->IsAlive()" in follow and
         "return master;" in follow,
         "followers must fall back to a dead real master")
-require("realMasterUnavailable" in lead and
-        "!realMasterUnavailable" in lead,
-        "the tank must pause autonomous leadership while the master is dead")
 require("gotankGroupInCombat" in ai and
         "!gotankGroupInCombat" in ai and
+        "!IsInstanceTankLeader()" in ai and
         "recoverGotankDeadMaster ? 60.0f : 140.0f" in ai,
-        "dead-master recovery must be combat-safe and instance-scoped")
+        "followers must recover a dead master without stopping the leader")
 require("gotankOwnsFormationMovement" in ai and
         "(!gotankOwnsFormationMovement || recoverGotankDeadMaster)" in ai,
         "active leadership must not be bounded by distance to a living master")
@@ -88,23 +86,18 @@ require("ResetCompletedPull();" in lead and
         'GetValue<LastMovement&>("last movement")' in lead and
         "SetNextCheckDelay(0)" in lead,
         "the completed pull must release target and movement ownership")
-require("bot->GetDistance(member) > 60.0f" in lead and
-        "getMSTimeDiff(_groupWaitStarted, now) >= 4000" in lead,
-        "regrouping must have a bounded grace period rather than a permanent veto")
+require("GroupIsReady" not in lead and "_groupWaitStarted" not in lead and
+        "GroupNeedsResurrection" not in lead,
+        "leadership must not pause between packs for regrouping or resurrection")
 require("GetDungeonEncounterList" in lead and
         "GetCompletedEncounterMask" in lead and
         "path.SetPathLengthLimit(4000.0f)" in lead and
         "walked >= 35.0f" in lead,
         "generic instances must advance toward the next encounter over mmap steps")
-require("IsInstanceComplete()" in lead and
-        "FinishLeadership();" in lead and
-        "ai->SetInstanceTankLeader(0)" in lead and
-        "ai->SetInstanceTankLeadershipAutoSuppressed(true)" in lead,
-        "a completed instance must restore ordinary master following")
-require("GroupNeedsResurrection()" in lead and
-        "member->getDeathState() == DeathState::CORPSE" in lead and
-        "SetNextCheckDelay(250)" in lead,
-        "the tank must pause its route while a corpse awaits resurrection")
+require("IsInstanceComplete" not in lead and
+        "FinishLeadership" not in lead and
+        "SetInstanceTankLeader(0)" not in lead,
+        "completion must not stop or clear leadership inside the instance")
 require("instance->IsEncounterInProgress()" in lead,
         "persistent route execution must preserve scripted boss intermissions")
 require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
@@ -112,12 +105,12 @@ require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
         "manual gotank off/on must suppress and restore automatic leadership")
 
 print(json.dumps({
-    "checks": 22,
+    "checks": 20,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
-    "dead_master": "pause-leadership-and-regroup",
+    "dead_master": "followers-recover-while-leader-continues",
     "active_fight_teleport": "blocked",
     "living_master_distance_limit": "disabled-during-leadership",
     "generic_route_scan_yards": 160,
@@ -125,10 +118,10 @@ print(json.dumps({
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_engine": "automatic-non-combat-resume",
     "stale_live_trash_target": "cleared-unless-encounter-active",
-    "resurrection_pause": "wait-for-corpse-recovery",
-    "regroup_grace_ms": 4000,
+    "resurrection_pause": "disabled",
+    "regroup_grace_ms": 0,
     "stale_combat_cutoff_yards": 180,
-    "instance_complete": "follow-master-restored",
+    "instance_complete": "continue-until-manual-gotank",
     "persistent_controller": "direct-before-idle-actions",
     "result": "pass",
 }, sort_keys=True))

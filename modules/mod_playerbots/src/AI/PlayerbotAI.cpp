@@ -979,6 +979,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     bool const recoverGotankDeadMaster = IsInstanceTankLeadershipActive() &&
         bot->GetMap() && bot->GetMap()->IsDungeon() &&
         distanceRecoveryMaster && !distanceRecoveryMaster->IsAlive() &&
+        !IsInstanceTankLeader() &&
         !gotankGroupInCombat;
     bool const gotankOwnsFormationMovement =
         IsInstanceTankLeadershipActive() && bot->GetMap() &&
@@ -1318,8 +1319,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 
     // Instance leadership is a persistent controller, not an idle fallback.
     // Run it directly after combat/cast handling so ordinary non-combat
-    // triggers cannot starve the next route step. This is what makes one
-    // automatic activation continue pack-by-pack until completion.
+    // triggers cannot starve the next route step. This makes one automatic
+    // activation continue pack-by-pack until the master toggles gotank off.
     if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
         !GroupPveCombat::GroupHasActiveCombat(bot) &&
         DoSpecificAction("lead instance", Event(), true))
