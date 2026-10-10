@@ -738,6 +738,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         SetInstanceTankLeadershipAutoSuppressed(false);
         _instanceTankPullCountdownKey = 0;
         _instanceTankPullCountdownStarted = 0;
+        _instanceTankRouteProgressAt = 0;
+        _instanceTankLastStallLog = 0;
     }
     else if (!IsInstanceTankLeadershipAutoSuppressed())
     {
@@ -1420,6 +1422,58 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 
     AllowActivity();
 
+    // A route point can finish before MovementAction's estimated travel
+    // delay. CanUpdateAI would then keep the tank standing at the completed
+    // point until that stale delay expires; typing gotank appeared to repair
+    // it only because the command zeroed the delay. Wake the independent
+    // controller as soon as its spline is finished. If a live point spline
+    // makes no physical progress for four seconds, clear it and let the same
+    // route action calculate it again without any player command.
+    bool const gotankCanAdvance = inInstance && IsInstanceTankLeader() &&
+        bot->IsAlive() && !GroupPveCombat::GroupHasActiveCombat(bot);
+    if (gotankCanAdvance)
+    {
+        uint32 const now = getMSTime();
+        bool const splineMoving = bot->movespline &&
+            bot->movespline->Initialized() && !bot->movespline->Finalized();
+        float const dx = bot->GetPositionX() - _instanceTankRouteProgressX;
+        float const dy = bot->GetPositionY() - _instanceTankRouteProgressY;
+        float const dz = bot->GetPositionZ() - _instanceTankRouteProgressZ;
+        bool const madeProgress = dx * dx + dy * dy + dz * dz > 2.25f;
+
+        if (!_instanceTankRouteProgressAt || madeProgress)
+        {
+            _instanceTankRouteProgressAt = now;
+            _instanceTankRouteProgressX = bot->GetPositionX();
+            _instanceTankRouteProgressY = bot->GetPositionY();
+            _instanceTankRouteProgressZ = bot->GetPositionZ();
+        }
+
+        if (!splineMoving)
+            SetNextCheckDelay(0);
+        else if (getMSTimeDiff(_instanceTankRouteProgressAt, now) >= 4000)
+        {
+            bot->GetMotionMaster()->Clear(false);
+            bot->StopMoving();
+            if (_aiObjectContext)
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
+            SetNextCheckDelay(0);
+            _instanceTankRouteProgressAt = now;
+            _instanceTankRouteProgressX = bot->GetPositionX();
+            _instanceTankRouteProgressY = bot->GetPositionY();
+            _instanceTankRouteProgressZ = bot->GetPositionZ();
+            TC_LOG_WARN("server",
+                "gotank recovered stalled route leader=%s guid=%u map=%u instance=%u position=%.2f,%.2f,%.2f",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                bot->GetMapId(), bot->GetInstanceId(),
+                bot->GetPositionX(), bot->GetPositionY(),
+                bot->GetPositionZ());
+        }
+    }
+    else
+        _instanceTankRouteProgressAt = 0;
+
     if (!CanUpdateAI())
         return;
 
@@ -1577,7 +1631,26 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             _aiObjectContext->GetValue<LastMovement&>("last movement")
                 ->Get().clear();
 
-        DoSpecificAction("lead instance", Event(), true);
+        bool const routeIssued =
+            DoSpecificAction("lead instance", Event(), true);
+        if (!routeIssued && !bot->isMoving())
+        {
+            uint32 const now = getMSTime();
+            if (!_instanceTankLastStallLog ||
+                getMSTimeDiff(_instanceTankLastStallLog, now) >= 5000)
+            {
+                _instanceTankLastStallLog = now;
+                TC_LOG_WARN("server",
+                    "gotank route produced no movement leader=%s guid=%u map=%u instance=%u state=%u motion=%u position=%.2f,%.2f,%.2f",
+                    bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                    bot->GetMapId(), bot->GetInstanceId(),
+                    uint32(_currentState),
+                    uint32(bot->GetMotionMaster()
+                        ->GetCurrentMovementGeneratorType()),
+                    bot->GetPositionX(), bot->GetPositionY(),
+                    bot->GetPositionZ());
+            }
+        }
         YieldThread(GetReactDelay());
         return;
     }

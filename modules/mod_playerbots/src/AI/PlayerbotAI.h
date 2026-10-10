@@ -340,6 +340,11 @@ protected:
     // restart the delay between trash packs.
     uint64 _instanceTankPullCountdownKey = 0;
     uint32 _instanceTankPullCountdownStarted = 0;
+    uint32 _instanceTankRouteProgressAt = 0;
+    uint32 _instanceTankLastStallLog = 0;
+    float _instanceTankRouteProgressX = 0.0f;
+    float _instanceTankRouteProgressY = 0.0f;
+    float _instanceTankRouteProgressZ = 0.0f;
     uint32 _invalidFollowPositionSince = 0;
     uint32 _gateSettingSunFollowRecoverySince = 0;
     float _gateSettingSunBestFollowDistance = 0.0f;

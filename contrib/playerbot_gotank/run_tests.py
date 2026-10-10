@@ -165,9 +165,18 @@ require("bool const offTank = PlayerBotSpec::IsTank(bot, true)" in target and
         "if (offTank && crossGuid)" in target and
         "if (skullGuid)" in target,
         "off-tank must prioritize cross while DPS and the leader prioritize skull")
+require("bool const gotankCanAdvance" in ai and
+        "if (!splineMoving)\n            SetNextCheckDelay(0);" in ai and
+        "getMSTimeDiff(_instanceTankRouteProgressAt, now) >= 4000" in ai and
+        '"gotank recovered stalled route leader=' in ai,
+        "a completed or physically stalled waypoint must self-wake without gotank")
+require("bool const routeIssued" in ai and
+        '"gotank route produced no movement leader=' in ai and
+        "_instanceTankLastStallLog" in header,
+        "a route failure must emit throttled live diagnostics")
 
 print(json.dumps({
-    "checks": 30,
+    "checks": 32,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -193,5 +202,7 @@ print(json.dumps({
     "route_dispatch": "validated-waypoint-direct-to-motion-master",
     "pull_countdown_seconds": 15,
     "tank_follow_mode": "fully-independent-from-real-master",
+    "waypoint_wakeup": "immediate-on-spline-finish",
+    "stalled_route_recovery_ms": 4000,
     "result": "pass",
 }, sort_keys=True))
