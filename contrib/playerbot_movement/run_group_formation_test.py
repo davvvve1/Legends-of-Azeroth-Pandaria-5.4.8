@@ -34,7 +34,7 @@ struct Group {
 };
 struct Player {
     unsigned guid; Map* map; Group* group;
-    bool tank=false, alive=true, world=true, combat=false, bg=false;
+    bool tank=false, healer=false, alive=true, world=true, combat=false, bg=false;
     float x=100,y=100,z=10,orientation=0;
     unsigned GetGUID(){return guid;}
     Map* GetMap(){return map;}
@@ -45,7 +45,10 @@ struct Player {
     float GetPositionX(){return x;} float GetPositionY(){return y;} float GetPositionZ(){return z;}
     float GetOrientation(){return orientation;}
 };
-namespace PlayerBotSpec { bool IsTank(Player* p,bool) {return p->tank;} }
+namespace PlayerBotSpec {
+bool IsTank(Player* p,bool) {return p->tank;}
+bool IsHeal(Player* p,bool) {return p->healer;}
+}
 struct AI {int state=BOT_STATE_NON_COMBAT;int GetState(){return state;}};
 struct WorldLocation {
     unsigned map; float x,y,z;
@@ -62,6 +65,7 @@ int main() {
     Map map,otherMap; Group group,otherGroup; AI ai;
     Player master{99,&map,&group}, tank{1,&map,&group}, dps1{2,&map,&group}, dps2{3,&map,&group}, healer{4,&map,&group};
     tank.tank=true;
+    healer.healer=true;
     GroupReference refs[]={{&healer,nullptr},{&tank,nullptr},{&master,nullptr},{&dps2,nullptr},{&dps1,nullptr}};
     for(int i=0;i<4;++i) refs[i].following=&refs[i+1];
     group.first=&refs[0];
@@ -74,10 +78,12 @@ int main() {
     assert(std::abs(p.x-100)<0.001f && std::abs(p.y-108)<0.001f);
     master.orientation=0;
     std::vector<WorldLocation> positions;
-    for(Player* bot:{&dps1,&dps2,&healer}) {
+    for(Player* bot:{&dps1,&dps2}) {
         action.bot=bot; p=action.GetGroupFollowLocation();
         assert(p.x==96); positions.push_back(p);
     }
+    action.bot=&healer; p=action.GetGroupFollowLocation();
+    assert(p.x==97.5f && p.y==100.0f);
     for(unsigned i=0;i<positions.size();++i)
         for(unsigned j=i+1;j<positions.size();++j)
             assert(std::hypot(positions[i].x-positions[j].x,positions[i].y-positions[j].y)>=3);
@@ -104,6 +110,10 @@ int main() {
             auto b=GroupFollowFormation::GetOffset(isTank,j);
             assert(std::hypot(a.forward-b.forward,a.sideways-b.sideways)>=3);
         }
+    }
+    for(unsigned i=0;i<12;++i) {
+        auto a=GroupFollowFormation::GetHealerOffset(i);
+        assert(a.forward<=-2.5f);
     }
     std::cout<<"Group formation: tank lead, spacing, rotation, collision and combat guards passed\n";
 }

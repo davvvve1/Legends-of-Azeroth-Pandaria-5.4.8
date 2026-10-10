@@ -49,17 +49,23 @@ WorldLocation FollowAction::GetGroupFollowLocation()
 {
     Player* master = GetFollowTarget();
     bool const tank = PlayerBotSpec::IsTank(bot, true);
+    bool const healer = PlayerBotSpec::IsHeal(bot, true);
     std::size_t slot = 0;
     for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
         if (member && member != master && member->IsInWorld() && member->IsAlive() &&
             member->GetMap() == bot->GetMap() &&
-            PlayerBotSpec::IsTank(member, true) == tank && member->GetGUID() < bot->GetGUID())
+            PlayerBotSpec::IsTank(member, true) == tank &&
+            (!healer || PlayerBotSpec::IsHeal(member, true)) &&
+            (tank || healer || !PlayerBotSpec::IsHeal(member, true)) &&
+            member->GetGUID() < bot->GetGUID())
             ++slot;
     }
 
-    auto const offset = GroupFollowFormation::GetOffset(tank, slot);
+    auto const offset = healer ?
+        GroupFollowFormation::GetHealerOffset(slot) :
+        GroupFollowFormation::GetOffset(tank, slot);
     float const orientation = master->GetOrientation();
     // Narrow the formation if a wall blocks a slot; never use unchecked coordinates.
     for (float scale : {1.0f, 0.5f, 0.25f})
@@ -84,11 +90,20 @@ bool FollowAction::Execute(Event event)
     if (botAI->IsInstanceTankLeadershipActive())
     {
         Player* leader = GetFollowTarget();
+        bool const groupCombat = GroupPveCombat::GroupHasActiveCombat(bot);
+        bool const healerCatchup = leader && leader->IsAlive() &&
+            PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            bot->GetDistance(leader) > 32.0f;
         if (!leader || leader == bot || !leader->IsInWorld() ||
             leader->GetMap() != bot->GetMap() ||
-            GroupPveCombat::GroupHasActiveCombat(bot) ||
+            (groupCombat && !healerCatchup) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
+
+        // A healer displaced by mechanics or a fast chain pull closes to a
+        // stable 20-yard casting position before selecting its next heal.
+        if (healerCatchup)
+            return Follow(leader, 20.0f, static_cast<float>(M_PI));
 
         if (UseGroupFollowFormation())
         {
@@ -186,12 +201,18 @@ bool FollowAction::isUseful()
     if (botAI->IsInstanceTankLeadershipActive())
     {
         Player* leader = GetFollowTarget();
+        bool const groupCombat = GroupPveCombat::GroupHasActiveCombat(bot);
+        bool const healerCatchup = leader && leader->IsAlive() &&
+            PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            bot->GetDistance(leader) > 32.0f;
         if (!leader || leader == bot || !leader->IsInWorld() ||
             leader->GetMap() != bot->GetMap() ||
-            GroupPveCombat::GroupHasActiveCombat(bot) ||
+            (groupCombat && !healerCatchup) ||
             leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
+        if (healerCatchup)
+            return true;
         if (UseGroupFollowFormation())
         {
             WorldLocation const loc = GetGroupFollowLocation();

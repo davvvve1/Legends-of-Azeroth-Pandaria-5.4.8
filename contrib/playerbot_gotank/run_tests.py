@@ -92,8 +92,13 @@ require("gotankOwnsFormationMovement" in ai and
         "active leadership must disable every distance recovery to master")
 require('DoSpecificAction("follow", Event(), true)' in ai and
         "leader && leader->IsAlive()" in ai and
-        "bot->GetDistance(leader) > 4.0f" in ai,
+        "bot->GetDistance(leader) > (healerCatchup ? 32.0f : 4.0f)" in ai,
         "every living follower must persistently follow the tank between pulls")
+require("PlayerBotSpec::IsHeal(bot, true)" in follow and
+        "bot->GetDistance(leader) > 32.0f" in follow and
+        "Follow(leader, 20.0f" in follow and
+        "healerCatchup" in ai,
+        "a gotank healer must catch the tank at a safe casting distance during combat")
 require("member->IsInWorld() &&\n                    member->GetMap()" in ai and
         "member->IsInWorld() && member->IsAlive()" not in
         ai[ai.index("Player* PlayerbotAI::GetInstanceTankLeader"):ai.index("bool PlayerbotAI::IsInstanceTankLeadershipActive")],
@@ -235,7 +240,7 @@ require("if (!splineMoving)" in ai and
         "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 41,
+    "checks": 42,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

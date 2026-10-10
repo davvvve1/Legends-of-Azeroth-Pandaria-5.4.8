@@ -1638,13 +1638,17 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // one member standing behind while the tank advances to the next pack.
     // Dead tanks are deliberately excluded: the normal class resurrection
     // action then owns the healer and selects the preserved tank leader.
-    if (inInstance && !IsInstanceTankLeader() && bot->IsAlive() &&
-        !GroupPveCombat::GroupHasActiveCombat(bot))
+    if (inInstance && !IsInstanceTankLeader() && bot->IsAlive())
     {
         Player* leader = GetInstanceTankLeader();
+        bool const groupCombat = GroupPveCombat::GroupHasActiveCombat(bot);
+        bool const healerCatchup = leader && leader->IsAlive() &&
+            PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
+            bot->GetDistance(leader) > 32.0f;
         if (leader && leader->IsAlive() && leader->IsInWorld() &&
             leader->GetMap() == bot->GetMap() &&
-            bot->GetDistance(leader) > 4.0f &&
+            (!groupCombat || healerCatchup) &&
+            bot->GetDistance(leader) > (healerCatchup ? 32.0f : 4.0f) &&
             !bot->IsNonMeleeSpellCasted(true, false, true) &&
             DoSpecificAction("follow", Event(), true))
         {
