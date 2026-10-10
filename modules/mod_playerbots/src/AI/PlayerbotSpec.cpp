@@ -365,12 +365,17 @@ bool GroupPveCombat::GroupHasActiveCombat(Player* observer)
     if (!observer || !group || !observer->IsInWorld())
         return false;
 
-    auto activeEnemy = [](Player* member, Unit* enemy)
+    auto activeEnemy = [](Unit* participant, Unit* enemy)
     {
         return enemy && enemy->IsAlive() && enemy->IsInWorld() &&
-            enemy->GetMap() == member->GetMap() &&
-            member->IsValidAttackTarget(enemy) &&
-            member->GetDistance(enemy) <= 180.0f;
+            participant && participant->IsAlive() && participant->IsInWorld() &&
+            enemy->GetMap() == participant->GetMap() &&
+            participant->IsValidAttackTarget(enemy) &&
+            participant->GetDistance(enemy) <= 180.0f &&
+            enemy->IsInCombat() &&
+            (enemy->GetVictim() == participant ||
+                (enemy->CanHaveThreatList() &&
+                    enemy->GetThreatManager().getThreat(participant) > 0.0f));
     };
 
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
@@ -395,10 +400,10 @@ bool GroupPveCombat::GroupHasActiveCombat(Player* observer)
 
         if (Guardian* guardian = member->GetGuardianPet())
         {
-            if (activeEnemy(member, guardian->GetVictim()))
+            if (activeEnemy(guardian, guardian->GetVictim()))
                 return true;
             for (Unit* attacker : guardian->getAttackers())
-                if (activeEnemy(member, attacker))
+                if (activeEnemy(guardian, attacker))
                     return true;
         }
     }

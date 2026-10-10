@@ -594,26 +594,9 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     bool const gotankGroupHasActiveCombat =
         IsInstanceTankLeadershipActive() &&
         GroupPveCombat::GroupHasActiveCombat(bot);
-    Unit* gotankTrackedTarget = _aiObjectContext ?
-        _aiObjectContext->GetValue<Unit*>("current target")->Get() : nullptr;
-    auto isLiveGotankTarget = [this](Unit* target)
-    {
-        return target && target->IsAlive() && target->IsInWorld() &&
-            target->GetMap() == bot->GetMap();
-    };
-    if (!isLiveGotankTarget(gotankTrackedTarget) && _aiObjectContext)
-        gotankTrackedTarget = GetUnit(_aiObjectContext
-            ->GetValue<ObjectGuid>("pull target")->Get());
-    bool const gotankHasLiveTrackedTarget =
-        isLiveGotankTarget(gotankTrackedTarget);
-    InstanceScript* gotankInstance = bot->GetInstanceScript();
-    bool const gotankEncounterInProgress = gotankInstance &&
-        gotankInstance->IsEncounterInProgress();
-    bool const gotankPreservesEncounterTarget =
-        gotankHasLiveTrackedTarget && gotankEncounterInProgress;
     if (IsInstanceTankLeadershipActive() &&
         _currentState == BOT_STATE_COMBAT &&
-        !gotankGroupHasActiveCombat && !gotankPreservesEncounterTarget)
+        !gotankGroupHasActiveCombat)
     {
         bot->CombatStopWithPets(true);
         bot->AttackStop();
@@ -1330,10 +1313,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         // action could replace the route; another gotank toggle appeared to
         // fix it only because the toggle cleared LastMovement. Leadership
         // owns the complete safe tick even when no new move packet is needed.
-        InstanceScript* instance = bot->GetInstanceScript();
-        bool const encounterInProgress = instance &&
-            instance->IsEncounterInProgress();
-        if (!encounterInProgress && !bot->isMoving() && _aiObjectContext)
+        if (!bot->isMoving() && _aiObjectContext)
             _aiObjectContext->GetValue<LastMovement&>("last movement")
                 ->Get().clear();
 

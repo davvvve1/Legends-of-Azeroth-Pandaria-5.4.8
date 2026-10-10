@@ -33,8 +33,10 @@ nearby enemy is actually fighting. While leadership is active, the tank and
 followers use the tank-led formation instead of the normal 140-yard leash to
 the living real master.
 An unengaged living trash target cached by the combat engine is also discarded;
-only a live target belonging to an encounter which is still in progress keeps
-the party in combat for a boss intermission.
+an instance script's broad `IN_PROGRESS` state cannot pause the route between
+waves or phases. Only a real nearby hostile interaction (victim or threat)
+holds the tank in combat; as soon as that interaction ends the same leadership
+controller advances toward the next route point without another command.
 Outside Mogu'shan Palace, the next incomplete encounter supplies a persistent
 destination and the live mmap is traversed in short steps so intervening trash
 becomes visible and is pulled normally. Finishing all registered encounters

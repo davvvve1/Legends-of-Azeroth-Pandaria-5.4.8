@@ -27,6 +27,8 @@ follow = FOLLOW_SOURCE.read_text(encoding="utf-8-sig")
 lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
+group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
+                      combat.index("bool GroupPveCombat::IsEngaged")]
 
 require('command != "gotank"' in chat and 'command != "go tank"' in chat,
         "both documented gotank command spellings must remain accepted")
@@ -71,11 +73,11 @@ require("gotankOwnsFormationMovement" in ai and
         "active leadership must not be bounded by distance to a living master")
 require("_currentState == BOT_STATE_COMBAT" in ai and
         "!gotankGroupHasActiveCombat" in ai and
-        "gotankEncounterInProgress" in ai and
-        "!gotankPreservesEncounterTarget" in ai and
+        "gotankEncounterInProgress" not in ai and
+        "gotankPreservesEncounterTarget" not in ai and
         "ChangeEngine(BOT_STATE_NON_COMBAT)" in ai and
         "CombatStopWithPets(true)" in ai,
-        "gotank must leave stale trash combat but preserve boss intermissions")
+        "gotank must leave stale combat even during a scripted encounter")
 require('PossibleTargetsValue(botAI,' in lead and
         '"instance leadership targets", 160.0f, true' in lead and
         "bot->GetMapId() != MogushanPalaceMap" in lead,
@@ -86,8 +88,12 @@ require("GroupHasActiveCombat(Player* observer)" in combat_header and
         "!bot->IsInCombat()" not in lead,
         "gotank must use live enemies rather than a stale core combat flag")
 require("enemy->IsAlive()" in combat and
-        "member->GetDistance(enemy) <= 180.0f" in combat,
-        "dead or remote stale hostile references must not stop the route")
+        "participant->GetDistance(enemy) <= 180.0f" in combat and
+        "enemy->IsInCombat()" in combat and
+        "enemy->GetVictim() == participant" in combat and
+        "getThreat(participant) > 0.0f" in combat and
+        "participant->GetVictim() == enemy" not in group_combat,
+        "only a real nearby hostile interaction may stop the route")
 require("ResetCompletedPull();" in lead and
         'GetValue<ObjectGuid>("pull target")' in lead and
         'GetValue<LastMovement&>("last movement")' in lead and
@@ -105,8 +111,9 @@ require("IsInstanceComplete" not in lead and
         "FinishLeadership" not in lead and
         "SetInstanceTankLeader(0)" not in lead,
         "completion must not stop or clear leadership inside the instance")
-require("instance->IsEncounterInProgress()" in lead,
-        "persistent route execution must preserve scripted boss intermissions")
+require("instance->IsEncounterInProgress()" not in lead and
+        "encounterInProgress" not in controller,
+        "scripted encounter state alone must never pause persistent leadership")
 require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
         "SetInstanceTankLeadershipAutoSuppressed(false)" in chat,
         "manual gotank off/on must suppress and restore automatic leadership")
@@ -124,7 +131,8 @@ print(json.dumps({
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_engine": "automatic-non-combat-resume",
-    "stale_live_trash_target": "cleared-unless-encounter-active",
+    "stale_live_trash_target": "always-cleared-without-hostile-interaction",
+    "encounter_intermission": "route-continues-without-hostile-interaction",
     "resurrection_pause": "disabled",
     "regroup_grace_ms": 0,
     "stale_combat_cutoff_yards": 180,

@@ -596,12 +596,6 @@ bool InstanceLeadershipAction::isUseful()
         !PlayerBotSpec::IsTank(bot, true) || GroupHasActiveCombat())
         return false;
 
-    // Direct persistent leadership must not mistake a scripted boss
-    // intermission for the end of a pull.
-    if (InstanceScript* instance = bot->GetInstanceScript())
-        if (instance->IsEncounterInProgress())
-            return false;
-
     ResetCompletedPull();
 
     return SelectNextTarget() || HasMogushanPalaceDestination() ||
