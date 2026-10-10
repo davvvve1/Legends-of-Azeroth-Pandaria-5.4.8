@@ -9,6 +9,11 @@ namespace InstanceMechanics
 // the ordinary class taunt without enabling arbitrary off-tank taunts.
 bool ShouldTankSwap(Player* bot, Unit* boss);
 
+// Trial actors become attackable/aggressive shortly before the core regards
+// them as hostile or fully engaged. Leadership and mechanics must use this
+// same activation test so a selected target is not immediately discarded.
+bool IsActiveMogushanTrialTarget(Player* bot, Creature* creature);
+
 // Returns the highest-priority engaged add for the shared kill order. Tank
 // marker ownership and combat mechanics use the same result so skull cannot
 // remain on a boss while damage dealers correctly switch to a critical add.

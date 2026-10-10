@@ -278,6 +278,24 @@ bool InstanceMechanics::ShouldTankSwap(Player* bot, Unit* boss)
     return false;
 }
 
+bool InstanceMechanics::IsActiveMogushanTrialTarget(Player* bot,
+    Creature* creature)
+{
+    if (!bot || !creature || bot->GetMapId() != MapMogushanPalace ||
+        creature->GetMap() != bot->GetMap() || !creature->IsAlive() ||
+        !creature->IsInWorld() || !bot->IsValidAttackTarget(creature) ||
+        (creature->GetEntry() != NpcMuShiba &&
+            creature->GetEntry() != NpcHaiyanTheUnstoppable))
+        return false;
+
+    return creature->GetReactState() != REACT_PASSIVE &&
+        !creature->HasFlag(UNIT_FIELD_FLAGS,
+            UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 |
+            UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
+            UNIT_FLAG_PACIFIED) &&
+        bot->GetDistance(creature) <= 150.0f;
+}
+
 Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
     Unit* boss)
 {
@@ -335,12 +353,7 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
             (unit->GetEntry() == NpcMuShiba ||
                 unit->GetEntry() == NpcHaiyanTheUnstoppable);
         bool const activeTrialTarget = trialPriority &&
-            creature->GetReactState() != REACT_PASSIVE &&
-            !creature->HasFlag(UNIT_FIELD_FLAGS,
-                UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 |
-                UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
-                UNIT_FLAG_PACIFIED) &&
-            bot->GetDistance(unit) <= 150.0f;
+            IsActiveMogushanTrialTarget(bot, creature);
         if (trialPriority && !activeTrialTarget)
             continue;
         if (!trialPriority &&

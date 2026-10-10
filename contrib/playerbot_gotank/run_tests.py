@@ -135,6 +135,9 @@ require("constexpr float AutonomousTargetRange = 150.0f" in lead and
         '"instance leadership targets", AutonomousTargetRange' in lead and
         "if (!best)" in lead,
         "instance leadership must scan 150 yards for the next mmap-reachable pack")
+require("InstanceMechanics::IsActiveMogushanTrialTarget(bot, creature)" in lead and
+        "Treat that active window as pull-ready" in lead,
+        "an active Trial target must survive pull validation before combat starts")
 require("GroupHasActiveCombat(Player* observer)" in combat_header and
         "GroupPveCombat::GroupHasActiveCombat(bot)" in lead and
         "GroupPveCombat::GroupHasActiveCombat(bot)" in follow and

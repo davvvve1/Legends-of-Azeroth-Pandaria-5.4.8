@@ -12,6 +12,7 @@ MECHANICS_HEADER = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceM
 AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 FACTORY = ROOT / "modules/mod_playerbots/src/Factory/AiFactory.cpp"
 MAP_DBC = ROOT / "src/server/game/DataStores/DBCStructure.h"
+MOGUSHAN_INSTANCE = ROOT / "src/server/scripts/Pandaria/MogushanPalace/instance_mogu_shan_palace.cpp"
 
 
 def require(condition: bool, message: str) -> None:
@@ -24,6 +25,7 @@ mechanics_header = MECHANICS_HEADER.read_text(encoding="utf-8")
 ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 factory = FACTORY.read_text(encoding="utf-8")
 map_dbc = MAP_DBC.read_text(encoding="utf-8")
+mogushan_instance = MOGUSHAN_INSTANCE.read_text(encoding="utf-8")
 
 priority_match = re.search(
     r"constexpr uint32 PriorityAdds\[\]\s*=\s*\{(?P<body>.*?)\n\};",
@@ -56,6 +58,7 @@ require("gekkanEntourage && !PlayerBotSpec::IsHeal" in mechanics,
 require("IsHealingCast(unit)" in mechanics,
         "generic engaged healer fallback is missing")
 require("activeTrialTarget" in mechanics and
+        "IsActiveMogushanTrialTarget(bot, creature)" in mechanics and
         "creature->GetReactState() != REACT_PASSIVE" in mechanics and
         "UNIT_FLAG_IMMUNE_TO_PC" in mechanics and
         "trialPriority && !activeTrialTarget" in mechanics and
@@ -66,6 +69,7 @@ require("FindNearestCreature(NpcMuShiba, 150.0f, true)" in mechanics and
         "FindNearestCreature(NpcHaiyanTheUnstoppable" in mechanics,
         "Trial targets must not depend on the shorter target-value cache")
 require("Unit* PriorityTarget(PlayerbotAI* botAI" in mechanics_header and
+        "bool IsActiveMogushanTrialTarget(Player* bot" in mechanics_header and
         "InstanceMechanics::PriorityTarget(this, bot)" in ai and
         "validAttackTarget(priorityTarget)" in ai and
         'GetValue<ObjectGuid>("pull target")' in ai and
@@ -79,14 +83,20 @@ require('engine->addStrategy("avoid aoe", false);' in factory,
 require("map_type == MAP_SCENARIO" in map_dbc and
         "bool IsDungeon() const" in map_dbc,
         "scenario maps are no longer included by the instance gate")
+require("m_auiBossNumber[0] = TYPE_KUAI" in mogushan_instance and
+        "m_auiBossNumber[1] = TYPE_HAIYAN" in mogushan_instance and
+        "m_auiBossNumber[2] = TYPE_MING" in mogushan_instance and
+        "std::shuffle(std::begin(m_auiBossNumber)" not in mogushan_instance,
+        "Trial order must remain Kuai/Mu'Shiba, Haiyan, then Ming")
 
 print(json.dumps({
-    "checks": 16,
+    "checks": 17,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
     "gekkan_target_order": [61337, 61340, 61338, 61339, 61243],
     "trial_target_order": [61453, 61445],
+    "trial_boss_order": ["Kuai/Mu'Shiba", "Haiyan", "Ming"],
     "generic_fallback": "engaged-healing-add",
     "result": "pass",
 }, sort_keys=True))

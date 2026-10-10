@@ -22,8 +22,6 @@
 #include "Log.h"
 #include "Containers.h"
 
-#include <numeric>
-
 static std::vector<ScenarioBosses> const scenarioBosses =
 {
     { DATA_TRIAL_OF_THE_KING,    CRITERIA_TRIAL_KING             },
@@ -106,10 +104,13 @@ class instance_mogu_shan_palace : public InstanceMapScript
             {
                 m_uiBossCount = 0;
 
-                std::iota(std::begin(m_auiBossNumber), std::end(m_auiBossNumber), 0);
-                std::random_device rd;
-                std::mt19937 g(rd());
-                std::shuffle(std::begin(m_auiBossNumber), std::end(m_auiBossNumber), g);
+                // Keep the encounter order deterministic for automated party
+                // leadership. Kuai activates Mu'Shiba, which must be focused
+                // first; only after Kuai retires may Haiyan enter the arena.
+                // Ming remains the final Trial opponent.
+                m_auiBossNumber[0] = TYPE_KUAI;
+                m_auiBossNumber[1] = TYPE_HAIYAN;
+                m_auiBossNumber[2] = TYPE_MING;
             }
 
             GameObject* GetGameObjectFromStorage(uint32 uiEntry)

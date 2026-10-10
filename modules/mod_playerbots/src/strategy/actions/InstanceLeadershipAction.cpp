@@ -219,6 +219,13 @@ bool IsReadyForAutonomousPull(Player* bot, Creature* creature)
             UNIT_FLAG_PACIFIED))
         return false;
 
+    // Trial of the King's script first makes its selected actor aggressive
+    // and attackable, then establishes hostility/combat as it reaches the
+    // arena. Treat that active window as pull-ready. Otherwise skull is set
+    // by encounter mechanics, rejected here, and cleared again every tick.
+    if (InstanceMechanics::IsActiveMogushanTrialTarget(bot, creature))
+        return true;
+
     // Yellow/passive encounter actors are often present beside the active
     // red boss. They are technically attackable in the core, but pulling one
     // skips the encounter's scripted order. A scripted neutral boss becomes
