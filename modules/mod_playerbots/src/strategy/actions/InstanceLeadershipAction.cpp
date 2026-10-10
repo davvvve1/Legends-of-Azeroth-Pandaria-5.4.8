@@ -383,9 +383,9 @@ void InstanceLeadershipAction::ResetCompletedPull()
     _pullMarkedAt = 0;
     _approachProgressAt = 0;
     _approachBestDistance = 0.0f;
-    Unit* current = context->GetValue<Unit*>("current target")->Get();
-    if (!current || !current->IsAlive() || current->GetGUID() == pullGuid)
-        context->GetValue<Unit*>("current target")->Set(nullptr);
+    // The core may already have removed the creature while a wipe is being
+    // processed.  Never dereference the cached Unit* during pull teardown.
+    context->GetValue<Unit*>("current target")->Set(nullptr);
     context->GetValue<LastMovement&>("last movement")->Get().clear();
     bot->SetTarget(ObjectGuid::Empty);
     bot->SetSelection(ObjectGuid::Empty);
@@ -713,19 +713,23 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     if (_approachProgressAt &&
         getMSTimeDiff(_approachProgressAt, now) >= stalledFor)
     {
-        AbandonUnreachableTarget(target);
+        AbandonUnreachableTarget();
         return true;
     }
 
     return issued;
 }
 
-void InstanceLeadershipAction::AbandonUnreachableTarget(Unit* target)
+void InstanceLeadershipAction::AbandonUnreachableTarget()
 {
-    if (!target)
+    // Resolve teardown exclusively from the durable GUID.  A creature can be
+    // despawned by the instance script during a wipe between selecting it and
+    // this cleanup, making every cached Unit* unsafe to inspect here.
+    ObjectGuid const guid =
+        context->GetValue<ObjectGuid>("pull target")->Get();
+    if (!guid)
         return;
 
-    ObjectGuid const guid = target->GetGUID();
     uint32 const now = getMSTime();
     for (auto it = _unreachableTargets.begin();
         it != _unreachableTargets.end();)
@@ -743,25 +747,30 @@ void InstanceLeadershipAction::AbandonUnreachableTarget(Unit* target)
     _forwardSearchStarted = now;
 
     context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
-    if (context->GetValue<Unit*>("current target")->Get() == target)
-        context->GetValue<Unit*>("current target")->Set(nullptr);
+    context->GetValue<Unit*>("current target")->Set(nullptr);
     context->GetValue<LastMovement&>("last movement")->Get().clear();
-    bot->AttackStop();
-    bot->SetTarget(ObjectGuid::Empty);
-    bot->SetSelection(ObjectGuid::Empty);
-    bot->GetMotionMaster()->Clear(false);
-    bot->StopMoving();
 
-    Group* group = bot->GetGroup(GroupSlot::Instance);
-    if (!group)
-        group = bot->GetGroup();
-    if (group && group->GetTargetIcon(7) == guid)
-        group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
+    // Player teardown can race the same wipe transition.  Core-owned player,
+    // movement and group state is touched only while the bot is still live in
+    // the world; the value cache above remains safe to reset regardless.
+    if (bot && bot->IsAlive() && bot->IsInWorld())
+    {
+        bot->AttackStop();
+        bot->SetTarget(ObjectGuid::Empty);
+        bot->SetSelection(ObjectGuid::Empty);
+        bot->GetMotionMaster()->Clear(false);
+        bot->StopMoving();
+
+        Group* group = bot->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = bot->GetGroup();
+        if (group && group->GetTargetIcon(7) == guid)
+            group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
+    }
 
     TC_LOG_WARN("server",
-        "gotank abandoned unreachable pull leader=%s target=%s entry=%u target-guid=%u map=%u instance=%u position=%.2f,%.2f,%.2f",
-        bot->GetName().c_str(), target->GetName().c_str(),
-        target->GetEntry(), guid.GetCounter(), bot->GetMapId(),
+        "gotank abandoned unreachable pull leader=%s target-guid=%u map=%u instance=%u position=%.2f,%.2f,%.2f",
+        bot->GetName().c_str(), guid.GetCounter(), bot->GetMapId(),
         bot->GetInstanceId(), bot->GetPositionX(), bot->GetPositionY(),
         bot->GetPositionZ());
     botAI->SetNextCheckDelay(0);

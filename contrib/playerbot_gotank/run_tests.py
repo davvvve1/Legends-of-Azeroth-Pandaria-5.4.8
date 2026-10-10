@@ -250,6 +250,14 @@ require("AbandonUnreachableTarget" in lead and
         "_unreachableTargets[guid.GetCounter()] = now" in lead and
         '"gotank abandoned unreachable pull leader=' in lead,
         "an unreachable marked pull must release the group back to its route")
+abandon = lead[lead.index("void InstanceLeadershipAction::AbandonUnreachableTarget"):
+               lead.index("MovementPriority InstanceLeadershipAction::RouteMovementPriority")]
+require("void InstanceLeadershipAction::AbandonUnreachableTarget()" in abandon and
+        'GetValue<ObjectGuid>("pull target")->Get()' in abandon and
+        'GetValue<Unit*>("current target")->Set(nullptr)' in abandon and
+        "target->" not in abandon and
+        "bot && bot->IsAlive() && bot->IsInWorld()" in abandon,
+        "wipe cleanup must use the durable pull GUID without dereferencing despawned units")
 require("if (!splineMoving)" in ai and
         'GetValue<LastMovement&>("last movement")' in ai and
         "bot->StopMoving();" in ai,

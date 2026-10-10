@@ -30,7 +30,7 @@ private:
     bool HasMogushanPalaceDestination() const;
     bool AdvanceMogushanPalaceRoute();
     bool EngageTarget(Unit* target);
-    void AbandonUnreachableTarget(Unit* target);
+    void AbandonUnreachableTarget();
     MovementPriority RouteMovementPriority() const;
 
     uint8 _mogushanRouteStage = 0xFF;
