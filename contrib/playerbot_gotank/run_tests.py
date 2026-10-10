@@ -363,12 +363,16 @@ require("bool IsReadyForAutonomousPull" in lead and
         "UNIT_FLAG_PACIFIED" in lead,
         "gotank must ignore yellow passive actors and select the active red encounter target")
 require("if (!IsReadyForAutonomousPull(bot, creature))" in lead and
-        "bot->GetVictim()->GetGUID() == pullGuid" in lead and
         "bot->AttackStop()" in lead,
         "a stale yellow pull lock must be cancelled before selecting the red target")
+reset_pull = lead[lead.index("void InstanceLeadershipAction::ResetCompletedPull"):
+                  lead.index("Unit* InstanceLeadershipAction::SelectNextTarget")]
+require("bot->AttackStop();" in reset_pull and
+        "bot->GetVictim()" not in reset_pull,
+        "wipe pull cleanup must not dereference a despawned victim")
 
 print(json.dumps({
-    "checks": 57,
+    "checks": 58,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

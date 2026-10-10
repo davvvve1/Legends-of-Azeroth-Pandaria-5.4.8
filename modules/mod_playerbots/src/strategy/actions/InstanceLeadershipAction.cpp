@@ -416,8 +416,10 @@ void InstanceLeadershipAction::ResetCompletedPull()
     // processed.  Never dereference the cached Unit* during pull teardown.
     context->GetValue<Unit*>("current target")->Set(nullptr);
     context->GetValue<LastMovement&>("last movement")->Get().clear();
-    if (bot->GetVictim() && bot->GetVictim()->GetGUID() == pullGuid)
-        bot->AttackStop();
+    // A wipe can despawn the pull before the victim relation is fully
+    // detached. Do not dereference Unit::GetVictim() while clearing a stale
+    // durable pull lock; AttackStop is safe and idempotent without it.
+    bot->AttackStop();
     bot->SetTarget(ObjectGuid::Empty);
     bot->SetSelection(ObjectGuid::Empty);
     bot->GetMotionMaster()->Clear(false);

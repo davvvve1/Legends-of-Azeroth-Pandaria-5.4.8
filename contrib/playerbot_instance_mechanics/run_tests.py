@@ -88,15 +88,25 @@ require("m_auiBossNumber[0] = TYPE_KUAI" in mogushan_instance and
         "m_auiBossNumber[2] = TYPE_MING" in mogushan_instance and
         "std::shuffle(std::begin(m_auiBossNumber)" not in mogushan_instance,
         "Trial order must remain Kuai/Mu'Shiba, Haiyan, then Ming")
+require("NpcMingTheCunning = 61444" in mechanics and
+        "NpcWhirlingDervish = 61626" in mechanics and
+        "SpellMagneticFieldAura = 120100" in mechanics and
+        "MingMagneticFieldClearance = 18.0f" in mechanics and
+        "MingDervishClearance = 10.0f" in mechanics and
+        "Reaction::AvoidUnitHazard" in mechanics and
+        "MovementPriority::MOVEMENT_HAZARD" in mechanics and
+        "FleePosition(plan.anchor->GetPosition()" in mechanics,
+        "every role must leave Ming's Magnetic Field and moving Dervish")
 
 print(json.dumps({
-    "checks": 17,
+    "checks": 18,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
     "gekkan_target_order": [61337, 61340, 61338, 61339, 61243],
     "trial_target_order": [61453, 61445],
     "trial_boss_order": ["Kuai/Mu'Shiba", "Haiyan", "Ming"],
+    "ming_avoidance": ["Magnetic Field", "Whirling Dervish"],
     "generic_fallback": "engaged-healing-add",
     "result": "pass",
 }, sort_keys=True))

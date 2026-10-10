@@ -38,6 +38,7 @@ private:
     enum class Reaction : uint8
     {
         None,
+        AvoidUnitHazard,
         Spread,
         Stack,
         Kite,

@@ -30,8 +30,13 @@ constexpr uint32 NpcGlintrokSkulker = 61338;
 constexpr uint32 NpcGlintrokOracle = 61339;
 constexpr uint32 NpcGlintrokHexxer = 61340;
 constexpr uint32 NpcMuShiba = 61453;
+constexpr uint32 NpcMingTheCunning = 61444;
 constexpr uint32 NpcHaiyanTheUnstoppable = 61445;
+constexpr uint32 NpcWhirlingDervish = 61626;
 constexpr uint32 SpellRavage = 119948;
+constexpr uint32 SpellMagneticFieldAura = 120100;
+constexpr float MingMagneticFieldClearance = 18.0f;
+constexpr float MingDervishClearance = 10.0f;
 
 struct AuraRule
 {
@@ -483,6 +488,29 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
         !bot->GetMap()->IsDungeon())
         return plan;
 
+    // Magnetic Field is an aura on Ming himself, not a DynamicObject,
+    // AreaTrigger, or passive emitter. The generic ground-effect scanner
+    // therefore cannot discover it. Whirling Dervish is likewise a moving
+    // creature hazard. Both mechanics are lethal positional checks and must
+    // preempt healing, targeting, and tank combat movement for every role.
+    if (bot->GetMapId() == MapMogushanPalace)
+    {
+        Creature* ming = bot->FindNearestCreature(NpcMingTheCunning,
+            150.0f, true);
+        if (ming && ming->IsInCombat() &&
+            ming->HasAura(SpellMagneticFieldAura) &&
+            bot->GetExactDist2d(ming) < MingMagneticFieldClearance)
+            return { Reaction::AvoidUnitHazard, ming, nullptr,
+                MingMagneticFieldClearance };
+
+        Creature* dervish = bot->FindNearestCreature(NpcWhirlingDervish,
+            40.0f, true);
+        if (dervish && dervish->IsInWorld() &&
+            bot->GetExactDist2d(dervish) < MingDervishClearance)
+            return { Reaction::AvoidUnitHazard, dervish, nullptr,
+                MingDervishClearance };
+    }
+
     if (Unit* friendly = FindFriendlyEncounterUnit())
         return { Reaction::HealEncounterUnit, nullptr, friendly, 0.0f };
 
@@ -612,6 +640,16 @@ bool InstanceMechanicsAction::Execute(Event /*event*/)
     Plan const plan = BuildPlan();
     switch (plan.reaction)
     {
+        case Reaction::AvoidUnitHazard:
+            if (!plan.anchor || !plan.anchor->IsInWorld() ||
+                plan.anchor->GetMap() != bot->GetMap())
+                return false;
+            if (bot->GetExactDist2d(plan.anchor) >= plan.distance)
+                return true;
+            if (bot->IsNonMeleeSpellCasted(true))
+                botAI->InterruptSpell();
+            return FleePosition(plan.anchor->GetPosition(),
+                plan.distance, 250, MovementPriority::MOVEMENT_HAZARD);
         case Reaction::Spread:
             if (bot->IsNonMeleeSpellCasted(true))
                 botAI->InterruptSpell();
