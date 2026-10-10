@@ -101,6 +101,13 @@ require("member->IsInWorld() &&\n                    member->GetMap()" in ai and
 require("botAI->GetInstanceTankLeader()" in resurrect and
         "finder.Check(leader) && Check(leader)" in resurrect,
         "resurrection must prioritize the dead elected tank")
+skull_sync = ai[ai.index("void PlayerbotAI::SyncInstanceTankSkullTarget"):
+                ai.index("bool PlayerbotAI::CanLfgAutoQueueEngage")]
+require("!bot->IsAlive()" in skull_sync and
+        'GetValue<Unit*>("current target")' not in skull_sync and
+        'GetValue<ObjectGuid>("pull target")' in skull_sync and
+        "GetUnit(pullGuid)" in skull_sync,
+        "wipe-time skull sync must reject dead tanks and resolve cached targets by GUID")
 require("_currentState == BOT_STATE_COMBAT" in ai and
         "!gotankGroupHasActiveCombat" in ai and
         "gotankEncounterInProgress" not in ai and
@@ -228,7 +235,7 @@ require("if (!splineMoving)" in ai and
         "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 40,
+    "checks": 41,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

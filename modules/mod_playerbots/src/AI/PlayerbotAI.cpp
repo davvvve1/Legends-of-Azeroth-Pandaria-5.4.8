@@ -372,7 +372,12 @@ bool PlayerbotAI::IsInstanceTankLeader() const
 
 void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
 {
-    if (!bot || !bot->IsInWorld() || !IsInstanceTankLeader() ||
+    // This controller runs before CanUpdateAI(), including on the first dead
+    // engine tick. Never broadcast markers or inspect target pointers while a
+    // wipe is transitioning the tank, group and creatures to dead/despawned
+    // states. The first living tick after resurrection repairs the marker.
+    if (!bot || !bot->IsAlive() || !bot->IsInWorld() ||
+        !IsInstanceTankLeader() ||
         !bot->GetMap() || !bot->GetMap()->IsDungeon())
         return;
 
@@ -382,16 +387,6 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
     if (!group)
         return;
 
-    // Keep the elected tank as the group anchor while dead so the healer can
-    // find and resurrect that exact player. A stale skull on a living enemy
-    // otherwise makes the stopped group look like it has lost target sight.
-    if (!bot->IsAlive())
-    {
-        if (group->GetTargetIcon(7))
-            group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty, 0);
-        return;
-    }
-
     auto validAttackTarget = [this](Unit* target)
     {
         return target && target->IsAlive() && target->IsInWorld() &&
@@ -400,11 +395,22 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
     };
 
     Unit* target = validAttackTarget(preferredTarget) ? preferredTarget : nullptr;
+    // Resolve cached targets by GUID. The Unit* value can outlive a creature
+    // removed during a wipe and dereferencing that stale pointer here crashes
+    // the map thread before the dead engine gets a chance to release corpses.
     if (!target && _aiObjectContext)
     {
-        Unit* current = _aiObjectContext->GetValue<Unit*>("current target")->Get();
-        if (validAttackTarget(current))
-            target = current;
+        ObjectGuid const pullGuid = _aiObjectContext
+            ->GetValue<ObjectGuid>("pull target")->Get();
+        Unit* pull = pullGuid ? GetUnit(pullGuid) : nullptr;
+        if (validAttackTarget(pull))
+            target = pull;
+    }
+    if (!target && bot->GetTarget())
+    {
+        Unit* selected = GetUnit(bot->GetTarget());
+        if (validAttackTarget(selected))
+            target = selected;
     }
     if (!target && validAttackTarget(bot->GetVictim()))
         target = bot->GetVictim();
