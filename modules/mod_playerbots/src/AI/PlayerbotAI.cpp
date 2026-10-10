@@ -58,6 +58,7 @@
 #include "WorldSession.h"
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
+#include "PlayerbotFlightRecorder.h"
 #include "PlayerbotSpec.h"
 #include "PerformanceMonitor.h"
 #include "RandomPlayerbotMgr.h"
@@ -899,6 +900,8 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         _currentState == BOT_STATE_COMBAT &&
         !gotankGroupHasActiveCombat && !gotankOpeningPullGrace)
     {
+        PlayerbotFlightRecorder::Record(bot, "wipe-cleanup.begin",
+            "stale combat without a live hostile interaction");
         bot->CombatStopWithPets(true);
         bot->AttackStop();
         if (Pet* pet = bot->GetPet())
@@ -919,6 +922,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         bot->StopMoving();
         ChangeEngine(BOT_STATE_NON_COMBAT);
         SetNextCheckDelay(0);
+        PlayerbotFlightRecorder::Record(bot, "wipe-cleanup.end");
     }
 
     // The elected tank owns the party kill order. Keep skull on the exact
@@ -2873,6 +2877,11 @@ void PlayerbotAI::ChangeEngine(BotState type)
 
     if (_currentEngine != engine)
     {
+        std::ostringstream transition;
+        transition << "from=" << uint32(_currentState)
+                   << " to=" << uint32(type);
+        PlayerbotFlightRecorder::Record(bot, "engine-change.begin",
+            transition.str());
         _currentEngine = engine;
         _currentState = type;
         ReInitCurrentEngine();
@@ -2891,6 +2900,8 @@ void PlayerbotAI::ChangeEngine(BotState type)
         default:
             break;
         }
+        PlayerbotFlightRecorder::Record(bot, "engine-change.end",
+            transition.str());
     }
 }
 void PlayerbotAI::ChangeStrategy(std::string const names, BotState type)

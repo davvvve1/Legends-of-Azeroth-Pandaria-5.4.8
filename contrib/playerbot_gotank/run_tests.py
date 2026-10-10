@@ -11,6 +11,8 @@ AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 CHAT_SOURCE = ROOT / "modules/mod_playerbots/src/mod_playerbots.cpp"
 FOLLOW_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/FollowActions.cpp"
 LEAD_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceLeadershipAction.cpp"
+FLIGHT_SOURCE = ROOT / "modules/mod_playerbots/src/PlayerbotFlightRecorder.cpp"
+ENGINE_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/Engine.cpp"
 ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackActions.cpp"
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
@@ -31,6 +33,8 @@ ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 chat = CHAT_SOURCE.read_text(encoding="utf-8-sig")
 follow = FOLLOW_SOURCE.read_text(encoding="utf-8-sig")
 lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
+flight = FLIGHT_SOURCE.read_text(encoding="utf-8-sig")
+engine = ENGINE_SOURCE.read_text(encoding="utf-8-sig")
 attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
@@ -178,6 +182,23 @@ require("ResetCompletedPull();" in lead and
         'GetValue<LastMovement&>("last movement")' in lead and
         "SetNextCheckDelay(0)" in lead,
         "the completed pull must release target and movement ownership")
+require('constexpr char FlightLogPath[] = "/tmp/playerbot-flight-recorder.log"' in flight and
+        "O_APPEND | O_CLOEXEC | O_NOFOLLOW" in flight and
+        "write(descriptor, data, remaining)" in flight and
+        "Do not inspect GetVictim()" in flight,
+        "the crash recorder must append direct records without dereferencing a wipe-time victim")
+require('Record(botAI->GetBot(), "action.begin"' in engine and
+        '"action.end.ok" : "action.end.failed"' in engine and
+        engine.index('Record(botAI->GetBot(), "action.begin"') <
+        engine.index("actionExecutionListeners.Before(action, event)"),
+        "every bot action must be bracketed before listener or action code can crash")
+require('Record(bot, "pull-reset.begin"' in lead and
+        'Record(bot, "pull-reset.end"' in lead and
+        'Record(bot, "route-move.begin"' in lead and
+        '"route-move.end.ok" : "route-move.end.failed"' in lead and
+        'Record(bot, "opening-attack.begin"' in lead and
+        'Record(bot, "pull-abandon.begin"' in lead,
+        "gotank target, route, attack, and wipe cleanup transitions must leave crash breadcrumbs")
 require("GetLockedPullTarget() const" in lead and
         "if (Unit* pull = GetLockedPullTarget())" in lead and
         "bot->GetExactDist(pull) > 240.0f" in lead and
