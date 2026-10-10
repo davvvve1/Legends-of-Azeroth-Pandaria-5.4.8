@@ -17,6 +17,7 @@
 #include "PlayerbotSpec.h"
 #include "PossibleTargetsValue.h"
 #include "ServerFacade.h"
+#include "Timer.h"
 #include "Transport.h"
 
 namespace
@@ -341,7 +342,7 @@ bool InstanceLeadershipAction::AdvanceGenericRoute()
 
     bool const moved = MoveTo(bot->GetMapId(), waypoint.x, waypoint.y,
         waypoint.z, false, false, false, true,
-        MovementPriority::MOVEMENT_NORMAL, true);
+        RouteMovementPriority(), true);
     if (moved)
         TC_LOG_INFO("server",
             "gotank generic route leader=%s map=%u instance=%u waypoint=%.2f,%.2f,%.2f",
@@ -377,6 +378,7 @@ void InstanceLeadershipAction::ResetCompletedPull()
         return;
 
     pullValue->Set(ObjectGuid::Empty);
+    _forwardSearchStarted = getMSTime();
     Unit* current = context->GetValue<Unit*>("current target")->Get();
     if (!current || !current->IsAlive() || current->GetGUID() == pullGuid)
         context->GetValue<Unit*>("current target")->Set(nullptr);
@@ -547,6 +549,22 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
         }
     }
 
+    // Combat can pull the tank off the route before it reaches the current
+    // point's small arrival radius. If the next point is now closer, the tank
+    // has already passed the old point along the ordered route; advance one
+    // node instead of repeatedly trying to run back through the cleared room.
+    if (_mogushanRouteIndex + 1 < count)
+    {
+        float const currentDistance = RouteDistanceSquared(
+            route[_mogushanRouteIndex], bot->GetPositionX(),
+            bot->GetPositionY(), bot->GetPositionZ());
+        float const nextDistance = RouteDistanceSquared(
+            route[_mogushanRouteIndex + 1], bot->GetPositionX(),
+            bot->GetPositionY(), bot->GetPositionZ());
+        if (nextDistance < currentDistance)
+            ++_mogushanRouteIndex;
+    }
+
     while (_mogushanRouteIndex < count)
     {
         RoutePoint const& point = route[_mogushanRouteIndex];
@@ -580,13 +598,13 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
         if (bot->GetExactDist2d(elevator) <= 12.0f &&
             std::fabs(bot->GetPositionZ() - elevator->GetPositionZ()) <= 4.0f)
             return MoveTo(elevator, 0.5f,
-                MovementPriority::MOVEMENT_NORMAL);
+                RouteMovementPriority());
 
         RoutePoint const& landing = route[MogushanUpperRouteIndex - 1];
         if (bot->GetExactDist2d(landing.x, landing.y) > landing.radius)
             return MoveTo(bot->GetMapId(), landing.x, landing.y, landing.z,
                 false, false, false, true,
-                MovementPriority::MOVEMENT_NORMAL, true);
+                RouteMovementPriority(), true);
 
         bot->StopMoving();
         return true;
@@ -594,7 +612,7 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
 
     RoutePoint const& point = route[_mogushanRouteIndex];
     bool const moved = MoveTo(bot->GetMapId(), point.x, point.y, point.z,
-        false, false, false, true, MovementPriority::MOVEMENT_NORMAL, true);
+        false, false, false, true, RouteMovementPriority(), true);
     if (moved)
         TC_LOG_INFO("server",
             "gotank Mogu'shan route leader=%s instance=%u stage=%u index=%u waypoint=%.2f,%.2f,%.2f",
@@ -607,6 +625,9 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
 {
     if (!target)
         return false;
+
+    // The forward-search window ends as soon as the next real pull is found.
+    _forwardSearchStarted = 0;
 
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group)
@@ -630,6 +651,15 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
         return MoveTo(target, 18.0f, MovementPriority::MOVEMENT_NORMAL);
 
     return Attack(target);
+}
+
+MovementPriority InstanceLeadershipAction::RouteMovementPriority() const
+{
+    if (_forwardSearchStarted &&
+        getMSTimeDiff(_forwardSearchStarted, getMSTime()) < 20000)
+        return MovementPriority::MOVEMENT_HAZARD;
+
+    return MovementPriority::MOVEMENT_NORMAL;
 }
 
 bool InstanceLeadershipAction::isUseful()

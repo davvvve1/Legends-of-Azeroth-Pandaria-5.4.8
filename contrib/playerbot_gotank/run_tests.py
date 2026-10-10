@@ -15,6 +15,7 @@ ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackAction
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
 TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TargetValue.cpp"
+GROUP_SOURCE = ROOT / "src/server/game/Groups/Group.cpp"
 
 
 def require(condition: bool, message: str) -> None:
@@ -31,6 +32,7 @@ attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
 target = TARGET_SOURCE.read_text(encoding="utf-8-sig")
+group = GROUP_SOURCE.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
                       combat.index("bool GroupPveCombat::IsEngaged")]
 
@@ -153,10 +155,15 @@ require("waypoint.z, false, false, false, true" in lead and
         '"gotank Mogu\'shan route leader=' in lead,
         "validated route waypoints must bypass a second fallible path search")
 require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
-        'SayToParty("Pull om 15 sekunder - folj tanken.")' in ai and
+        'SayToParty("Pull om 15 sekunder - folj tanken. 15")' in ai and
+        "remaining == 10 || remaining <= 5" in ai and
+        'SayToParty("KOR!")' in ai and
+        '"gotank pull countdown complete leader=' in ai and
         "_instanceTankPullCountdownKey" in header and
-        "getMSTimeDiff(_instanceTankPullCountdownStarted, getMSTime())" in ai,
-        "a new instance must have exactly one persistent 15-second pull countdown")
+        "_instanceTankPullCountdownRemaining" in header and
+        "pullCountdownElapsed < 15000" in ai and
+        "no route selection" in ai,
+        "a new instance must have one visible, movement-gated 15-second pull countdown")
 require("FindIndependentInstanceOffTank" in ai and
         "gotank cross leader=" in ai and
         "GroupPveCombat::IsEngaged(bot, candidate)" in ai and
@@ -171,7 +178,8 @@ require("bool const offTank = PlayerBotSpec::IsTank(bot, true)" in target and
         "if (skullGuid)" in target,
         "off-tank must prioritize cross while DPS and the leader prioritize skull")
 require("bool const gotankCanAdvance" in ai and
-        "if (!splineMoving)\n            SetNextCheckDelay(0);" in ai and
+        "if (!splineMoving)" in ai and
+        "bot->GetMotionMaster()->Clear(false);" in ai and
         "getMSTimeDiff(_instanceTankRouteProgressAt, now) >= 4000" in ai and
         '"gotank recovered stalled route leader=' in ai,
         "a completed or physically stalled waypoint must self-wake without gotank")
@@ -179,9 +187,22 @@ require("bool const routeIssued" in ai and
         '"gotank route produced no movement leader=' in ai and
         "_instanceTankLastStallLog" in header,
         "a route failure must emit throttled live diagnostics")
+require('GetGroupSlot() == GroupSlot::Instance' in group and
+        'partyIndex = uint8(GroupSlot::Instance)' in group and
+        'partyIndex = int8(GroupSlot::Instance)' in group,
+        "instance-group raid markers must use the visible client party category")
+require("_forwardSearchStarted = getMSTime()" in lead and
+        "getMSTimeDiff(_forwardSearchStarted, getMSTime()) < 20000" in lead and
+        "MovementPriority::MOVEMENT_HAZARD" in lead and
+        "nextDistance < currentDistance" in lead,
+        "post-pack leadership must own a 20-second forward route search")
+require("if (!splineMoving)" in ai and
+        'GetValue<LastMovement&>("last movement")' in ai and
+        "bot->StopMoving();" in ai,
+        "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 33,
+    "checks": 36,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -192,6 +213,7 @@ print(json.dumps({
     "generic_route_scan_yards": 160,
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
+    "post_combat_forward_search_ms": 20000,
     "post_combat_engine": "automatic-non-combat-resume",
     "stale_live_trash_target": "always-cleared-without-hostile-interaction",
     "encounter_intermission": "route-continues-without-hostile-interaction",
@@ -202,6 +224,7 @@ print(json.dumps({
     "persistent_controller": "direct-before-idle-actions",
     "route_ownership": "follow-engine-blocked-between-waypoints",
     "tank_kill_order": "skull-follows-selected-target",
+    "target_marker_party_category": "instance",
     "pull_approach": "locked-target-no-nearest-mob-oscillation",
     "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",

@@ -738,6 +738,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         SetInstanceTankLeadershipAutoSuppressed(false);
         _instanceTankPullCountdownKey = 0;
         _instanceTankPullCountdownStarted = 0;
+        _instanceTankPullCountdownRemaining = 0;
         _instanceTankRouteProgressAt = 0;
         _instanceTankLastStallLog = 0;
     }
@@ -1450,7 +1451,20 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         }
 
         if (!splineMoving)
+        {
+            // A finalized spline may leave both the movement flags and
+            // LastMovement latch alive while MotionMaster already reports
+            // idle. That exact live state made the controller reject the same
+            // next route point forever after a pack. Normalize it before the
+            // leadership action runs; encounter movement is protected by the
+            // active-combat condition above.
+            bot->GetMotionMaster()->Clear(false);
+            bot->StopMoving();
+            if (_aiObjectContext)
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
             SetNextCheckDelay(0);
+        }
         else if (getMSTimeDiff(_instanceTankRouteProgressAt, now) >= 4000)
         {
             bot->GetMotionMaster()->Clear(false);
@@ -1593,6 +1607,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         {
             _instanceTankPullCountdownKey = countdownKey;
             _instanceTankPullCountdownStarted = getMSTime();
+            _instanceTankPullCountdownRemaining = 15;
 
             Group* group = bot->GetGroup(GroupSlot::Instance);
             if (!group)
@@ -1605,7 +1620,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                             member->GetMap() == bot->GetMap())
                             member->SendStartTimer(15, 15, TIMER_PVP);
 
-            SayToParty("Pull om 15 sekunder - folj tanken.");
+            SayToParty("Pull om 15 sekunder - folj tanken. 15");
             TC_LOG_INFO("server",
                 "gotank pull countdown leader=%s guid=%u map=%u instance=%u seconds=15",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
@@ -1614,11 +1629,33 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 
         // This delay is only the opening pull timer. It is never reset after
         // combat, death, a strategy rebuild, or a movement failure.
-        if (getMSTimeDiff(_instanceTankPullCountdownStarted, getMSTime()) <
-            15000)
+        uint32 const pullCountdownElapsed = getMSTimeDiff(
+            _instanceTankPullCountdownStarted, getMSTime());
+        if (pullCountdownElapsed < 15000)
         {
+            uint8 const remaining = uint8(15 - pullCountdownElapsed / 1000);
+            if (remaining < _instanceTankPullCountdownRemaining)
+            {
+                _instanceTankPullCountdownRemaining = remaining;
+                if (remaining == 10 || remaining <= 5)
+                    SayToParty(std::to_string(remaining));
+            }
+
+            // This return is the hard opening gate: no route selection,
+            // target marking, attack or movement can execute before the full
+            // countdown has elapsed, even if the client hides its timer UI.
             YieldThread(GetReactDelay());
             return;
+        }
+
+        if (_instanceTankPullCountdownRemaining)
+        {
+            _instanceTankPullCountdownRemaining = 0;
+            SayToParty("KOR!");
+            TC_LOG_INFO("server",
+                "gotank pull countdown complete leader=%s guid=%u map=%u instance=%u elapsed-ms=%u",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                bot->GetMapId(), bot->GetInstanceId(), pullCountdownElapsed);
         }
 
         // MoveTo deliberately reports false while an identical point move is

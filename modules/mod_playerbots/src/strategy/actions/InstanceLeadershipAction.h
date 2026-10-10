@@ -28,10 +28,12 @@ private:
     bool HasMogushanPalaceDestination() const;
     bool AdvanceMogushanPalaceRoute();
     bool EngageTarget(Unit* target);
+    MovementPriority RouteMovementPriority() const;
 
     uint8 _mogushanRouteStage = 0xFF;
     uint16 _mogushanRouteIndex = 0;
     uint32 _leadershipGeneration = 0;
+    uint32 _forwardSearchStarted = 0;
 };
 
 #endif

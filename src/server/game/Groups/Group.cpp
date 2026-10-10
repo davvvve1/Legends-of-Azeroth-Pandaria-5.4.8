@@ -1826,6 +1826,13 @@ void Group::SetTargetIcon(uint8 symbol, ObjectGuid whoGuid, ObjectGuid targetGui
     if (symbol >= TARGETICONCOUNT)
         return;
 
+    // MoP keeps the home party and the LFG/battleground instance party in
+    // separate client categories. Most server-side callers historically
+    // passed zero, which updated m_targetIcons but sent an instance group's
+    // marker to the invisible home-party UI. The group slot is authoritative.
+    if (GetGroupSlot() == GroupSlot::Instance)
+        partyIndex = uint8(GroupSlot::Instance);
+
     // clean other icons
     if (targetGuid != 0)
         for (int i=0; i<TARGETICONCOUNT; ++i)
@@ -1883,6 +1890,9 @@ void Group::SendTargetIconList(WorldSession* session, int8 partyIndex)
 {
     if (!session)
         return;
+
+    if (GetGroupSlot() == GroupSlot::Instance)
+        partyIndex = int8(GroupSlot::Instance);
 
     WorldPackets::Party::SendRaidTargetUpdateAll updateAll;
     updateAll.PartyIndex = partyIndex;
