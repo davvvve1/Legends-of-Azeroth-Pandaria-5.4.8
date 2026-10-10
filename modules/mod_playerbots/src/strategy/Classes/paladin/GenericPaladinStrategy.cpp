@@ -40,8 +40,10 @@ void GenericPaladinStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode(
         "protect party member",
         NextAction::array(0, new NextAction("hand of protection", ACTION_EMERGENCY + 2), nullptr)));
+    // Divine Plea is a recovery cooldown. The old high-mana trigger spent it
+    // while the mana bar was already above 65%, wasting most of its return.
     triggers.push_back(
-        new TriggerNode("high mana", NextAction::array(0, new NextAction("divine plea", ACTION_HIGH), NULL)));
+        new TriggerNode("medium mana", NextAction::array(0, new NextAction("divine plea", ACTION_HIGH), NULL)));
 }
 
 void PaladinCureStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)

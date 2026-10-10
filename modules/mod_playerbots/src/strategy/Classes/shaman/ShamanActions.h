@@ -37,7 +37,7 @@ class CastHealingWaveOnPartyAction : public HealPartyMemberAction
 {
 public:
     CastHealingWaveOnPartyAction(PlayerbotAI* botAI)
-        : HealPartyMemberAction(botAI, "healing wave", 50.0f, HealingManaEfficiency::MEDIUM)
+        : HealPartyMemberAction(botAI, "healing wave", 50.0f, HealingManaEfficiency::HIGH)
     {
     }
 };
@@ -62,7 +62,7 @@ class CastChainHealAction : public HealPartyMemberAction
 {
 public:
     CastChainHealAction(PlayerbotAI* botAI)
-        : HealPartyMemberAction(botAI, "chain heal", 15.0f, HealingManaEfficiency::HIGH)
+        : HealPartyMemberAction(botAI, "chain heal", 15.0f, HealingManaEfficiency::MEDIUM)
     {
     }
 };

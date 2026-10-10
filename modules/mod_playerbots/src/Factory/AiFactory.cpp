@@ -403,8 +403,8 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
         engine->addStrategy("behind", false);
     if (PlayerBotSpec::IsHeal(player, true))
     {
-        //if (sPlayerbotAIConfig->autoSaveMana)
-            //engine->addStrategy("save mana", false);
+        if (sPlayerbotAIConfig->autoSaveMana)
+            engine->addStrategy("save mana", false);
 
         // The four implemented healer-DPS strategies already gate attacks on
         // party health, available mana and class-specific safety checks.  They

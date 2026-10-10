@@ -1836,6 +1836,17 @@ bool BotFactory::PrepareManagedLoadout(ManagedLoadoutMode mode,
         uint32(bot->GetSpecialization()), uint32(bot->GetAverageItemLevel()),
         minimumItemLevel, enhancements);
 
+    // Replacing a staged bot's leveling gear can increase stamina and
+    // intellect several times over. Current resources are not scaled with
+    // those new maxima by the equipment update, so healers could enter LFG
+    // with only a small fraction of their new mana pool (and immediately
+    // force a recovery stop). Managed loadouts are prepared before staging,
+    // therefore start that staged encounter with the completed build's full
+    // resources.
+    bot->SetHealth(bot->GetMaxHealth());
+    if (bot->GetMaxPower(POWER_MANA) > 0)
+        bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA));
+
     // Spell-id values are cached by the action context. Rebuild both those
     // values and the class/spec strategy list immediately after a managed
     // profile switch, otherwise the previous mode's talent actions can linger

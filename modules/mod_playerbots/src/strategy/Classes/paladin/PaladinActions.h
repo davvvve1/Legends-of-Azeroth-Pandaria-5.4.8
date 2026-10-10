@@ -126,7 +126,7 @@ class CastHolyShockOnPartyAction : public HealPartyMemberAction
 {
 public:
     CastHolyShockOnPartyAction(PlayerbotAI* botAI)
-        : HealPartyMemberAction(botAI, "holy shock", 25.0f, HealingManaEfficiency::LOW)
+        : HealPartyMemberAction(botAI, "holy shock", 25.0f, HealingManaEfficiency::VERY_HIGH)
     {
     }
 };
@@ -135,7 +135,7 @@ class CastHolyLightOnPartyAction : public HealPartyMemberAction
 {
 public:
     CastHolyLightOnPartyAction(PlayerbotAI* botAI)
-        : HealPartyMemberAction(botAI, "holy light", 50.0f, HealingManaEfficiency::MEDIUM)
+        : HealPartyMemberAction(botAI, "holy light", 50.0f, HealingManaEfficiency::HIGH)
     {
     }
 };
@@ -150,7 +150,7 @@ class CastFlashOfLightOnPartyAction : public HealPartyMemberAction
 {
 public:
     CastFlashOfLightOnPartyAction(PlayerbotAI* botAI)
-        : HealPartyMemberAction(botAI, "flash of light", 15.0f, HealingManaEfficiency::HIGH)
+        : HealPartyMemberAction(botAI, "flash of light", 15.0f, HealingManaEfficiency::LOW)
     {
     }
 };
