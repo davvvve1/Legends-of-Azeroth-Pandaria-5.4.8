@@ -869,8 +869,12 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 _instanceTankOpeningTargetGuid = guid;
                 _instanceTankOpeningPullAt = now;
             }
+            // The leadership scan can acquire a pack well beyond melee
+            // range.  Keep the victim alive long enough for the normal
+            // combat engine to run its reach-melee/charge actions instead of
+            // treating that approach as stale combat on the next update.
             gotankOpeningPullGrace = getMSTimeDiff(
-                _instanceTankOpeningPullAt, now) < 7000;
+                _instanceTankOpeningPullAt, now) < 20000;
         }
     }
     if (IsInstanceTankLeadershipActive() &&
@@ -1479,8 +1483,17 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     // controller as soon as its spline is finished. If a live point spline
     // makes no physical progress for four seconds, clear it and let the same
     // route action calculate it again without any player command.
+    // Once lead-instance has opened its locked skull, combat may not yet be
+    // visible through threat/victim checks on the creature.  The tank does
+    // already own a player victim, however, and must yield this tick to the
+    // combat engine so reach-melee, charge and the first ability can close
+    // the distance.  Continuing to run lead-instance here repeatedly issued
+    // Attack() from range without ever letting the tank chase its target.
+    bool const gotankOpeningCombat = _currentState == BOT_STATE_COMBAT &&
+        bot->GetVictim();
     bool const gotankCanAdvance = inInstance && IsInstanceTankLeader() &&
-        bot->IsAlive() && !GroupPveCombat::GroupHasActiveCombat(bot);
+        bot->IsAlive() && !GroupPveCombat::GroupHasActiveCombat(bot) &&
+        !gotankOpeningCombat;
     if (gotankCanAdvance)
     {
         uint32 const now = getMSTime();

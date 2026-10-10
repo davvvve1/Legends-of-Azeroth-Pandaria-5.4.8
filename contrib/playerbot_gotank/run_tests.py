@@ -240,9 +240,14 @@ require("gotankOpeningPullGrace" in ai and
         "_instanceTankOpeningTargetGuid" in header and
         "_instanceTankOpeningPullAt" in header and
         "bot->GetVictim() == pull" in ai and
-        "< 7000" in ai and
+        "< 20000" in ai and
         "!gotankOpeningPullGrace" in ai,
         "stale-combat cleanup must not cancel the tank's opening attack")
+require("bool const gotankOpeningCombat" in ai and
+        "_currentState == BOT_STATE_COMBAT" in ai and
+        "bot->GetVictim()" in ai and
+        "!gotankOpeningCombat" in ai,
+        "an opened gotank pull must yield to the combat engine for its chase")
 require("AbandonUnreachableTarget" in lead and
         "_approachBestDistance" in lead and
         "openingAttack ? 6000 : 4000" in lead and
@@ -308,7 +313,7 @@ print(json.dumps({
     "tank_open_after_mark_ms": 1000,
     "target_marker_party_category": "instance",
     "pull_approach": "locked-target-no-nearest-mob-oscillation",
-    "pull_opening_grace_ms": 7000,
+    "pull_opening_grace_ms": 20000,
     "unreachable_pull_ignore_ms": 20000,
     "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",
