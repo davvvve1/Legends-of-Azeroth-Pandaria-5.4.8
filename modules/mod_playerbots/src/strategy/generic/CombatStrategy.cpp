@@ -29,6 +29,7 @@ AvoidAoeStrategy::AvoidAoeStrategy(PlayerbotAI* botAI) : Strategy(botAI) {}
 NextAction** AvoidAoeStrategy::getDefaultActions()
 {
     return NextAction::array(0,
+        new NextAction("instance mechanics", ACTION_EMERGENCY + 2),
         new NextAction("boss mechanics", ACTION_EMERGENCY + 1),
         new NextAction("avoid aoe", ACTION_EMERGENCY), nullptr);
 }

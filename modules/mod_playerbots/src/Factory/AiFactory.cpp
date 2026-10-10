@@ -240,14 +240,10 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
     {
         engine->addStrategiesNoInit("racials", "chat", "default", "cast time", "duel", "boost", nullptr);
     }
-    // Ground hazards are a combat-safety mechanic, not a master-only
-    // convenience.  LFG replacements and autonomous bots can enter combat
-    // before their real-player master is assigned, so keep avoidance loaded
-    // for every bot when the server option is enabled.
-    if (sPlayerbotAIConfig->autoAvoidAoe)
-    {
-        engine->addStrategy("avoid aoe", false);
-    }
+    // Instance mechanics are a correctness requirement: every dungeon and
+    // raid gets the shared boss layer even when optional open-world automatic
+    // AoE avoidance is disabled. The actions themselves are map-gated.
+    engine->addStrategy("avoid aoe", false);
     engine->addStrategy("formation", false);
     // Dungeon-specific triggers are map-gated and therefore harmless outside
     // their instances. Keeping the strategies loaded also makes them survive

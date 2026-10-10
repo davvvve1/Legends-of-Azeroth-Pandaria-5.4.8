@@ -15,6 +15,7 @@ public:
     bool CanDeadFollow(Unit* target);
 
 private:
+    Player* GetFollowTarget();
     bool UseGroupFollowFormation();
     WorldLocation GetGroupFollowLocation();
 };

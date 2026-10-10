@@ -24,6 +24,7 @@
 
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
+#include "PlayerbotSpec.h"
 #include "RandomPlayerbotMgr.h"
 #include "RandomItemManager.h"
 #include "RandomPlayerbotBracketMgr.h"
@@ -32,6 +33,8 @@
 #include "CharacterHandler.h"
 
 #include <boost/filesystem.hpp>
+#include <algorithm>
+#include <cctype>
 #include <vector>
 #include <future>
 #include <unordered_set>
@@ -314,6 +317,87 @@ public:
                 ChatHandler(player->GetSession()).SendSysMessage(std::string("Playerbots: bot initialization at server startup takes about '" + roundedTime + "' minutes.").c_str());
             }
         }
+    }
+
+    void OnChat(Player* player, uint32 type, uint32 /*lang*/,
+        std::string& message, Group* group) override
+    {
+        if (!player || !group || !player->GetSession() ||
+            player->GetSession()->IsBot())
+            return;
+
+        if (type != CHAT_MSG_PARTY && type != CHAT_MSG_PARTY_LEADER &&
+            type != CHAT_MSG_RAID && type != CHAT_MSG_RAID_LEADER &&
+            type != CHAT_MSG_RAID_WARNING &&
+            type != CHAT_MSG_INSTANCE_CHAT &&
+            type != CHAT_MSG_INSTANCE_CHAT_LEADER)
+            return;
+
+        std::string command = message;
+        command.erase(command.begin(), std::find_if(command.begin(),
+            command.end(), [](unsigned char c) { return !std::isspace(c); }));
+        command.erase(std::find_if(command.rbegin(), command.rend(),
+            [](unsigned char c) { return !std::isspace(c); }).base(),
+            command.end());
+        std::transform(command.begin(), command.end(), command.begin(),
+            [](unsigned char c) { return char(std::tolower(c)); });
+        if (command != "gotank")
+            return;
+
+        bool active = false;
+        std::vector<PlayerbotAI*> groupBots;
+        std::vector<Player*> tanks;
+        for (GroupReference* ref = group->GetFirstMember(); ref;
+            ref = ref->next())
+        {
+            Player* member = ref->GetSource();
+            PlayerbotAI* ai = member ? GET_PLAYERBOT_AI(member) : nullptr;
+            if (!member || !ai || ai->IsRealPlayer())
+                continue;
+            groupBots.push_back(ai);
+            active = active || ai->IsInstanceTankLeadershipActive();
+            if (member->IsAlive() && PlayerBotSpec::IsTank(member, true))
+                tanks.push_back(member);
+        }
+
+        if (active)
+        {
+            for (PlayerbotAI* ai : groupBots)
+                ai->SetInstanceTankLeader(0);
+            ChatHandler(player->GetSession()).SendSysMessage(
+                "gotank: tanken foljer master igen.");
+            return;
+        }
+
+        if (!player->GetMap() || !player->GetMap()->IsDungeon())
+        {
+            ChatHandler(player->GetSession()).SendSysMessage(
+                "gotank fungerar inne i dungeons och raids.");
+            return;
+        }
+        if (tanks.empty())
+        {
+            ChatHandler(player->GetSession()).SendSysMessage(
+                "gotank: ingen levande bottank hittades i gruppen.");
+            return;
+        }
+
+        std::sort(tanks.begin(), tanks.end(), [](Player* left, Player* right)
+        {
+            bool const leftMain = PlayerBotSpec::IsMainTank(left);
+            bool const rightMain = PlayerBotSpec::IsMainTank(right);
+            if (leftMain != rightMain)
+                return leftMain;
+            return left->GetGUID() < right->GetGUID();
+        });
+
+        uint32 const tankGuid = tanks.front()->GetGUID().GetCounter();
+        for (PlayerbotAI* ai : groupBots)
+            ai->SetInstanceTankLeader(tankGuid);
+
+        std::string response = "gotank: " + tanks.front()->GetName() +
+            " leder gruppen. Skriv gotank igen for att folja master.";
+        ChatHandler(player->GetSession()).SendSysMessage(response.c_str());
     }
 
     void OnAfterUpdate(Player* player, uint32 diff) override

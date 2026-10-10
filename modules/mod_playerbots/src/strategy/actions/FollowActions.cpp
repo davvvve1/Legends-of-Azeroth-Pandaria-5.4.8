@@ -14,9 +14,16 @@
 #include "ServerFacade.h"
 #include "SharedDefines.h"
 
+Player* FollowAction::GetFollowTarget()
+{
+    if (Player* leader = botAI->GetInstanceTankLeader())
+        return leader;
+    return GetMaster();
+}
+
 bool FollowAction::UseGroupFollowFormation()
 {
-    Player* master = GetMaster();
+    Player* master = GetFollowTarget();
     return master && master != bot && bot->GetGroup() &&
         master->GetGroup() == bot->GetGroup() && master->IsInWorld() &&
         master->GetMap() == bot->GetMap() && master->IsAlive() && bot->IsAlive() &&
@@ -26,7 +33,7 @@ bool FollowAction::UseGroupFollowFormation()
 
 WorldLocation FollowAction::GetGroupFollowLocation()
 {
-    Player* master = GetMaster();
+    Player* master = GetFollowTarget();
     bool const tank = PlayerBotSpec::IsTank(bot, true);
     std::size_t slot = 0;
     for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
@@ -59,6 +66,25 @@ WorldLocation FollowAction::GetGroupFollowLocation()
 bool FollowAction::Execute(Event event)
 {
     if (AhnQirajStrategy::IsActive(bot)) return false;
+    if (botAI->IsInstanceTankLeadershipActive())
+    {
+        Player* leader = botAI->GetInstanceTankLeader();
+        if (!leader || leader == bot || bot->IsInCombat() ||
+            bot->IsNonMeleeSpellCasted(true, false, true))
+            return false;
+
+        if (UseGroupFollowFormation())
+        {
+            WorldLocation const loc = GetGroupFollowLocation();
+            if (bot->GetExactDist2d(loc.GetPositionX(), loc.GetPositionY()) <= 1.0f)
+                return false;
+            return MoveTo(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(),
+                loc.GetPositionZ(), false, false, true, false,
+                MovementPriority::MOVEMENT_NORMAL, true);
+        }
+        return bot->GetDistance(leader) > 4.0f && Follow(leader, 3.0f,
+            static_cast<float>(M_PI));
+    }
     if (bot->HasWorldBossStagingAccess() &&
         !bot->IsWorldBossStagingCleanup() &&
         !bot->IsWorldBossStagingEncounterStarted())
@@ -139,6 +165,20 @@ bool FollowAction::Execute(Event event)
 bool FollowAction::isUseful()
 {
     if (AhnQirajStrategy::IsActive(bot)) return false;
+    if (botAI->IsInstanceTankLeadershipActive())
+    {
+        Player* leader = botAI->GetInstanceTankLeader();
+        if (!leader || leader == bot || bot->IsInCombat() ||
+            leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
+            bot->IsNonMeleeSpellCasted(true, false, true))
+            return false;
+        if (UseGroupFollowFormation())
+        {
+            WorldLocation const loc = GetGroupFollowLocation();
+            return bot->GetExactDist2d(loc.GetPositionX(), loc.GetPositionY()) > 1.0f;
+        }
+        return bot->GetDistance(leader) > 4.0f;
+    }
     if (bot->HasWorldBossStagingAccess() &&
         !bot->IsWorldBossStagingCleanup() &&
         !bot->IsWorldBossStagingEncounterStarted())

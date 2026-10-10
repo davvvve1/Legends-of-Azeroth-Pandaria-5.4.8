@@ -18,6 +18,7 @@
 
 #include "PlayerbotAI.h"
 #include "GroupPveCombat.h"
+#include "InstanceMechanicsAction.h"
 #include "PvePetSpellSafety.h"
 
 #include <algorithm>
@@ -241,6 +242,34 @@ bool PlayerbotAI::IsPvpActivity() const
         mode == BotActivityMode::ArenaPvp;
 }
 
+Player* PlayerbotAI::GetInstanceTankLeader() const
+{
+    uint32 const leaderGuid = _instanceTankLeaderGuid.load();
+    if (!leaderGuid || !bot)
+        return nullptr;
+
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+        if (Player* member = ref->GetSource())
+            if (member->GetGUID().GetCounter() == leaderGuid &&
+                member->IsInWorld() && member->IsAlive() &&
+                member->GetMap() == bot->GetMap())
+                return member;
+
+    return nullptr;
+}
+
+bool PlayerbotAI::IsInstanceTankLeader() const
+{
+    return bot && _instanceTankLeaderGuid.load() ==
+        bot->GetGUID().GetCounter();
+}
+
 bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
 {
     if (AhnQirajStrategy::IsActive(bot))
@@ -248,6 +277,14 @@ bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
 
     uint32 requesterGuid = _lfgAutoQueueRequesterGuid.load();
     if (!requesterGuid)
+        return true;
+
+    // "gotank" is an explicit pull order from the real group member. Only
+    // the selected tank may open a new pack; everybody else still waits for
+    // that pack to engage the party through the normal checks below.
+    if (IsInstanceTankLeader() && target && target->IsInWorld() &&
+        target->IsAlive() && target->GetMap() == bot->GetMap() &&
+        bot->IsValidAttackTarget(target))
         return true;
 
     Player* requester = ObjectAccessor::FindConnectedPlayer(
@@ -3352,6 +3389,9 @@ bool PlayerbotAI::IsGroupPveTauntAllowed(SpellInfo const* spellInfo, Unit* targe
     if (target && target->GetEntry() == 72057 &&
         bot->HasWorldBossStagingAccess() && !PlayerBotSpec::IsMainTank(bot))
         return false;
+
+    if (InstanceMechanics::ShouldTankSwap(bot, target))
+        return true;
 
     // Rescue with a single-target taunt. Automatic mass taunts and taunts on
     // another tank's enemy would override ownership of unrelated boss targets.

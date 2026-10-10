@@ -14,6 +14,8 @@
 #include "ReachTargetActions.h"
 #include "StayActions.h"
 #include "PveDispelAction.h"
+#include "InstanceLeadershipAction.h"
+#include "InstanceMechanicsAction.h"
 
 class PlayerbotAI;
 class ActionContext : public NamedObjectContext<Action>
@@ -30,12 +32,14 @@ public:
         creators["battleground objective"] = &ActionContext::battleground_objective;
 
         creators["follow"] = &ActionContext::follow;
+        creators["lead instance"] = [](PlayerbotAI* ai) -> Action* { return new InstanceLeadershipAction(ai); };
         creators["flee"] = &ActionContext::flee;
         creators["move from group"] = &ActionContext::move_from_group;
         creators["move to mana tide"] = &ActionContext::move_to_mana_tide;
         creators["avoid aoe"] = &ActionContext::avoid_aoe;
         creators["aq40 encounter"] = [](PlayerbotAI* ai) -> Action* { return new AhnQirajEncounterAction(ai); };
         creators["boss mechanics"] = &ActionContext::boss_mechanics;
+        creators["instance mechanics"] = [](PlayerbotAI* ai) -> Action* { return new InstanceMechanicsAction(ai); };
         creators["combat formation move"] = &ActionContext::combat_formation_move;
         creators["flee to master"] = &ActionContext::flee_to_master;
         creators["guard"] = &ActionContext::guard;
