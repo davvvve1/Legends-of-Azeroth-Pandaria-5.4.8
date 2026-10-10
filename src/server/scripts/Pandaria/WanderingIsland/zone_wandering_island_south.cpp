@@ -353,6 +353,7 @@ namespace NoneLeftBehind
         NPC_INJURED_SAILOR     = 55999,
         NPC_DELORA_LIONHEART   = 55944,
         SPELL_CARRY_SAILOR     = 129340,
+        VEHICLE_CARRY_SAILOR   = 2430,
     };
 }
 
@@ -367,12 +368,14 @@ struct npc_injured_sailor_none_left_behind : public ScriptedAI
     ObjectGuid carrierGuid;
     uint32 checkTimer;
     bool rescued;
+    bool followingCarrier;
 
     void Reset() override
     {
         carrierGuid.Clear();
         checkTimer = 500;
         rescued = false;
+        followingCarrier = false;
         me->SetReactState(REACT_PASSIVE);
         me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
     }
@@ -393,21 +396,40 @@ struct npc_injured_sailor_none_left_behind : public ScriptedAI
             player->CastSpell(player, NoneLeftBehind::SPELL_CARRY_SAILOR, true);
 
         Vehicle* vehicle = player->GetVehicleKit();
-        if (!vehicle || vehicle->GetPassenger(0))
+        if (!vehicle)
         {
-            result = false;
-            return;
+            // Spell 129340 normally creates vehicle 2430 through its aura.
+            // Some clients finish the click cast after this callback, leaving
+            // no vehicle kit at this point, so create the exact DBC vehicle
+            // directly rather than losing the click.
+            player->CreateVehicleKit(NoneLeftBehind::VEHICLE_CARRY_SAILOR, 0);
+            vehicle = player->GetVehicleKit();
         }
 
-        me->EnterVehicle(player, 0, true);
-        if (me->GetVehicleBase() != player)
+        if (vehicle && vehicle->GetVehicleInfo()->m_ID == NoneLeftBehind::VEHICLE_CARRY_SAILOR &&
+            !vehicle->GetPassenger(0))
         {
-            result = false;
-            return;
+            // Injured Sailors spawn with UNIT_FLAG_STUNNED. It is only a pose
+            // helper here, but it can prevent the hardcoded ride spell from
+            // being cast on some builds.
+            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
+            me->ClearUnitState(UNIT_STATE_STUNNED);
+            me->EnterVehicle(player, 0, true);
         }
 
         carrierGuid = player->GetGUID();
         me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+
+        // Keep the quest completable even when the client's vehicle animation
+        // rejects the passenger. The sailor visibly follows the carrier and
+        // the same proximity check delivers him at Delora.
+        if (me->GetVehicleBase() != player)
+        {
+            followingCarrier = true;
+            me->SetStandState(UNIT_STAND_STATE_STAND);
+            me->GetMotionMaster()->MoveFollow(player, 1.5f, PET_FOLLOW_ANGLE);
+        }
+
         result = true;
     }
 
@@ -428,6 +450,9 @@ struct npc_injured_sailor_none_left_behind : public ScriptedAI
         rescued = true;
         me->ExitVehicle();
         player->RemoveAurasDueToSpell(NoneLeftBehind::SPELL_CARRY_SAILOR);
+        if (Vehicle* vehicle = player->GetVehicleKit())
+            if (vehicle->GetVehicleInfo()->m_ID == NoneLeftBehind::VEHICLE_CARRY_SAILOR)
+                player->RemoveVehicleKit();
         player->KilledMonsterCredit(NoneLeftBehind::NPC_INJURED_SAILOR, me->GetGUID());
 
         me->SetStandState(UNIT_STAND_STATE_STAND);
@@ -448,10 +473,17 @@ struct npc_injured_sailor_none_left_behind : public ScriptedAI
 
         checkTimer = 500;
         Player* player = ObjectAccessor::GetPlayer(*me, carrierGuid);
-        if (!player || me->GetVehicleBase() != player)
+        if (!player)
         {
             me->DespawnOrUnsummon();
             return;
+        }
+
+        if (!followingCarrier && me->GetVehicleBase() != player)
+        {
+            followingCarrier = true;
+            me->SetStandState(UNIT_STAND_STATE_STAND);
+            me->GetMotionMaster()->MoveFollow(player, 1.5f, PET_FOLLOW_ANGLE);
         }
 
         if (player->FindNearestCreature(NoneLeftBehind::NPC_DELORA_LIONHEART, 15.0f, true))
