@@ -3180,6 +3180,10 @@ namespace HopHunting
     constexpr uint32 ChensResolution = 30046;
     constexpr uint32 QuestId = 30053;
     constexpr uint32 StormstoutsHops = 30055;
+    constexpr uint32 GardenerFran = 62377;
+    constexpr uint32 GardenerFranObjective = 251646;
+    constexpr uint32 GardenerFranGossipMenu = 13850;
+    constexpr uint32 GardenerFranGossipAction = GOSSIP_ACTION_INFO_DEF + 1;
 
     void EnsureQuest(Player* player)
     {
@@ -3197,6 +3201,43 @@ namespace HopHunting
                 player->AddQuestAndCheckCompletion(quest, nullptr);
     }
 }
+
+class npc_gardener_fran_hop_hunting : public CreatureScript
+{
+public:
+    npc_gardener_fran_hop_hunting() : CreatureScript("npc_gardener_fran_hop_hunting") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(HopHunting::QuestId) == QUEST_STATUS_INCOMPLETE &&
+            !player->GetQuestObjectiveCounter(HopHunting::GardenerFranObjective))
+        {
+            player->ADD_GOSSIP_ITEM_DB(HopHunting::GardenerFranGossipMenu, 0,
+                GOSSIP_SENDER_MAIN, HopHunting::GardenerFranGossipAction);
+        }
+
+        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
+    {
+        player->CLOSE_GOSSIP_MENU();
+        if (sender != GOSSIP_SENDER_MAIN || action != HopHunting::GardenerFranGossipAction ||
+            !player->IsWithinDistInMap(creature, INTERACTION_DISTANCE) ||
+            player->GetQuestStatus(HopHunting::QuestId) != QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestObjectiveCounter(HopHunting::GardenerFranObjective))
+            return true;
+
+        creature->AI()->Talk(0, player);
+        player->KilledMonsterCredit(HopHunting::GardenerFran);
+        return true;
+    }
+};
 
 class player_hop_hunting_recovery : public PlayerScript
 {
@@ -3601,6 +3642,7 @@ void AddSC_valley_of_the_four_winds()
     new spell_script<spell_sunsong_plant_seed>("spell_sunsong_plant_seed");
     new player_sunsong_ranch();
     new player_lesson_in_bravery();
+    new npc_gardener_fran_hop_hunting();
     new player_hop_hunting_recovery();
     new npc_mudmug_barreling_along_questgiver();
     new npc_mudmug_barreling_along_escort();
