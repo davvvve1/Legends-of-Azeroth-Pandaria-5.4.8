@@ -32,6 +32,15 @@ require('command != "gotank"' in chat and 'command != "go tank"' in chat,
         "both documented gotank command spellings must remain accepted")
 require("_instanceTankLeadershipGeneration.fetch_add(1)" in ai,
         "a changed leadership state must publish a fresh generation")
+require("_instanceTankLeadershipAutoSuppressed" in header and
+        "!IsInstanceTankLeadershipAutoSuppressed()" in ai and
+        "selectedTank" in ai and
+        "PlayerBotSpec::IsTank(member, true)" in ai,
+        "instance entry must automatically elect a deterministic living bottank")
+require('DoSpecificAction("lead instance", Event(), true)' in ai and
+        'DoSpecificAction("lead instance", Event(), true)' in
+        ai[:ai.index("// Update internal AI")],
+        "persistent leadership must run before the ordinary non-combat engine")
 require("_instanceTankLeadershipAppliedGeneration != leadershipGeneration" in ai,
         "the map thread no longer consumes leadership transitions")
 require('GetValue<ObjectGuid>("pull target")' in ai and
@@ -89,15 +98,22 @@ require("GetDungeonEncounterList" in lead and
         "generic instances must advance toward the next encounter over mmap steps")
 require("IsInstanceComplete()" in lead and
         "FinishLeadership();" in lead and
-        "ai->SetInstanceTankLeader(0)" in lead,
+        "ai->SetInstanceTankLeader(0)" in lead and
+        "ai->SetInstanceTankLeadershipAutoSuppressed(true)" in lead,
         "a completed instance must restore ordinary master following")
 require("GroupNeedsResurrection()" in lead and
         "member->getDeathState() == DeathState::CORPSE" in lead and
         "SetNextCheckDelay(250)" in lead,
         "the tank must pause its route while a corpse awaits resurrection")
+require("instance->IsEncounterInProgress()" in lead,
+        "persistent route execution must preserve scripted boss intermissions")
+require("SetInstanceTankLeadershipAutoSuppressed(true)" in chat and
+        "SetInstanceTankLeadershipAutoSuppressed(false)" in chat,
+        "manual gotank off/on must suppress and restore automatic leadership")
 
 print(json.dumps({
-    "checks": 18,
+    "checks": 22,
+    "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
@@ -113,5 +129,6 @@ print(json.dumps({
     "regroup_grace_ms": 4000,
     "stale_combat_cutoff_yards": 180,
     "instance_complete": "follow-master-restored",
+    "persistent_controller": "direct-before-idle-actions",
     "result": "pass",
 }, sort_keys=True))

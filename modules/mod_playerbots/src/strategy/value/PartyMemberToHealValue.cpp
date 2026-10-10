@@ -118,8 +118,12 @@ bool PartyMemberToHeal::Check(Unit* player)
     // Keep an injured group member selectable while line of sight is blocked.
     // The reach-party-member action needs this target in order to reposition
     // around pillars and walls; requiring LOS here made healers wait in place.
+    // Discover wounded group members throughout the configured support
+    // radius. The reach action still moves the healer into the spell's real
+    // range and line of sight before casting, so this extends triage without
+    // changing native spell ranges.
     return player->GetMapId() == bot->GetMapId() && !player->IsCharmed() &&
-        bot->GetDistance2d(player) < sPlayerbotAIConfig->healDistance * 2;
+        bot->GetDistance(player) <= sPlayerbotAIConfig->groupSupportDistance;
 }
 
 Unit* PartyMemberToProtect::Calculate()

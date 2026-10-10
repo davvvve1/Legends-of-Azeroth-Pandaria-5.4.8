@@ -98,9 +98,15 @@ with tempfile.TemporaryDirectory(prefix='bot-wipe-') as directory:
 assert 'bool Check(Unit* player) override' in resurrect_header
 assert 'player->GetMap() == bot->GetMap()' in resurrect_source
 assert 'spellDistance * 2' not in resurrect_source
+assert 'groupSupportDistance' in resurrect_source
 assert 'bool Execute(Event event) override' in reach_header
 assert 'bool isUseful() override' in reach_header
 assert 'ReachPartyMemberToResurrectAction::Execute' in reach_source
 assert '!bot->IsWithinLOSInMap(target)' in reach_source
 assert 'MovementPriority::MOVEMENT_NORMAL' in reach_source
-print('Resurrection targeting: remote/occluded corpse discovery and reach movement passed')
+heal_source=(root/'modules/mod_playerbots/src/strategy/value/PartyMemberToHealValue.cpp').read_text()
+config_source=(root/'modules/mod_playerbots/src/Utils/PlayerbotAIConfig.cpp').read_text()
+assert 'AiPlayerbot.GroupSupportDistance", 150.0f' in config_source
+assert 'groupSupportDistance' in heal_source
+assert 'healDistance * 2' not in heal_source
+print('Healing/resurrection targeting: 150-yard discovery and reach movement passed')

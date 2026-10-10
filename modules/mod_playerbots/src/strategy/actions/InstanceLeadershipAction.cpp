@@ -466,10 +466,16 @@ void InstanceLeadershipAction::FinishLeadership()
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
             if (Player* member = ref->GetSource())
                 if (PlayerbotAI* ai = GET_PLAYERBOT_AI(member))
+                {
                     ai->SetInstanceTankLeader(0);
+                    ai->SetInstanceTankLeadershipAutoSuppressed(true);
+                }
     }
     else
+    {
         botAI->SetInstanceTankLeader(0);
+        botAI->SetInstanceTankLeadershipAutoSuppressed(true);
+    }
 
     context->GetValue<ObjectGuid>("pull target")->Set(ObjectGuid::Empty);
     context->GetValue<Unit*>("current target")->Set(nullptr);
@@ -707,6 +713,12 @@ bool InstanceLeadershipAction::isUseful()
         !bot->GetMap()->IsDungeon() || !botAI->IsInstanceTankLeader() ||
         !PlayerBotSpec::IsTank(bot, true) || GroupHasActiveCombat())
         return false;
+
+    // Direct persistent leadership must not mistake a scripted boss
+    // intermission for the end of a pull.
+    if (InstanceScript* instance = bot->GetInstanceScript())
+        if (instance->IsEncounterInProgress())
+            return false;
 
     ResetCompletedPull();
 

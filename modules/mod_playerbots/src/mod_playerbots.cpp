@@ -366,7 +366,10 @@ public:
         if (active)
         {
             for (PlayerbotAI* ai : groupBots)
+            {
                 ai->SetInstanceTankLeader(0);
+                ai->SetInstanceTankLeadershipAutoSuppressed(true);
+            }
             ChatHandler(player->GetSession()).SendSysMessage(
                 "gotank: tanken foljer master igen.");
             return;
@@ -396,7 +399,10 @@ public:
 
         uint32 const tankGuid = tanks.front()->GetGUID().GetCounter();
         for (PlayerbotAI* ai : groupBots)
+        {
+            ai->SetInstanceTankLeadershipAutoSuppressed(false);
             ai->SetInstanceTankLeader(tankGuid);
+        }
 
         std::string response = "gotank: " + tanks.front()->GetName() +
             " leder gruppen. Skriv gotank igen for att folja master.";

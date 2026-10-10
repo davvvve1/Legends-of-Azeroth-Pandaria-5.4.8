@@ -57,5 +57,9 @@ bool PartyMemberToResurrect::Check(Unit* unit)
     // itself require spell range or line of sight.  The generic party-member
     // filter did both and made a corpse behind a corner (or left behind by a
     // moving dungeon group) invisible to the healer forever.
-    return player->GetMap() == bot->GetMap() && player->InSamePhase(bot);
+    // A healer may recover corpses left behind by the moving instance group,
+    // but must not abandon the group for an arbitrary point elsewhere on the
+    // map. The reach prerequisite closes the remaining distance before cast.
+    return player->GetMap() == bot->GetMap() && player->InSamePhase(bot) &&
+        bot->GetDistance(player) <= sPlayerbotAIConfig->groupSupportDistance;
 }

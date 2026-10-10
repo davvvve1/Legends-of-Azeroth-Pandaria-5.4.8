@@ -232,6 +232,14 @@ public:
     uint32 GetInstanceTankLeaderGuid() const { return _instanceTankLeaderGuid.load(); }
     uint32 GetInstanceTankLeadershipGeneration() const { return _instanceTankLeadershipGeneration.load(); }
     bool IsInstanceTankLeadershipActive() const { return GetInstanceTankLeaderGuid() != 0; }
+    bool IsInstanceTankLeadershipAutoSuppressed() const
+    {
+        return _instanceTankLeadershipAutoSuppressed.load();
+    }
+    void SetInstanceTankLeadershipAutoSuppressed(bool suppressed)
+    {
+        _instanceTankLeadershipAutoSuppressed.store(suppressed);
+    }
     bool IsInstanceTankLeader() const;
     Player* GetInstanceTankLeader() const;
     bool CanLfgAutoQueueEngage(Unit const* target) const;
@@ -316,6 +324,10 @@ protected:
     // Set for every bot in a group by the party/instance "gotank" toggle.
     // The world-thread chat hook writes it while map workers read it.
     std::atomic<uint32> _instanceTankLeaderGuid{ 0 };
+    // Automatic leadership starts when a bot group enters an instance. A
+    // manual second gotank command suppresses that auto-start until the group
+    // leaves the instance or explicitly enables gotank again.
+    std::atomic<bool> _instanceTankLeadershipAutoSuppressed{ false };
     // Every real toggle gets a generation, including a second activation of
     // the same tank. Actions use it to discard their old route cursor while
     // the map thread consumes the movement transition safely.

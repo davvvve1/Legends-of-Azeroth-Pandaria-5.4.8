@@ -493,12 +493,64 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         bot->IsDuringRemoveFromWorld())
         return;
 
-    // Leadership is instance-scoped. Once a completed group leaves the map,
-    // every bot must immediately return to its ordinary real-master follow
-    // behaviour instead of carrying a stale tank anchor into the open world.
-    if (IsInstanceTankLeadershipActive() &&
-        (!bot->GetMap() || !bot->GetMap()->IsDungeon()))
-        SetInstanceTankLeader(0);
+    // Leadership is instance-scoped. Entering a dungeon or raid starts it
+    // automatically with the deterministic main bottank; no chat command is
+    // required for the first or any later pull. A manual toggle-off remains
+    // respected until the group leaves the instance.
+    bool const inInstance = bot->GetMap() && bot->GetMap()->IsDungeon();
+    if (!inInstance)
+    {
+        if (IsInstanceTankLeadershipActive())
+            SetInstanceTankLeader(0);
+        SetInstanceTankLeadershipAutoSuppressed(false);
+    }
+    else if (!IsInstanceTankLeadershipActive() &&
+        !IsInstanceTankLeadershipAutoSuppressed())
+    {
+        Group* group = bot->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = bot->GetGroup();
+
+        Player* selectedTank = nullptr;
+        if (group)
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+            {
+                Player* member = ref->GetSource();
+                PlayerbotAI* memberAI = member ? GET_PLAYERBOT_AI(member) : nullptr;
+                if (!member || !memberAI || memberAI->IsRealPlayer() ||
+                    !member->IsAlive() || !member->IsInWorld() ||
+                    member->GetMap() != bot->GetMap() ||
+                    !PlayerBotSpec::IsTank(member, true))
+                    continue;
+
+                if (!selectedTank ||
+                    (PlayerBotSpec::IsMainTank(member) &&
+                        !PlayerBotSpec::IsMainTank(selectedTank)) ||
+                    (PlayerBotSpec::IsMainTank(member) ==
+                        PlayerBotSpec::IsMainTank(selectedTank) &&
+                        member->GetGUID() < selectedTank->GetGUID()))
+                    selectedTank = member;
+            }
+
+        if (group && selectedTank)
+        {
+            uint32 const tankGuid = selectedTank->GetGUID().GetCounter();
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->GetMap() == bot->GetMap())
+                        if (PlayerbotAI* memberAI = GET_PLAYERBOT_AI(member))
+                            if (!memberAI->IsRealPlayer())
+                                memberAI->SetInstanceTankLeader(tankGuid);
+
+            if (bot == selectedTank)
+                TC_LOG_INFO("server",
+                    "gotank auto-started leader=%s guid=%u map=%u instance=%u",
+                    bot->GetName().c_str(), tankGuid, bot->GetMapId(),
+                    bot->GetInstanceId());
+        }
+    }
 
     // Chat is handled on the world thread, but movement/action state belongs
     // to this map thread. Consume gotank transitions here so an old point or
@@ -1262,6 +1314,18 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             YieldThread(GetReactDelay());
             return;
         }
+    }
+
+    // Instance leadership is a persistent controller, not an idle fallback.
+    // Run it directly after combat/cast handling so ordinary non-combat
+    // triggers cannot starve the next route step. This is what makes one
+    // automatic activation continue pack-by-pack until completion.
+    if (inInstance && IsInstanceTankLeader() && bot->IsAlive() &&
+        !GroupPveCombat::GroupHasActiveCombat(bot) &&
+        DoSpecificAction("lead instance", Event(), true))
+    {
+        YieldThread(GetReactDelay());
+        return;
     }
 
     // Update internal AI

@@ -8,10 +8,16 @@ engine recovery, leadership-owned formation movement without a living-master
 distance leash, bounded regrouping, or boss-to-boss mmap navigation is
 removed.
 
+Entering a dungeon or raid automatically elects the deterministic living main
+bottank and starts leadership. The leader action runs as a persistent controller
+before ordinary idle actions, so it cannot be starved between pulls and no
+initial chat command is required.
+
 The selected tank leads only while the real master is alive and the party is
-ready.  Repeating `gotank`, `go tank`, or `go-tank` clears leadership and makes
-the bots follow the real master again.  Enabling it later creates a fresh route
-generation rather than resuming stale movement from the previous activation.
+ready. Repeating `gotank`, `go tank`, or `go-tank` clears leadership, suppresses
+automatic restart for the current instance, and makes the bots follow the real
+master again. Enabling it later creates a fresh route generation rather than
+resuming stale movement from the previous activation.
 
 After every pack the leader discards the dead pull target and the preceding
 combat movement delay, exits a stale combat engine, then resumes the same
