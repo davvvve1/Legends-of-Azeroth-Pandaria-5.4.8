@@ -14,6 +14,7 @@ LEAD_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceLeader
 ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackActions.cpp"
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
+TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TargetValue.cpp"
 
 
 def require(condition: bool, message: str) -> None:
@@ -29,6 +30,7 @@ lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
 attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
+target = TARGET_SOURCE.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
                       combat.index("bool GroupPveCombat::IsEngaged")]
 
@@ -150,9 +152,22 @@ require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
         "_instanceTankPullCountdownKey" in header and
         "getMSTimeDiff(_instanceTankPullCountdownStarted, getMSTime())" in ai,
         "a new instance must have exactly one persistent 15-second pull countdown")
+require("FindIndependentInstanceOffTank" in ai and
+        "gotank cross leader=" in ai and
+        "GroupPveCombat::IsEngaged(bot, candidate)" in ai and
+        "candidate->HasBreakableByDamageCrowdControlAura()" in ai,
+        "the leader must mark one engaged non-CC target for a real bottank")
+require("group->GetTargetIcon(6) == target->GetGUID()" in ai and
+        "FindIndependentInstanceOffTank(bot) == bot" in ai and
+        "Cross is an explicit off-tank assignment" in ai,
+        "only the elected off-tank may taunt and acquire cross")
+require("bool const offTank = PlayerBotSpec::IsTank(bot, true)" in target and
+        "if (offTank && crossGuid)" in target and
+        "if (skullGuid)" in target,
+        "off-tank must prioritize cross while DPS and the leader prioritize skull")
 
 print(json.dumps({
-    "checks": 27,
+    "checks": 30,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -173,6 +188,7 @@ print(json.dumps({
     "persistent_controller": "direct-before-idle-actions",
     "route_ownership": "follow-engine-blocked-between-waypoints",
     "tank_kill_order": "skull-follows-selected-target",
+    "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",
     "route_dispatch": "validated-waypoint-direct-to-motion-master",
     "pull_countdown_seconds": 15,

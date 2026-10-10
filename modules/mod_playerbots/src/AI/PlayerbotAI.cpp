@@ -106,6 +106,35 @@ Player* FindIndependentInstanceBotTank(Player* observer)
     }
     return selected;
 }
+
+Player* FindIndependentInstanceOffTank(Player* observer)
+{
+    Player* leader = FindIndependentInstanceBotTank(observer);
+    if (!leader)
+        return nullptr;
+
+    Group* group = observer->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = observer->GetGroup();
+    if (!group)
+        return nullptr;
+
+    Player* selected = nullptr;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        PlayerbotAI* memberAI = member ? GET_PLAYERBOT_AI(member) : nullptr;
+        if (!member || member == leader || !memberAI || memberAI->IsRealPlayer() ||
+            !member->IsAlive() || !member->IsInWorld() ||
+            member->GetMap() != observer->GetMap() ||
+            !PlayerBotSpec::IsTank(member, true))
+            continue;
+
+        if (!selected || member->GetGUID() < selected->GetGUID())
+            selected = member;
+    }
+    return selected;
+}
 }
 
 PlayerbotChatHandler::PlayerbotChatHandler(Player* pMasterPlayer) : ChatHandler(pMasterPlayer->GetSession())
@@ -379,8 +408,9 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
                 target = attacker;
     }
 
+    constexpr uint8 cross = 6;
     constexpr uint8 skull = 7;
-    ObjectGuid const markedGuid = group->GetTargetIcon(skull);
+    ObjectGuid markedGuid = group->GetTargetIcon(skull);
     if (target)
     {
         if (markedGuid != target->GetGUID())
@@ -393,15 +423,92 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
                 target->GetGUID().GetCounter(), bot->GetMapId(),
                 bot->GetInstanceId());
         }
-        return;
+        markedGuid = target->GetGUID();
+    }
+    else
+    {
+        // Do not erase a valid encounter-specific mark just because the tank
+        // is between target-selection ticks. Only remove a skull which can no
+        // longer be attacked; the next selected target is marked immediately.
+        Unit* markedTarget = markedGuid ? GetUnit(markedGuid) : nullptr;
+        if (markedGuid && !validAttackTarget(markedTarget))
+        {
+            group->SetTargetIcon(skull, bot->GetGUID(), ObjectGuid::Empty, 0);
+            markedGuid.Clear();
+        }
+        else if (validAttackTarget(markedTarget))
+            target = markedTarget;
     }
 
-    // Do not erase a valid encounter-specific mark just because the tank is
-    // between target-selection ticks. Only remove a skull which can no
-    // longer be attacked; the next selected target is marked immediately.
-    Unit* markedTarget = markedGuid ? GetUnit(markedGuid) : nullptr;
-    if (markedGuid && !validAttackTarget(markedTarget))
-        group->SetTargetIcon(skull, bot->GetGUID(), ObjectGuid::Empty, 0);
+    // A second bottank gets a stable cross assignment, but only for a second
+    // enemy which is genuinely engaged with this pull. This cannot mark a
+    // nearby untouched pack. Keep the existing live cross to avoid both tanks
+    // swapping targets every AI tick.
+    ObjectGuid const oldCrossGuid = group->GetTargetIcon(cross);
+    Unit* crossTarget = oldCrossGuid ? GetUnit(oldCrossGuid) : nullptr;
+    Player* offTank = FindIndependentInstanceOffTank(bot);
+    bool const keepCross = offTank && validAttackTarget(crossTarget) &&
+        (!target || crossTarget != target) &&
+        GroupPveCombat::IsEngaged(bot, crossTarget) &&
+        !crossTarget->HasBreakableByDamageCrowdControlAura();
+
+    if (!keepCross)
+    {
+        crossTarget = nullptr;
+        float bestScore = std::numeric_limits<float>::max();
+        auto considerCross = [&](Unit* candidate)
+        {
+            if (!offTank || !validAttackTarget(candidate) || candidate == target ||
+                !GroupPveCombat::IsEngaged(bot, candidate) ||
+                candidate->HasBreakableByDamageCrowdControlAura())
+                return;
+
+            float score = offTank->GetDistance(candidate);
+            Unit* victim = candidate->GetVictim();
+            Player* owner = victim ?
+                victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+            if (owner && group->IsMember(owner->GetGUID()) &&
+                !PlayerBotSpec::IsTank(owner, true))
+                score -= 100.0f;
+            if (Creature* creature = candidate->ToCreature())
+                if (creature->IsDungeonBoss() || creature->isWorldBoss())
+                    score -= 20.0f;
+
+            if (!crossTarget || score < bestScore ||
+                (score == bestScore && candidate->GetGUID() <
+                    crossTarget->GetGUID()))
+            {
+                crossTarget = candidate;
+                bestScore = score;
+            }
+        };
+
+        for (GroupReference* ref = group->GetFirstMember(); ref;
+            ref = ref->next())
+            if (Player* member = ref->GetSource())
+                if (member->IsAlive() && member->IsInWorld() &&
+                    member->GetMap() == bot->GetMap())
+                    for (Unit* attacker : member->getAttackers())
+                        considerCross(attacker);
+
+        if (_aiObjectContext)
+            for (ObjectGuid const& guid : _aiObjectContext
+                ->GetValue<GuidVector>("attackers")->Get())
+                considerCross(GetUnit(guid));
+    }
+
+    if (crossTarget && oldCrossGuid != crossTarget->GetGUID())
+    {
+        group->SetTargetIcon(cross, bot->GetGUID(), crossTarget->GetGUID(), 0);
+        TC_LOG_INFO("server",
+            "gotank cross leader=%s off-tank=%s target=%s entry=%u target-guid=%u map=%u instance=%u",
+            bot->GetName().c_str(), offTank->GetName().c_str(),
+            crossTarget->GetName().c_str(), crossTarget->GetEntry(),
+            crossTarget->GetGUID().GetCounter(), bot->GetMapId(),
+            bot->GetInstanceId());
+    }
+    else if (!crossTarget && oldCrossGuid)
+        group->SetTargetIcon(cross, bot->GetGUID(), ObjectGuid::Empty, 0);
 }
 
 bool PlayerbotAI::CanLfgAutoQueueEngage(Unit const* target) const
@@ -3715,6 +3822,22 @@ bool PlayerbotAI::IsGroupPveTauntAllowed(SpellInfo const* spellInfo, Unit* targe
     if (InstanceMechanics::ShouldTankSwap(bot, target))
         return true;
 
+    // During independent instance leadership the raid icons are tank
+    // assignments, not merely a DPS kill order. The elected off-tank owns
+    // cross and may take it even while it still attacks the main tank; no
+    // other tank may bounce that assignment back.
+    if (IsInstanceTankLeadershipActive() && target)
+    {
+        Group* group = bot->GetGroup(GroupSlot::Instance);
+        if (!group)
+            group = bot->GetGroup();
+        if (group && group->GetTargetIcon(6) == target->GetGUID())
+            return FindIndependentInstanceOffTank(bot) == bot;
+        if (group && group->GetTargetIcon(7) == target->GetGUID() &&
+            !IsInstanceTankLeader())
+            return false;
+    }
+
     // Rescue with a single-target taunt. Automatic mass taunts and taunts on
     // another tank's enemy would override ownership of unrelated boss targets.
     return target && bot->IsValidAttackTarget(target) &&
@@ -3744,6 +3867,27 @@ bool PlayerbotAI::TryGroupPveTankRescue()
     Group* group = bot->GetGroup(GroupSlot::Instance);
     if (!group) group = bot->GetGroup();
     if (!group) return false;
+
+    // Cross is an explicit off-tank assignment. Acquire it before generic
+    // rescue arbitration, including when the enemy already attacks the main
+    // tank (a state which is not considered an emergency rescue).
+    if (IsInstanceTankLeadershipActive() && !IsInstanceTankLeader() &&
+        FindIndependentInstanceOffTank(bot) == bot)
+    {
+        ObjectGuid const crossGuid = group->GetTargetIcon(6);
+        Unit* crossTarget = crossGuid ? GetUnit(crossGuid) : nullptr;
+        if (crossTarget && crossTarget->IsAlive() &&
+            crossTarget->IsInWorld() && crossTarget->GetMap() == bot->GetMap() &&
+            bot->IsValidAttackTarget(crossTarget) &&
+            GroupPveCombat::IsEngaged(bot, crossTarget) &&
+            crossTarget->GetVictim() != bot)
+        {
+            uint32 const spell = GroupPveCombat::TauntSpell(bot);
+            if (CastSpell(spell, crossTarget))
+                return true;
+        }
+    }
+
     std::vector<Unit*> targets;
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         if (Player* member = ref->GetSource())

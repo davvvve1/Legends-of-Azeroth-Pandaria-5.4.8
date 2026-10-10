@@ -106,6 +106,23 @@ bool FindTargetStrategy::IsHighPriority(Unit* attacker)
     {
         ObjectGuid skullGuid = group->GetTargetIcon(7);
         ObjectGuid crossGuid = group->GetTargetIcon(6);
+
+        // Independent gotank leadership uses skull/cross as explicit tank
+        // ownership: the leader and all damage dealers focus skull, while the
+        // one elected off-tank holds cross. Without this distinction both
+        // marks had equal priority and every bot could collapse onto cross.
+        if (botAI->IsInstanceTankLeadershipActive())
+        {
+            Player* bot = botAI->GetBot();
+            bool const offTank = PlayerBotSpec::IsTank(bot, true) &&
+                !botAI->IsInstanceTankLeader();
+            if (offTank && crossGuid)
+                return attacker->GetGUID() == crossGuid;
+            if (skullGuid)
+                return attacker->GetGUID() == skullGuid;
+            return false;
+        }
+
         if ((skullGuid && attacker->GetGUID() == skullGuid) ||
             (crossGuid && attacker->GetGUID() == crossGuid))
             return true;
