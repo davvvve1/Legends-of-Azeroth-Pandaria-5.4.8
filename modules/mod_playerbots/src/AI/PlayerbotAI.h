@@ -242,6 +242,10 @@ public:
     }
     bool IsInstanceTankLeader() const;
     Player* GetInstanceTankLeader() const;
+    bool IsInstanceTankWaitingForHealerMana() const
+    {
+        return _instanceTankWaitingForHealerMana.load();
+    }
     void SyncInstanceTankSkullTarget(Unit* preferredTarget = nullptr);
     bool CanLfgAutoQueueEngage(Unit const* target) const;
     bool IsGroupPveAreaSpellSafe(SpellInfo const* spellInfo, Unit* target);
@@ -345,6 +349,12 @@ protected:
     uint32 _instanceTankLastStallLog = 0;
     uint32 _instanceTankOpeningTargetGuid = 0;
     uint32 _instanceTankOpeningPullAt = 0;
+    // The leader publishes this so the healer can own its tick and drink
+    // without a low-priority follow/buff action immediately standing it up.
+    std::atomic<bool> _instanceTankWaitingForHealerMana{ false };
+    uint32 _instanceHealerLastDrinkAttempt = 0;
+    uint32 _instanceHealerLastFreeDrinkTick = 0;
+    bool _instanceHealerUsingFreeDrink = false;
     float _instanceTankRouteProgressX = 0.0f;
     float _instanceTankRouteProgressY = 0.0f;
     float _instanceTankRouteProgressZ = 0.0f;

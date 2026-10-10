@@ -254,9 +254,22 @@ require("if (!splineMoving)" in ai and
         'GetValue<LastMovement&>("last movement")' in ai and
         "bot->StopMoving();" in ai,
         "a finalized spline must release stale movement before the next route step")
+require("_instanceTankWaitingForHealerMana" in header and
+        "lowestHealerMana <= 30.0f" in controller and
+        "lowestHealerMana < 80.0f" in controller and
+        "!lockedPull" in controller and
+        'announcePullCountdown("Vantar pa healer mana (30%).")' in controller and
+        "bool const healerManaWait = !groupCombat" in ai and
+        "IsInstanceTankWaitingForHealerMana()" in ai and
+        "SPELL_CATEGORY_DRINK" in ai and
+        'DoSpecificAction("mana tea"' in ai and
+        "_instanceHealerUsingFreeDrink" in header and
+        '"AiPlayerbot.FreeFood", true' in ai and
+        "bot->ModifyPower(POWER_MANA" in ai,
+        "gotank must pause between pulls for low healer mana and preserve the healer's recovery tick")
 
 print(json.dumps({
-    "checks": 45,
+    "checks": 46,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -289,5 +302,6 @@ print(json.dumps({
     "tank_follow_mode": "fully-independent-from-real-master",
     "waypoint_wakeup": "immediate-on-spline-finish",
     "stalled_route_recovery_ms": 4000,
+    "healer_mana_wait": {"stop_percent": 30, "resume_percent": 80},
     "result": "pass",
 }, sort_keys=True))

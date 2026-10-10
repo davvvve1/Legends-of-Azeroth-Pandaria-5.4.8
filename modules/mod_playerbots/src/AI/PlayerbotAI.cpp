@@ -36,6 +36,7 @@
 #include "ChannelMgr.h"
 #include "Chat.h"
 #include "CellImpl.h"
+#include "Config.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CreatureAIImpl.h"
@@ -766,6 +767,10 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         _instanceTankLastStallLog = 0;
         _instanceTankOpeningTargetGuid = 0;
         _instanceTankOpeningPullAt = 0;
+        _instanceTankWaitingForHealerMana.store(false);
+        _instanceHealerLastDrinkAttempt = 0;
+        _instanceHealerLastFreeDrinkTick = 0;
+        _instanceHealerUsingFreeDrink = false;
     }
     else if (!IsInstanceTankLeadershipAutoSuppressed())
     {
@@ -1646,7 +1651,20 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (inInstance && !IsInstanceTankLeader() && bot->IsAlive())
     {
         Player* leader = GetInstanceTankLeader();
+        PlayerbotAI* leaderAI = leader ? GET_PLAYERBOT_AI(leader) : nullptr;
         bool const groupCombat = GroupPveCombat::GroupHasActiveCombat(bot);
+        bool const healerManaWait = !groupCombat && leaderAI &&
+            leaderAI->IsInstanceTankWaitingForHealerMana() &&
+            PlayerBotSpec::IsHeal(bot, true) &&
+            bot->GetMaxPower(POWER_MANA);
+        if (_instanceHealerUsingFreeDrink &&
+            (!healerManaWait || bot->GetPowerPct(POWER_MANA) >= 80.0f))
+        {
+            _instanceHealerUsingFreeDrink = false;
+            _instanceHealerLastFreeDrinkTick = 0;
+            if (bot->IsSitState())
+                bot->SetStandState(UNIT_STAND_STATE_STAND);
+        }
         bool const healerCatchup = leader && leader->IsAlive() &&
             PlayerBotSpec::IsHeal(bot, true) && groupCombat &&
             bot->GetDistance(leader) > 32.0f;
@@ -1661,6 +1679,112 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             !bot->IsNonMeleeSpellCasted(true, false, true) &&
             DoSpecificAction("follow", Event(), true))
         {
+            YieldThread(GetReactDelay());
+            return;
+        }
+
+        // When the tank has stopped between pulls for healer mana, keep the
+        // healer seated and recovering instead of letting normal non-combat
+        // follow/buff actions break the drink. Class mana recovery (for
+        // example Mana Tea) gets one chance first; ordinary water is used as
+        // a reliable fallback when it is available in the bags.
+        if (healerManaWait &&
+            bot->GetPowerPct(POWER_MANA) < 80.0f)
+        {
+            uint32 const now = getMSTime();
+            if (_instanceHealerUsingFreeDrink &&
+                getMSTimeDiff(_instanceHealerLastFreeDrinkTick, now) >= 1000)
+            {
+                _instanceHealerLastFreeDrinkTick = now;
+                bot->ModifyPower(POWER_MANA,
+                    std::max<int32>(1, int32(
+                        bot->GetMaxPower(POWER_MANA) / 10)));
+            }
+
+            bool const seatedDrinkExpired = bot->IsSitState() &&
+                _instanceHealerLastDrinkAttempt && getMSTimeDiff(
+                    _instanceHealerLastDrinkAttempt, now) >= 21000;
+            if ((!bot->IsSitState() || seatedDrinkExpired) &&
+                !bot->IsNonMeleeSpellCasted(true) &&
+                (!_instanceHealerLastDrinkAttempt ||
+                    getMSTimeDiff(_instanceHealerLastDrinkAttempt, now) >= 3000))
+            {
+                _instanceHealerLastDrinkAttempt = now;
+
+                bool recoveryStarted = bot->GetClass() == CLASS_MONK &&
+                    DoSpecificAction("mana tea", Event(), true);
+                if (!recoveryStarted)
+                {
+                    for (Item* item : GetInventoryItems())
+                    {
+                        ItemTemplate const* itemTemplate = item
+                            ? item->GetTemplate() : nullptr;
+                        if (!itemTemplate ||
+                            itemTemplate->Class != ITEM_CLASS_CONSUMABLE ||
+                            bot->CanUseItem(item) != EQUIP_ERR_OK)
+                            continue;
+
+                        uint32 drinkSpell = 0;
+                        for (uint8 index = 0;
+                            index < MAX_ITEM_PROTO_SPELLS; ++index)
+                        {
+                            if (itemTemplate->Spells[index].SpellId > 0 &&
+                                itemTemplate->Spells[index].SpellTrigger ==
+                                    ITEM_SPELLTRIGGER_ON_USE &&
+                                itemTemplate->Spells[index].SpellCategory ==
+                                    SPELL_CATEGORY_DRINK)
+                            {
+                                drinkSpell =
+                                    itemTemplate->Spells[index].SpellId;
+                                break;
+                            }
+                        }
+                        if (!drinkSpell || !CanCastSpell(
+                                drinkSpell, bot, false))
+                            continue;
+
+                        WorldPacket packet(CMSG_USE_ITEM);
+                        packet << item->GetBagSlot() << item->GetSlot()
+                               << uint8(1) << drinkSpell << item->GetGUID()
+                               << uint32(0) << uint8(0)
+                               << uint32(TARGET_FLAG_NONE)
+                               << bot->GetPackGUID();
+                        bot->GetSession()->HandleUseItemOpcode(packet);
+                        recoveryStarted = true;
+                        _instanceHealerUsingFreeDrink = false;
+                        TC_LOG_INFO("server",
+                            "gotank healer drinking healer=%s guid=%u leader=%s mana=%.1f item=%u",
+                            bot->GetName().c_str(),
+                            bot->GetGUID().GetCounter(),
+                            leader->GetName().c_str(),
+                            bot->GetPowerPct(POWER_MANA), item->GetEntry());
+                        break;
+                    }
+                }
+
+                // FreeFood is enabled by default for bots. Preserve that
+                // contract even when this particular character has no water
+                // in its bags: visibly sit and recover at a drink-like rate
+                // instead of deadlocking the route on passive regeneration.
+                if (!recoveryStarted && sConfigMgr->GetBoolDefault(
+                        "AiPlayerbot.FreeFood", true))
+                {
+                    bot->SetStandState(UNIT_STAND_STATE_SIT);
+                    _instanceHealerUsingFreeDrink = true;
+                    _instanceHealerLastFreeDrinkTick = now;
+                    recoveryStarted = true;
+                    TC_LOG_INFO("server",
+                        "gotank healer using free drink healer=%s guid=%u leader=%s mana=%.1f",
+                        bot->GetName().c_str(),
+                        bot->GetGUID().GetCounter(),
+                        leader->GetName().c_str(),
+                        bot->GetPowerPct(POWER_MANA));
+                }
+
+                if (recoveryStarted)
+                    SetNextCheckDelay(0);
+            }
+
             YieldThread(GetReactDelay());
             return;
         }
@@ -1768,6 +1892,97 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
                 "gotank pull countdown complete leader=%s guid=%u map=%u instance=%u elapsed-ms=%u",
                 bot->GetName().c_str(), bot->GetGUID().GetCounter(),
                 bot->GetMapId(), bot->GetInstanceId(), pullCountdownElapsed);
+        }
+
+        // Never begin the next pack at critically low healer mana. A locked,
+        // living pull has already begun and must finish; the mana gate is
+        // therefore evaluated only between pulls. Start waiting at 30% and
+        // resume at 80% so a single regen tick cannot immediately release
+        // the tank into another dangerous pull.
+        Unit* lockedPull = nullptr;
+        if (_aiObjectContext)
+        {
+            ObjectGuid const pullGuid = _aiObjectContext
+                ->GetValue<ObjectGuid>("pull target")->Get();
+            lockedPull = pullGuid ? GetUnit(pullGuid) : nullptr;
+            if (lockedPull && (!lockedPull->IsAlive() ||
+                !lockedPull->IsInWorld() ||
+                lockedPull->GetMap() != bot->GetMap() ||
+                !bot->IsValidAttackTarget(lockedPull)))
+                lockedPull = nullptr;
+        }
+
+        Player* lowestManaHealer = nullptr;
+        float lowestHealerMana = 100.0f;
+        Group* manaGroup = bot->GetGroup(GroupSlot::Instance);
+        if (!manaGroup)
+            manaGroup = bot->GetGroup();
+        if (manaGroup)
+        {
+            for (GroupReference* ref = manaGroup->GetFirstMember(); ref;
+                ref = ref->next())
+            {
+                Player* member = ref->GetSource();
+                if (!member || !member->IsAlive() || !member->IsInWorld() ||
+                    member->GetMap() != bot->GetMap() ||
+                    !PlayerBotSpec::IsHeal(member, true) ||
+                    !member->GetMaxPower(POWER_MANA))
+                    continue;
+
+                float const mana = member->GetPowerPct(POWER_MANA);
+                if (!lowestManaHealer || mana < lowestHealerMana)
+                {
+                    lowestManaHealer = member;
+                    lowestHealerMana = mana;
+                }
+            }
+        }
+
+        if (!_instanceTankWaitingForHealerMana.load() && !lockedPull &&
+            lowestManaHealer && lowestHealerMana <= 30.0f)
+        {
+            _instanceTankWaitingForHealerMana.store(true);
+            bot->StopMoving();
+            bot->GetMotionMaster()->Clear(false);
+            if (_aiObjectContext)
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
+            _instanceTankRouteProgressAt = 0;
+            announcePullCountdown("Vantar pa healer mana (30%).");
+            TC_LOG_INFO("server",
+                "gotank waiting for healer mana leader=%s guid=%u healer=%s mana=%.1f map=%u instance=%u",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                lowestManaHealer->GetName().c_str(), lowestHealerMana,
+                bot->GetMapId(), bot->GetInstanceId());
+        }
+
+        if (_instanceTankWaitingForHealerMana.load())
+        {
+            if (lowestManaHealer && lowestHealerMana < 80.0f)
+            {
+                if (bot->isMoving())
+                {
+                    bot->StopMoving();
+                    bot->GetMotionMaster()->Clear(false);
+                }
+                YieldThread(GetReactDelay());
+                return;
+            }
+
+            _instanceTankWaitingForHealerMana.store(false);
+            _instanceTankRouteProgressAt = 0;
+            _instanceTankLastStallLog = 0;
+            if (_aiObjectContext)
+                _aiObjectContext->GetValue<LastMovement&>("last movement")
+                    ->Get().clear();
+            announcePullCountdown("Healer mana klar - fortsatter.");
+            TC_LOG_INFO("server",
+                "gotank healer mana ready leader=%s guid=%u healer=%s mana=%.1f map=%u instance=%u",
+                bot->GetName().c_str(), bot->GetGUID().GetCounter(),
+                lowestManaHealer ? lowestManaHealer->GetName().c_str() :
+                    "none",
+                lowestManaHealer ? lowestHealerMana : 100.0f,
+                bot->GetMapId(), bot->GetInstanceId());
         }
 
         // MoveTo deliberately reports false while an identical point move is
