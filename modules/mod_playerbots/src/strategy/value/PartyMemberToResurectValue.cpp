@@ -44,6 +44,14 @@ private:
 Unit* PartyMemberToResurrect::Calculate()
 {
     FindDeadPlayer finder(this);
+
+    // Gotank leadership remains attached to the elected tank while it is a
+    // corpse. Recover the route owner before any other dead group member so
+    // the complete formation has a stable anchor again.
+    if (Player* leader = botAI->GetInstanceTankLeader())
+        if (finder.Check(leader) && Check(leader))
+            return leader;
+
     return FindPartyMember(finder);
 }
 

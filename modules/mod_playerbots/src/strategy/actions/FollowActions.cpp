@@ -27,18 +27,12 @@ Player* FollowAction::GetFollowTarget()
     if (!botAI->IsInstanceTankLeadershipActive())
         return master;
 
-    // A dead/ghost real player remains the group's recovery anchor. Without
-    // this fallback active gotank followers wait forever for their living tank
-    // while the tank continues deeper into the instance. Leadership resumes
-    // automatically after the player resurrects and the party regroups.
-    if (master && !GET_PLAYERBOT_AI(master) &&
-        (!master->IsAlive() || !master->IsInWorld() ||
-            master->GetMap() != bot->GetMap()))
-        return master;
-
+    // While gotank is active every bot follows the elected tank, never the
+    // human master. This also preserves the tank corpse as the recovery point
+    // so healers can resurrect it and the same leader can resume the route.
     if (Player* leader = botAI->GetInstanceTankLeader())
         return leader;
-    return master;
+    return nullptr;
 }
 
 bool FollowAction::UseGroupFollowFormation()

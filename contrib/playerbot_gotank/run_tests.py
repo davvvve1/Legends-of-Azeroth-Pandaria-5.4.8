@@ -15,6 +15,7 @@ ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackAction
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
 COMBAT_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotSpec.cpp"
 TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TargetValue.cpp"
+RESURRECT_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/PartyMemberToResurectValue.cpp"
 GROUP_SOURCE = ROOT / "src/server/game/Groups/Group.cpp"
 
 
@@ -32,6 +33,7 @@ attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
 combat = COMBAT_SOURCE.read_text(encoding="utf-8-sig")
 target = TARGET_SOURCE.read_text(encoding="utf-8-sig")
+resurrect = RESURRECT_SOURCE.read_text(encoding="utf-8-sig")
 group = GROUP_SOURCE.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
                       combat.index("bool GroupPveCombat::IsEngaged")]
@@ -76,21 +78,29 @@ require("_leadershipGeneration != generation" in lead and
         "_mogushanRouteStage = 0xFF" in lead and
         "_mogushanRouteIndex = 0" in lead,
         "reactivation must invalidate the previous Mogu'shan route cursor")
-require("!master->IsAlive()" in follow and
-        "return master;" in follow,
-        "followers must fall back to a dead real master")
+require("every bot follows the elected tank" in follow and
+        "return nullptr;" in follow and
+        "human master" in follow,
+        "gotank followers must never fall back to the human master")
 require(follow.count("if (botAI->IsInstanceTankLeader())") >= 5 and
         "bool canRecoverFollow = !IsInstanceTankLeader()" in ai and
         "bool gateFollowContext = !IsInstanceTankLeader()" in ai,
         "the independent tank must reject every master-follow recovery path")
-require("gotankGroupInCombat" in ai and
-        "!gotankGroupInCombat" in ai and
-        "!IsInstanceTankLeader()" in ai and
-        "recoverGotankDeadMaster ? 60.0f : 140.0f" in ai,
-        "followers must recover a dead master without stopping the leader")
 require("gotankOwnsFormationMovement" in ai and
-        "(!gotankOwnsFormationMovement || recoverGotankDeadMaster)" in ai,
-        "active leadership must not be bounded by distance to a living master")
+        "!gotankOwnsFormationMovement" in ai and
+        "recoverGotankDeadMaster" not in ai,
+        "active leadership must disable every distance recovery to master")
+require('DoSpecificAction("follow", Event(), true)' in ai and
+        "leader && leader->IsAlive()" in ai and
+        "bot->GetDistance(leader) > 4.0f" in ai,
+        "every living follower must persistently follow the tank between pulls")
+require("member->IsInWorld() &&\n                    member->GetMap()" in ai and
+        "member->IsInWorld() && member->IsAlive()" not in
+        ai[ai.index("Player* PlayerbotAI::GetInstanceTankLeader"):ai.index("bool PlayerbotAI::IsInstanceTankLeadershipActive")],
+        "a dead elected tank must remain the leadership and resurrection anchor")
+require("botAI->GetInstanceTankLeader()" in resurrect and
+        "finder.Check(leader) && Check(leader)" in resurrect,
+        "resurrection must prioritize the dead elected tank")
 require("_currentState == BOT_STATE_COMBAT" in ai and
         "!gotankGroupHasActiveCombat" in ai and
         "gotankEncounterInProgress" not in ai and
@@ -218,12 +228,12 @@ require("if (!splineMoving)" in ai and
         "a finalized spline must release stale movement before the next route step")
 
 print(json.dumps({
-    "checks": 38,
+    "checks": 40,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
     "toggle_on": "recalculates-route-generation",
-    "dead_master": "followers-recover-while-leader-continues",
+    "master_anchor_during_gotank": "disabled-even-when-master-is-dead",
     "active_fight_teleport": "blocked",
     "living_master_distance_limit": "disabled-during-leadership",
     "generic_route_scan_yards": 160,

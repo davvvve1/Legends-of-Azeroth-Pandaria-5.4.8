@@ -328,7 +328,7 @@ Player* PlayerbotAI::GetInstanceTankLeader() const
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
             if (Player* member = ref->GetSource())
                 if (member->GetGUID().GetCounter() == leaderGuid &&
-                    member->IsInWorld() && member->IsAlive() &&
+                    member->IsInWorld() &&
                     member->GetMap() == bot->GetMap())
                     return member;
 
@@ -381,6 +381,16 @@ void PlayerbotAI::SyncInstanceTankSkullTarget(Unit* preferredTarget)
         group = bot->GetGroup();
     if (!group)
         return;
+
+    // Keep the elected tank as the group anchor while dead so the healer can
+    // find and resurrect that exact player. A stale skull on a living enemy
+    // otherwise makes the stopped group look like it has lost target sight.
+    if (!bot->IsAlive())
+    {
+        if (group->GetTargetIcon(7))
+            group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty, 0);
+        return;
+    }
 
     auto validAttackTarget = [this](Unit* target)
     {
@@ -1218,31 +1228,23 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     Player* distanceRecoveryMaster = GetMaster();
     // Encounter positioning (especially C'Thun's separate stomach floor)
     // must not be undone by generic catch-up teleports to the raid leader.
-    bool const gotankGroupInCombat = gotankGroupHasActiveCombat;
-    bool const recoverGotankDeadMaster = IsInstanceTankLeadershipActive() &&
-        bot->GetMap() && bot->GetMap()->IsDungeon() &&
-        distanceRecoveryMaster && !distanceRecoveryMaster->IsAlive() &&
-        !IsInstanceTankLeader() &&
-        !gotankGroupInCombat;
     bool const gotankOwnsFormationMovement =
         IsInstanceTankLeadershipActive() && bot->GetMap() &&
-        bot->GetMap()->IsDungeon() && distanceRecoveryMaster &&
-        distanceRecoveryMaster->IsAlive();
+        bot->GetMap()->IsDungeon();
     bool tooFarFromMaster = !AhnQirajStrategy::IsActive(bot) && distanceRecoveryMaster &&
         !GET_PLAYERBOT_AI(distanceRecoveryMaster) &&
         distanceRecoveryMaster->IsInWorld() &&
         distanceRecoveryMaster->GetMap() == bot->GetMap() &&
         bot->IsAlive() &&
-        (distanceRecoveryMaster->IsAlive() || recoverGotankDeadMaster) &&
+        distanceRecoveryMaster->IsAlive() &&
         !bot->IsBeingTeleported() &&
         !distanceRecoveryMaster->IsBeingTeleported() &&
         !bot->GetVehicle() &&
         !distanceRecoveryMaster->GetVehicle() &&
         !bot->GetTransport() &&
         !distanceRecoveryMaster->GetTransport() &&
-        (!gotankOwnsFormationMovement || recoverGotankDeadMaster) &&
-        bot->GetDistance(distanceRecoveryMaster) >
-            (recoverGotankDeadMaster ? 60.0f : 140.0f);
+        !gotankOwnsFormationMovement &&
+        bot->GetDistance(distanceRecoveryMaster) > 140.0f;
 
     if (tooFarFromMaster)
     {
@@ -1620,6 +1622,26 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
             }
 
             // Wait for spell cast
+            YieldThread(GetReactDelay());
+            return;
+        }
+    }
+
+    // A living follower must keep the elected tank as its movement anchor.
+    // Run follow directly here so low-priority idle/buff actions cannot leave
+    // one member standing behind while the tank advances to the next pack.
+    // Dead tanks are deliberately excluded: the normal class resurrection
+    // action then owns the healer and selects the preserved tank leader.
+    if (inInstance && !IsInstanceTankLeader() && bot->IsAlive() &&
+        !GroupPveCombat::GroupHasActiveCombat(bot))
+    {
+        Player* leader = GetInstanceTankLeader();
+        if (leader && leader->IsAlive() && leader->IsInWorld() &&
+            leader->GetMap() == bot->GetMap() &&
+            bot->GetDistance(leader) > 4.0f &&
+            !bot->IsNonMeleeSpellCasted(true, false, true) &&
+            DoSpecificAction("follow", Event(), true))
+        {
             YieldThread(GetReactDelay());
             return;
         }
