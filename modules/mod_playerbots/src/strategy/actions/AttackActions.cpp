@@ -149,11 +149,16 @@ bool AttackAction::Attack(Unit* target, bool with_pet /*true*/)
         return false;
     }
 
-    // if (bot->IsMounted() && bot->IsWithinLOSInMap(target))
-    // {
-    //     WorldPacket emptyPacket;
-    //     bot->GetSession()->HandleCancelMountAuraOpcode(emptyPacket);
-    // }
+    // Unit::Attack rejects mounted players.  Playerbots can retain a mount
+    // aura across an LFG/instance teleport, so an apparent successful pull
+    // used to leave them without a victim while leadership selected another
+    // skull.  Dismount synchronously before asking the core to attack.
+    if (bot->IsMounted())
+    {
+        bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+        if (bot->IsMounted())
+            bot->Dismount();
+    }
 
     ObjectGuid guid = target->GetGUID();
     bot->SetSelection(target->GetGUID());
@@ -183,9 +188,28 @@ bool AttackAction::Attack(Unit* target, bool with_pet /*true*/)
     {
         sServerFacade->SetFacingTo(bot, target);
     }
-    botAI->ChangeEngine(BOT_STATE_COMBAT);
+    // Do not report an attack merely because the AI requested one.  The core
+    // can reject it (mounted/pacified/evading target); switching engines in
+    // that case creates a one-second combat/reset loop and target flicker.
+    bool const attackStarted = bot->Attack(target, melee);
+    bool const ownsVictim = bot->GetVictim() == target;
+    if (!attackStarted && !ownsVictim)
+    {
+        if (botAI->IsInstanceTankLeader())
+            TC_LOG_WARN("server",
+                "gotank core attack rejected leader=%s target=%s entry=%u target-guid=%u mounted=%u pacified=%u evade=%u distance=%.1f map=%u instance=%u",
+                bot->GetName().c_str(), target->GetName().c_str(),
+                target->GetEntry(), target->GetGUID().GetCounter(),
+                bot->IsMounted() ? 1u : 0u,
+                bot->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED) ? 1u : 0u,
+                target->ToCreature() && target->ToCreature()->IsInEvadeMode() ?
+                    1u : 0u,
+                bot->GetExactDist(target), bot->GetMapId(),
+                bot->GetInstanceId());
+        return false;
+    }
 
-    bot->Attack(target, melee);
+    botAI->ChangeEngine(BOT_STATE_COMBAT);
     return true;
 }
 

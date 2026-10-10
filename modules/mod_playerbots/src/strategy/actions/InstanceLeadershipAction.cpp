@@ -695,12 +695,26 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     else
     {
         issued = Attack(target);
-        if (issued)
+        bool const ownsOpeningAttack = bot->GetVictim() == target &&
+            botAI->GetState() == BOT_STATE_COMBAT;
+        if (ownsOpeningAttack)
             TC_LOG_INFO("server",
                 "gotank opening attack leader=%s target=%s entry=%u target-guid=%u marked-ms=%u distance=%.1f map=%u instance=%u",
                 bot->GetName().c_str(), target->GetName().c_str(),
                 target->GetEntry(), targetGuid, markedFor, distance,
                 bot->GetMapId(), bot->GetInstanceId());
+        else
+        {
+            // Keep the skull locked and close the remaining distance instead
+            // of pretending that a rejected core attack succeeded.  This
+            // also lets proximity-triggered encounter creatures activate
+            // before the next attack attempt.
+            bool const approaching = MoveTo(target,
+                sPlayerbotAIConfig->contactDistance,
+                MovementPriority::MOVEMENT_FORCED);
+            issued = approaching || bot->isMoving();
+            botAI->SetNextCheckDelay(0);
+        }
     }
 
     // Attack() puts the bot in combat and assigns its victim before the first

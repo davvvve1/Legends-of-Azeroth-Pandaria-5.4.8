@@ -270,9 +270,17 @@ require("if (!splineMoving)" in ai and
 require("_pullMarkedAt = now" in lead and
         "markedFor < 1000" in lead and
         "issued = Attack(target);" in lead and
+        "ownsOpeningAttack" in lead and
+        "sPlayerbotAIConfig->contactDistance" in lead and
         '"gotank opening attack leader=' in lead and
         "botAI->SetNextCheckDelay(0)" in lead,
         "the tank must open its locked skull target one second after marking it")
+require("bot->RemoveAurasByType(SPELL_AURA_MOUNTED)" in attack and
+        "bool const attackStarted = bot->Attack(target, melee)" in attack and
+        "if (!attackStarted && !ownsVictim)" in attack and
+        '"gotank core attack rejected leader=' in attack and
+        "botAI->ChangeEngine(BOT_STATE_COMBAT);" in attack,
+        "opening pulls must dismount and only report core-accepted attacks")
 require("_instanceTankWaitingForHealerMana" in header and
         "lowestHealerMana <= 30.0f" in controller and
         "lowestHealerMana < 80.0f" in controller and
