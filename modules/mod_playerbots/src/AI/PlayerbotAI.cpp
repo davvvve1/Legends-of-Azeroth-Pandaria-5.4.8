@@ -42,6 +42,7 @@
 #include "ExternalEventHelper.h"
 #include "GuildMgr.h"
 #include "Helper.h"
+#include "InstanceScript.h"
 #include "LastMovementValue.h"
 #include "LastSpellCastValue.h"
 #include "LFGMgr.h"
@@ -543,15 +544,24 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
         GroupPveCombat::GroupHasActiveCombat(bot);
     Unit* gotankTrackedTarget = _aiObjectContext ?
         _aiObjectContext->GetValue<Unit*>("current target")->Get() : nullptr;
-    if (!gotankTrackedTarget && _aiObjectContext)
+    auto isLiveGotankTarget = [this](Unit* target)
+    {
+        return target && target->IsAlive() && target->IsInWorld() &&
+            target->GetMap() == bot->GetMap();
+    };
+    if (!isLiveGotankTarget(gotankTrackedTarget) && _aiObjectContext)
         gotankTrackedTarget = GetUnit(_aiObjectContext
             ->GetValue<ObjectGuid>("pull target")->Get());
-    bool const gotankHasLiveTrackedTarget = gotankTrackedTarget &&
-        gotankTrackedTarget->IsAlive() && gotankTrackedTarget->IsInWorld() &&
-        gotankTrackedTarget->GetMap() == bot->GetMap();
+    bool const gotankHasLiveTrackedTarget =
+        isLiveGotankTarget(gotankTrackedTarget);
+    InstanceScript* gotankInstance = bot->GetInstanceScript();
+    bool const gotankEncounterInProgress = gotankInstance &&
+        gotankInstance->IsEncounterInProgress();
+    bool const gotankPreservesEncounterTarget =
+        gotankHasLiveTrackedTarget && gotankEncounterInProgress;
     if (IsInstanceTankLeadershipActive() &&
         _currentState == BOT_STATE_COMBAT &&
-        !gotankGroupHasActiveCombat && !gotankHasLiveTrackedTarget)
+        !gotankGroupHasActiveCombat && !gotankPreservesEncounterTarget)
     {
         bot->CombatStopWithPets(true);
         bot->AttackStop();

@@ -57,9 +57,11 @@ require("gotankOwnsFormationMovement" in ai and
         "active leadership must not be bounded by distance to a living master")
 require("_currentState == BOT_STATE_COMBAT" in ai and
         "!gotankGroupHasActiveCombat" in ai and
+        "gotankEncounterInProgress" in ai and
+        "!gotankPreservesEncounterTarget" in ai and
         "ChangeEngine(BOT_STATE_NON_COMBAT)" in ai and
         "CombatStopWithPets(true)" in ai,
-        "gotank must leave stale combat automatically after a completed pull")
+        "gotank must leave stale trash combat but preserve boss intermissions")
 require('PossibleTargetsValue(botAI,' in lead and
         '"instance leadership targets", 160.0f, true' in lead and
         "bot->GetMapId() != MogushanPalaceMap" in lead,
@@ -106,6 +108,7 @@ print(json.dumps({
     "generic_boss_route": "live-mmap-35-yard-steps",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_engine": "automatic-non-combat-resume",
+    "stale_live_trash_target": "cleared-unless-encounter-active",
     "resurrection_pause": "wait-for-corpse-recovery",
     "regroup_grace_ms": 4000,
     "stale_combat_cutoff_yards": 180,
