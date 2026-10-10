@@ -350,6 +350,22 @@ bool InstanceLeadershipAction::AdvanceGenericRoute()
     return moved;
 }
 
+Unit* InstanceLeadershipAction::GetLockedPullTarget() const
+{
+    ObjectGuid const pullGuid =
+        context->GetValue<ObjectGuid>("pull target")->Get();
+    Unit* pull = pullGuid ? botAI->GetUnit(pullGuid) : nullptr;
+    if (!pull || !pull->ToCreature() || !pull->IsAlive() ||
+        !pull->IsInWorld() || pull->GetMap() != bot->GetMap() ||
+        !bot->IsValidAttackTarget(pull) ||
+        pull->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE) ||
+        pull->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE) ||
+        bot->GetExactDist(pull) > 240.0f)
+        return nullptr;
+
+    return pull;
+}
+
 void InstanceLeadershipAction::ResetCompletedPull()
 {
     Value<ObjectGuid>* pullValue = context->GetValue<ObjectGuid>("pull target");
@@ -357,9 +373,7 @@ void InstanceLeadershipAction::ResetCompletedPull()
     if (!pullGuid)
         return;
 
-    Unit* pull = botAI->GetUnit(pullGuid);
-    if (pull && pull->IsAlive() && pull->IsInWorld() &&
-        pull->GetMap() == bot->GetMap())
+    if (GetLockedPullTarget())
         return;
 
     pullValue->Set(ObjectGuid::Empty);
@@ -383,6 +397,14 @@ void InstanceLeadershipAction::ResetCompletedPull()
 
 Unit* InstanceLeadershipAction::SelectNextTarget() const
 {
+    // Once a pull has been selected, own it until it dies or becomes invalid.
+    // Re-scoring every visible creature while approaching a pack makes the
+    // nearest candidate change as the tank moves; that repeatedly reverses
+    // MoveTo, makes the tank appear to rubber-band, and moves the skull faster
+    // than the client can present a useful kill order.
+    if (Unit* pull = GetLockedPullTarget())
+        return pull;
+
     GuidVector const& targets = context->GetValue<GuidVector>(
         "possible targets")->Get();
     Unit* best = nullptr;
@@ -586,10 +608,18 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     if (!target)
         return false;
 
-    if (Group* group = bot->GetGroup(GroupSlot::Instance))
+    Group* group = bot->GetGroup(GroupSlot::Instance);
+    if (!group)
+        group = bot->GetGroup();
+    if (group && group->GetTargetIcon(7) != target->GetGUID())
+    {
         group->SetTargetIcon(7, bot->GetGUID(), target->GetGUID(), 0);
-    else if (Group* group = bot->GetGroup())
-        group->SetTargetIcon(7, bot->GetGUID(), target->GetGUID(), 0);
+        TC_LOG_INFO("server",
+            "gotank pull locked leader=%s target=%s entry=%u target-guid=%u map=%u instance=%u",
+            bot->GetName().c_str(), target->GetName().c_str(),
+            target->GetEntry(), target->GetGUID().GetCounter(),
+            bot->GetMapId(), bot->GetInstanceId());
+    }
 
     context->GetValue<Unit*>("current target")->Set(target);
     context->GetValue<ObjectGuid>("pull target")->Set(target->GetGUID());

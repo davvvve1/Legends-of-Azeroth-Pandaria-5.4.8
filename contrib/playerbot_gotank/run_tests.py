@@ -117,6 +117,11 @@ require("ResetCompletedPull();" in lead and
         'GetValue<LastMovement&>("last movement")' in lead and
         "SetNextCheckDelay(0)" in lead,
         "the completed pull must release target and movement ownership")
+require("GetLockedPullTarget() const" in lead and
+        "if (Unit* pull = GetLockedPullTarget())" in lead and
+        "bot->GetExactDist(pull) > 240.0f" in lead and
+        '"gotank pull locked leader=' in lead,
+        "the leader must keep one marked pull target throughout its approach")
 require("GroupIsReady" not in lead and "_groupWaitStarted" not in lead and
         "GroupNeedsResurrection" not in lead,
         "leadership must not pause between packs for regrouping or resurrection")
@@ -176,7 +181,7 @@ require("bool const routeIssued" in ai and
         "a route failure must emit throttled live diagnostics")
 
 print(json.dumps({
-    "checks": 32,
+    "checks": 33,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -197,6 +202,7 @@ print(json.dumps({
     "persistent_controller": "direct-before-idle-actions",
     "route_ownership": "follow-engine-blocked-between-waypoints",
     "tank_kill_order": "skull-follows-selected-target",
+    "pull_approach": "locked-target-no-nearest-mob-oscillation",
     "offtank_assignment": "cross-on-second-engaged-target",
     "leadership_state": "re-elected-from-live-instance-group",
     "route_dispatch": "validated-waypoint-direct-to-motion-master",

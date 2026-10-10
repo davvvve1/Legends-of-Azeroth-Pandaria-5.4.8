@@ -18,6 +18,7 @@ public:
     bool isUseful() override;
 
 private:
+    Unit* GetLockedPullTarget() const;
     Unit* SelectNextTarget() const;
     bool GroupHasActiveCombat() const;
     bool HasGenericDestination() const;
