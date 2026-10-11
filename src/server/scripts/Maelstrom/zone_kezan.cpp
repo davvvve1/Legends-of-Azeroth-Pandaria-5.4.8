@@ -23,6 +23,7 @@ namespace Kezan
     enum GreatBankHeist
     {
         QUEST_GREAT_BANK_HEIST          = 14122,
+        OBJECTIVE_BANK_VAULT            = 266678,
         ITEM_PERSONAL_RICHES            = 46858
     };
 
@@ -55,13 +56,18 @@ namespace Kezan
 
     void RestorePersonalRiches(Player* player)
     {
-        if (player->GetQuestStatus(QUEST_GREAT_BANK_HEIST) != QUEST_STATUS_COMPLETE ||
+        QuestStatus const status = player->GetQuestStatus(
+            QUEST_GREAT_BANK_HEIST);
+        if ((status != QUEST_STATUS_INCOMPLETE &&
+                status != QUEST_STATUS_COMPLETE) ||
+            player->GetQuestObjectiveCounter(OBJECTIVE_BANK_VAULT) < 1 ||
             player->HasItemCount(ITEM_PERSONAL_RICHES))
             return;
 
         // The bank-vault SmartAI grants its kill credit before the delayed
-        // item action.  If that sequence is interrupted, the quest remains
-        // complete with Personal Riches at 0/1 and cannot be turned in.
+        // item action. If that sequence is interrupted, the vault objective
+        // remains 1/1 while Personal Riches is 0/1, so the quest can never
+        // transition from incomplete to complete.
         player->AddItem(ITEM_PERSONAL_RICHES, 1);
     }
 
@@ -181,7 +187,19 @@ public:
 
     void OnQuestStatusChange(Player* player, Quest const* quest, QuestStatus /*oldStatus*/, QuestStatus newStatus) override
     {
-        if (quest->GetQuestId() == Kezan::QUEST_GREAT_BANK_HEIST && newStatus == QUEST_STATUS_COMPLETE)
+        if (quest->GetQuestId() == Kezan::QUEST_GREAT_BANK_HEIST &&
+            (newStatus == QUEST_STATUS_INCOMPLETE ||
+                newStatus == QUEST_STATUS_COMPLETE))
+            Kezan::RestorePersonalRiches(player);
+    }
+
+    void OnQuestObjectiveChange(Player* player, Quest const* quest,
+        QuestObjective const* objective, int32 /*oldAmount*/,
+        int32 newAmount) override
+    {
+        if (quest->GetQuestId() == Kezan::QUEST_GREAT_BANK_HEIST &&
+            objective && objective->ID == Kezan::OBJECTIVE_BANK_VAULT &&
+            newAmount >= 1)
             Kezan::RestorePersonalRiches(player);
     }
 };
