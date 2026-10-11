@@ -22,20 +22,18 @@ namespace Kezan
 {
     enum FourthAndGoal
     {
-        QUEST_NECESSARY_ROUGHNESS      = 24502,
+        QUEST_NECESSARY_ROUGHNESS       = 24502,
         QUEST_FOURTH_AND_GOAL_HORDE     = 24503,
         QUEST_FOURTH_AND_GOAL_GOBLIN    = 28414,
 
-        NPC_NECESSARY_ROUGHNESS_CREDIT = 48271,
+        NPC_NECESSARY_ROUGHNESS_CREDIT  = 48271,
         NPC_NECESSARY_ROUGHNESS_VEHICLE = 37179,
         NPC_BILGEWATER_BUCCANEER        = 37213,
         NPC_FOURTH_AND_GOAL_TARGET      = 37203,
 
-        SPELL_SUMMON_ROUGHNESS_VEHICLE = 70015,
+        SPELL_SUMMON_ROUGHNESS_VEHICLE  = 70015,
         SPELL_SUMMON_BUCCANEER          = 70075,
-        SPELL_GOAL_DETECTION            = 70065,
-        SPELL_GROUND_RUMBLE             = 78607,
-        SPELL_SUMMON_DEATHWING          = 66322
+        SPELL_CONTROL_BUCCANEER         = 70065
     };
 
     bool IsFourthAndGoalActive(Player const* player)
@@ -155,13 +153,6 @@ public:
             player->ExitVehicle();
             player->CastSpell(player, Kezan::SPELL_SUMMON_BUCCANEER, true);
         }
-        else if (newStatus == QUEST_STATUS_COMPLETE)
-        {
-            player->CastSpell(player, Kezan::SPELL_GROUND_RUMBLE, true);
-            player->CastSpell(player, Kezan::SPELL_SUMMON_DEATHWING, true);
-        }
-        else if (newStatus == QUEST_STATUS_REWARDED)
-            player->CastSpell(player, Kezan::SPELL_GROUND_RUMBLE, true);
     }
 };
 
@@ -193,7 +184,15 @@ struct npc_kezan_fourth_and_goal_buccaneer : public ScriptedAI
         if (!player || !Kezan::IsFourthAndGoalActive(player))
             return;
 
-        player->EnterVehicle(me, 0);
+        // 70065 carries SPELL_AURA_CONTROL_VEHICLE and is conditioned to
+        // select entry 37213.  It must be cast by the player; casting it from
+        // the vehicle creates a self-control chain and breaks client movement.
+        player->CastSpell(player, Kezan::SPELL_CONTROL_BUCCANEER, true);
+
+        // Keep a defensive fallback for databases where the implicit-target
+        // condition was not imported.
+        if (!player->GetVehicleBase())
+            player->EnterVehicle(me, 0);
     }
 
     void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
@@ -203,13 +202,9 @@ struct npc_kezan_fourth_and_goal_buccaneer : public ScriptedAI
             return;
 
         if (apply)
-        {
-            me->CastSpell(me, Kezan::SPELL_GOAL_DETECTION, true);
             player->VehicleSpellInitialize();
-        }
         else
         {
-            me->RemoveAurasDueToSpell(Kezan::SPELL_GOAL_DETECTION);
             me->DespawnOrUnsummon(1000);
         }
     }

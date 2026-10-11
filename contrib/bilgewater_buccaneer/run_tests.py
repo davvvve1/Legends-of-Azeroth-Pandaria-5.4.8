@@ -2,6 +2,7 @@
 """Source and SQL regression checks for both Bilgewater Buccaneer quests."""
 
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,7 +20,7 @@ sql = SQL.read_text(encoding="utf-8-sig")
 
 require("QUEST_NECESSARY_ROUGHNESS" in source and "24502" in source,
         "Necessary Roughness must remain part of the Buccaneer quest script")
-require("NPC_NECESSARY_ROUGHNESS_CREDIT = 48271" in source and
+require(re.search(r"NPC_NECESSARY_ROUGHNESS_CREDIT\s*=\s*48271", source) and
         "KilledMonsterCredit(NPC_NECESSARY_ROUGHNESS_CREDIT)" in source,
         "boarding must award the Necessary Roughness vehicle objective")
 require("SetControlled(false, UNIT_STATE_ROOT)" in source,
@@ -28,6 +29,11 @@ require("SetSpeed(MOVE_RUN, 0.001f)" not in source,
         "Fourth and Goal must never restore the near-zero movement workaround")
 require("player->VehicleSpellInitialize()" in source,
         "boarding must initialize the player's vehicle action bar")
+require("player->CastSpell(player, Kezan::SPELL_CONTROL_BUCCANEER, true)" in source and
+        "me->CastSpell(me, Kezan::SPELL_GOAL_DETECTION" not in source,
+        "the player, never the vehicle itself, must cast the control aura")
+require("SPELL_SUMMON_DEATHWING" not in source and "66322" not in source,
+        "quest completion must not create an uncontrolled Deathwing summon")
 require("GetBuccaneerRider(GetCaster(), Kezan::NPC_BILGEWATER_BUCCANEER)" in source and
         "AfterCast += SpellCastFn" in source,
         "a successful Footbomb cast must credit the actual rider")
