@@ -20,6 +20,12 @@
 
 namespace Kezan
 {
+    enum GreatBankHeist
+    {
+        QUEST_GREAT_BANK_HEIST          = 14122,
+        ITEM_PERSONAL_RICHES            = 46858
+    };
+
     enum FourthAndGoal
     {
         QUEST_NECESSARY_ROUGHNESS       = 24502,
@@ -45,6 +51,18 @@ namespace Kezan
     bool IsNecessaryRoughnessActive(Player const* player)
     {
         return player->GetQuestStatus(QUEST_NECESSARY_ROUGHNESS) == QUEST_STATUS_INCOMPLETE;
+    }
+
+    void RestorePersonalRiches(Player* player)
+    {
+        if (player->GetQuestStatus(QUEST_GREAT_BANK_HEIST) != QUEST_STATUS_COMPLETE ||
+            player->HasItemCount(ITEM_PERSONAL_RICHES))
+            return;
+
+        // The bank-vault SmartAI grants its kill credit before the delayed
+        // item action.  If that sequence is interrupted, the quest remains
+        // complete with Personal Riches at 0/1 and cannot be turned in.
+        player->AddItem(ITEM_PERSONAL_RICHES, 1);
     }
 
     Creature* FindAvailableBuccaneer(Player* player, uint32 entry)
@@ -156,6 +174,29 @@ public:
     }
 };
 
+class quest_kezan_great_bank_heist : public QuestScript
+{
+public:
+    quest_kezan_great_bank_heist() : QuestScript("quest_kezan_great_bank_heist") { }
+
+    void OnQuestStatusChange(Player* player, Quest const* quest, QuestStatus /*oldStatus*/, QuestStatus newStatus) override
+    {
+        if (quest->GetQuestId() == Kezan::QUEST_GREAT_BANK_HEIST && newStatus == QUEST_STATUS_COMPLETE)
+            Kezan::RestorePersonalRiches(player);
+    }
+};
+
+class player_kezan_great_bank_heist_recovery : public PlayerScript
+{
+public:
+    player_kezan_great_bank_heist_recovery() : PlayerScript("player_kezan_great_bank_heist_recovery") { }
+
+    void OnLogin(Player* player) override
+    {
+        Kezan::RestorePersonalRiches(player);
+    }
+};
+
 class npc_kezan_coach_crosscheck : public CreatureScript
 {
 public:
@@ -250,6 +291,8 @@ void AddSC_kezan()
 {
     new creature_script<npc_sister_goldskimmer>("npc_sister_goldskimmer");
     new quest_kezan_fourth_and_goal();
+    new quest_kezan_great_bank_heist();
+    new player_kezan_great_bank_heist_recovery();
     new npc_kezan_coach_crosscheck();
     new creature_script<npc_kezan_fourth_and_goal_buccaneer>("npc_kezan_fourth_and_goal_buccaneer");
     new spell_script<spell_kezan_fourth_and_goal_kick>("spell_kezan_fourth_and_goal_kick");
