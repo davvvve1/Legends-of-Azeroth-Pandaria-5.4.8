@@ -3780,17 +3780,27 @@ namespace WeedWar
     constexpr uint32 QuestCredit = 57358;
     constexpr uint32 DailyQuestCredit = 59524;
     constexpr uint32 MapId = 870;
-    // Gai Lan stands west of the actual field.  Center the event on the crop
-    // rows (the live field spans roughly x -150..25, y 1090..1215), otherwise
-    // valid players on the eastern half never receive a single summon.
-    constexpr float FarmX = -65.0f;
-    constexpr float FarmY = 1152.0f;
-    constexpr float FarmRadius = 125.0f;
+    constexpr float GaiLanX = -257.535f;
+    constexpr float GaiLanY = 1164.85f;
+    constexpr float EventRadius = 350.0f;
 
     bool HasActiveQuest(Player* player)
     {
         return player && (player->GetQuestStatus(Quest) == QUEST_STATUS_INCOMPLETE ||
             player->GetQuestStatus(DailyQuest) == QUEST_STATUS_INCOMPLETE);
+    }
+
+    bool IsInEventArea(Player* player)
+    {
+        return player && player->GetMapId() == MapId &&
+            player->GetExactDist2d(GaiLanX, GaiLanY) <= EventRadius;
+    }
+
+    void EnsureEventAura(Player* player)
+    {
+        if (HasActiveQuest(player) && IsInEventArea(player) &&
+            !player->HasAura(Aura))
+            player->CastSpell(player, Aura, true);
     }
 }
 
@@ -3805,10 +3815,7 @@ class spell_vfw_weed_war : public AuraScript
     void HandlePeriodic(AuraEffect const* /*auraEffect*/)
     {
         Player* player = GetOwner() ? GetOwner()->ToPlayer() : nullptr;
-        if (!WeedWar::HasActiveQuest(player) ||
-            player->GetMapId() != WeedWar::MapId ||
-            player->GetExactDist2d(WeedWar::FarmX, WeedWar::FarmY) >
-                WeedWar::FarmRadius)
+        if (!WeedWar::HasActiveQuest(player) || !WeedWar::IsInEventArea(player))
             return;
 
         std::list<TempSummon*> weeds;
@@ -3839,6 +3846,37 @@ class spell_vfw_weed_war : public AuraScript
         OnEffectPeriodic += AuraEffectPeriodicFn(
             spell_vfw_weed_war::HandlePeriodic, EFFECT_0,
             SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// Recover the event after a restart, relog or expired three-minute retail
+// aura.  An active quest inside Gai Lan's farm is sufficient proof that the
+// player is participating, so they must never be stranded without spawns.
+class player_weed_war_recovery : public PlayerScript
+{
+public:
+    player_weed_war_recovery() : PlayerScript("player_weed_war_recovery") { }
+
+    void OnLogin(Player* player) override
+    {
+        ObjectGuid playerGuid = player->GetGUID();
+        player->m_Events.Schedule(1000, [playerGuid]()
+        {
+            if (Player* onlinePlayer = ObjectAccessor::FindPlayer(playerGuid))
+                WeedWar::EnsureEventAura(onlinePlayer);
+        });
+    }
+
+    void OnQuestAdded(Player* player, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == WeedWar::Quest ||
+            quest->GetQuestId() == WeedWar::DailyQuest)
+            WeedWar::EnsureEventAura(player);
+    }
+
+    void OnUpdate(Player* player, uint32 /*diff*/) override
+    {
+        WeedWar::EnsureEventAura(player);
     }
 };
 
@@ -3964,5 +4002,6 @@ void AddSC_valley_of_the_four_winds()
     new player_chen_and_li_li_recovery();
     new npc_li_li_day_off_companion();
     new aura_script<spell_vfw_weed_war>("spell_vfw_weed_war");
+    new player_weed_war_recovery();
     new creature_script<npc_vfw_weed_war_weed>("npc_vfw_weed_war_weed");
 }

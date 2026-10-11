@@ -29,10 +29,14 @@ require("SPELL_AURA_PERIODIC_DUMMY" in source and
         "std::min<uint32>(4, 16 - outstanding)" in source and
         "player->GetGUID()" in source,
         "the periodic aura must maintain a bounded set of personal weeds")
-require("constexpr float FarmX = -65.0f" in source and
-        "constexpr float FarmY = 1152.0f" in source and
-        "constexpr float FarmRadius = 125.0f" in source,
-        "the event boundary must contain the real crop rows and live field position")
+require("constexpr float GaiLanX = -257.535f" in source and
+        "constexpr float GaiLanY = 1164.85f" in source and
+        "constexpr float EventRadius = 350.0f" in source,
+        "the event boundary must contain Gai Lan's complete farm")
+require("class player_weed_war_recovery : public PlayerScript" in source and
+        "WeedWar::EnsureEventAura(player)" in source and
+        "new player_weed_war_recovery()" in source,
+        "active Weed War players must recover a missing or expired event aura")
 require("void OnSpellClick(Unit* clicker, bool& result) override" in source and
         "summon->GetSummonerGUID() != player->GetGUID()" in source and
         "KilledMonsterCredit(WeedWar::QuestCredit)" in source and
