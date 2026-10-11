@@ -142,6 +142,21 @@ bool FollowAction::Execute(Event event)
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
 
+        // Dragon Soul's wings are separate pieces of map 967 joined by
+        // scripted portals, the Skyfire and the Spine jump. A follower that
+        // missed the leader's interaction has no mmap path at all. Rejoin
+        // only out of combat and only across an unmistakable island-sized
+        // gap; ordinary room movement remains path-driven.
+        if (bot->GetMapId() == 967 && !groupCombat &&
+            bot->GetDistance(leader) > 500.0f)
+        {
+            float const angle = leader->GetOrientation() + float(M_PI);
+            bot->NearTeleportTo(leader->GetPositionX() + std::cos(angle) * 3.0f,
+                leader->GetPositionY() + std::sin(angle) * 3.0f,
+                leader->GetPositionZ(), leader->GetOrientation());
+            return true;
+        }
+
         // A healer displaced by mechanics or a fast chain pull closes to a
         // stable 20-yard casting position before selecting its next heal.
         if (healerCatchup)
@@ -258,6 +273,9 @@ bool FollowAction::isUseful()
             leader->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
             bot->IsNonMeleeSpellCasted(true, false, true))
             return false;
+        if (bot->GetMapId() == 967 && !groupCombat &&
+            bot->GetDistance(leader) > 500.0f)
+            return true;
         if (healerCatchup || idleCombatCatchup)
             return true;
         if (UseGroupFollowFormation())

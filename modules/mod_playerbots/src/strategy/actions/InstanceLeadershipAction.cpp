@@ -18,6 +18,8 @@
 #include "PlayerbotSpec.h"
 #include "PossibleTargetsValue.h"
 #include "ServerFacade.h"
+#include "ScriptMgr.h"
+#include "ScriptedGossip.h"
 #include "Timer.h"
 #include "Transport.h"
 
@@ -26,9 +28,28 @@ namespace
 constexpr uint32 TempleOfJadeSerpentMap = 960;
 constexpr uint32 TempleWiseMari = 56448;
 constexpr uint32 MogushanPalaceMap = 994;
+constexpr uint32 DragonSoulMap = 967;
 constexpr uint32 MogushanElevator = 212162;
 constexpr float AutonomousTargetRange = 150.0f;
 constexpr float AutonomousRouteStep = 35.0f;
+
+enum DragonSoulData : uint32
+{
+    DsMorchok = 0, DsYorsahj = 1, DsZonozz = 2, DsHagara = 3,
+    DsUltraxion = 4, DsBlackhorn = 5, DsSpine = 6, DsMadness = 7,
+    DsDragonSoulEvent = 98, DsUltraxionTrash = 99
+};
+
+constexpr uint32 NpcDsThrallSummit = 56667;
+constexpr uint32 NpcDsThrallMadness = 56103;
+constexpr uint32 NpcDsSwayze = 55870;
+
+Position MakePosition(float x, float y, float z)
+{
+    Position position;
+    position.Relocate(x, y, z, 0.0f);
+    return position;
+}
 
 struct RoutePoint
 {
@@ -354,6 +375,7 @@ bool InstanceLeadershipAction::HasGenericDestination() const
 {
     if (!bot || bot->GetMapId() == MogushanPalaceMap ||
         bot->GetMapId() == TempleOfJadeSerpentMap ||
+        bot->GetMapId() == DragonSoulMap ||
         !bot->GetMap() || !bot->GetMap()->IsDungeon())
         return false;
 
@@ -370,6 +392,158 @@ bool InstanceLeadershipAction::HasGenericDestination() const
             !(completed & (1u << encounter->dbcEntry->encounterIndex)))
             return true;
 
+    return false;
+}
+
+bool InstanceLeadershipAction::HasDragonSoulDestination() const
+{
+    if (!bot || bot->GetMapId() != DragonSoulMap)
+        return false;
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance)
+        return false;
+    for (uint32 encounter = DsMorchok; encounter <= DsMadness; ++encounter)
+        if (instance->GetBossState(encounter) != DONE)
+            return true;
+    return false;
+}
+
+bool InstanceLeadershipAction::UseDragonSoulNpc(uint32 entry,
+    Position const& position, uint32 sender, uint32 action)
+{
+    Creature* npc = bot->FindNearestCreature(entry, 35.0f, true);
+    if (!npc)
+        return AdvanceRouteTo(position, "Dragon Soul transport");
+    if (bot->GetDistance(npc) > 7.0f)
+        return MoveTo(npc, 3.0f, RouteMovementPriority());
+
+    uint32 const stage = entry * 31u + action;
+    uint32 const now = getMSTime();
+    if (_dragonSoulInteractionStage == stage && _dragonSoulInteractionAt &&
+        getMSTimeDiff(_dragonSoulInteractionAt, now) < 12000)
+    {
+        bot->StopMoving();
+        return true;
+    }
+
+    _dragonSoulInteractionStage = stage;
+    _dragonSoulInteractionAt = now;
+    if (action)
+        sScriptMgr->OnGossipSelect(bot, npc, sender, action);
+    else
+        sScriptMgr->OnGossipHello(bot, npc);
+    botAI->SetNextCheckDelay(0);
+    return true;
+}
+
+bool InstanceLeadershipAction::AdvanceDragonSoulRoute()
+{
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance)
+        return false;
+
+    // Morchok is reached by the normal entrance corridor. Every later wing
+    // is separated by scripted portals or vehicles, so never ask mmap to
+    // manufacture a path between disconnected Dragon Soul islands.
+    if (instance->GetBossState(DsMorchok) != DONE)
+        return AdvanceRouteTo(MakePosition(-1997.5f, -2408.3f, 70.2f),
+            "Dragon Soul Morchok");
+
+    if (instance->GetBossState(DsZonozz) != DONE)
+    {
+        if (bot->GetPositionY() < -2100.0f)
+            return UseDragonSoulNpc(57289,
+                MakePosition(-1783.1f, -2361.1f, 47.4f));
+        return AdvanceRouteTo(MakePosition(-1769.3f, -1916.9f, -226.3f),
+            "Dragon Soul Zon'ozz");
+    }
+
+    if (instance->GetBossState(DsYorsahj) != DONE)
+    {
+        if (bot->GetPositionY() > -2200.0f)
+            return UseDragonSoulNpc(57328,
+                MakePosition(-1733.0f, -1810.6f, -213.4f));
+        if (bot->GetPositionY() > -2700.0f)
+            return UseDragonSoulNpc(57288,
+                MakePosition(-1787.9f, -2426.6f, 47.4f));
+        return AdvanceRouteTo(MakePosition(-1765.7f, -3034.4f, -182.4f),
+            "Dragon Soul Yor'sahj");
+    }
+
+    if (instance->GetBossState(DsHagara) != DONE)
+    {
+        if (bot->GetPositionY() < -2700.0f)
+            return UseDragonSoulNpc(57328,
+                MakePosition(-1878.4f, -3081.4f, -169.2f));
+        if (bot->GetPositionX() < 10000.0f)
+        {
+            if (bot->GetPositionZ() < 150.0f)
+                return UseDragonSoulNpc(57287,
+                    MakePosition(-1754.1f, -2394.9f, 47.4f));
+            return UseDragonSoulNpc(57377,
+                MakePosition(-1815.5f, -2408.2f, 343.9f));
+        }
+        return AdvanceRouteTo(MakePosition(13587.4f, 13612.0f, 122.4f),
+            "Dragon Soul Hagara");
+    }
+
+    if (instance->GetBossState(DsUltraxion) != DONE)
+    {
+        if (bot->GetPositionX() > 10000.0f)
+            return UseDragonSoulNpc(57379,
+                MakePosition(13634.4f, 13612.1f, 126.6f));
+
+        Creature* thrall = bot->FindNearestCreature(NpcDsThrallSummit,
+            80.0f, true);
+        if (!thrall)
+            return AdvanceRouteTo(MakePosition(-1793.6f, -2388.1f, 341.4f),
+                "Dragon Soul Ultraxion event");
+        if (bot->GetDistance(thrall) > 7.0f)
+            return MoveTo(thrall, 3.0f, RouteMovementPriority());
+        if (instance->GetData(DsDragonSoulEvent) != DONE)
+            return UseDragonSoulNpc(NpcDsThrallSummit,
+                MakePosition(-1793.6f, -2388.1f, 341.4f), 13322,
+                GOSSIP_ACTION_INFO_DEF + 1);
+        if (instance->GetData(DsUltraxionTrash) != DONE)
+            return UseDragonSoulNpc(NpcDsThrallSummit,
+                MakePosition(-1793.6f, -2388.1f, 341.4f), 13322,
+                GOSSIP_ACTION_INFO_DEF + 2);
+        return AdvanceRouteTo(MakePosition(-1699.5f, -2388.0f, 355.2f),
+            "Dragon Soul Ultraxion");
+    }
+
+    if (instance->GetBossState(DsBlackhorn) != DONE)
+    {
+        if (bot->GetPositionX() < 10000.0f)
+            return UseDragonSoulNpc(NpcDsSwayze,
+                MakePosition(-1695.6f, -2353.7f, 339.8f),
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        if (!bot->FindNearestCreature(56427, 250.0f, true))
+            return UseDragonSoulNpc(NpcDsSwayze,
+                MakePosition(13468.2f, -12139.1f, 150.9f),
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+        return AdvanceRouteTo(MakePosition(13465.0f, -12134.0f, 151.0f),
+            "Dragon Soul Warmaster Blackhorn");
+    }
+
+    if (instance->GetBossState(DsSpine) != DONE)
+        return UseDragonSoulNpc(NpcDsSwayze,
+            MakePosition(13468.2f, -12139.1f, 150.9f),
+            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+
+    if (instance->GetBossState(DsMadness) != DONE)
+    {
+        Creature* thrall = bot->FindNearestCreature(NpcDsThrallMadness,
+            100.0f, true);
+        if (!thrall)
+            return AdvanceRouteTo(MakePosition(-12074.3f, 12159.5f, -2.7f),
+                "Dragon Soul Madness");
+        if (bot->GetDistance(thrall) > 7.0f)
+            return MoveTo(thrall, 3.0f, RouteMovementPriority());
+        return UseDragonSoulNpc(NpcDsThrallMadness,
+            MakePosition(-12074.3f, 12159.5f, -2.7f),
+            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+    }
     return false;
 }
 
@@ -1115,6 +1289,7 @@ bool InstanceLeadershipAction::isUseful()
 
     return SelectNextTarget() || HasMogushanPalaceDestination() ||
         HasTempleOfJadeSerpentDestination() ||
+        HasDragonSoulDestination() ||
         HasGenericDestination();
 }
 
@@ -1133,6 +1308,9 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
 
     if (bot->GetMapId() == TempleOfJadeSerpentMap)
         return AdvanceTempleOfJadeSerpentRoute();
+
+    if (bot->GetMapId() == DragonSoulMap)
+        return AdvanceDragonSoulRoute();
 
     return AdvanceGenericRoute();
 }

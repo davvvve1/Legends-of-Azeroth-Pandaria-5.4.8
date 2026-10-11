@@ -50,7 +50,9 @@ private:
         StopAttack,
         TankSwap,
         Defensive,
-        HealEncounterUnit
+        HealEncounterUnit,
+        HeroicWill,
+        InterceptOrb
     };
 
     struct Plan

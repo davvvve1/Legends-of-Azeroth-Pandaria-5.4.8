@@ -35,6 +35,10 @@ private:
     void ResetCompletedPull();
     bool HasMogushanPalaceDestination() const;
     bool AdvanceMogushanPalaceRoute();
+    bool HasDragonSoulDestination() const;
+    bool AdvanceDragonSoulRoute();
+    bool UseDragonSoulNpc(uint32 entry, Position const& position,
+        uint32 sender = 0, uint32 action = 0);
     bool EngageTarget(Unit* target);
     void AbandonUnreachableTarget();
     MovementPriority RouteMovementPriority() const;
@@ -42,6 +46,8 @@ private:
     uint8 _mogushanRouteStage = 0xFF;
     uint16 _mogushanRouteIndex = 0;
     uint16 _templeLorewalkerRouteIndex = 0;
+    uint32 _dragonSoulInteractionStage = 0;
+    uint32 _dragonSoulInteractionAt = 0;
     uint32 _leadershipGeneration = 0;
     uint32 _forwardSearchStarted = 0;
     uint32 _approachTargetGuid = 0;

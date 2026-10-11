@@ -164,9 +164,26 @@ require("if (!_JustEngagedWith())" in sha_of_doubt and
         "if (!figmentsCount)" in sha_of_doubt and
         "if (instance)" in sha_of_doubt,
         "Sha of Doubt must start synchronously and safely handle an all-dead-party wipe")
+require("MapDragonSoul = 967" in mechanics and
+        all(token in priority for token in (
+            "55416", "55864", "56136", "56923", "56341", "53891",
+            "56262", "56188", "56471", "56724")),
+        "Dragon Soul encounter target priorities are incomplete")
+require("Reaction::HeroicWill" in mechanics and
+        "info->Id == 106371" in mechanics and
+        "bot->GetAura(105925)" in mechanics and
+        "bot->CastSpell(bot, 106108, true)" in mechanics and
+        "FindNearestCreature(56104, 14.0f, true)" in mechanics,
+        "Dragon Soul must handle Ultraxion phasing and Hagara Ice Waves")
+require("Reaction::InterceptOrb" in mechanics and
+        "FindNearestCreature(55334, 80.0f, true)" in mechanics and
+        "orb->HasAura(109187)" in mechanics and
+        "GetPower(POWER_ALTERNATE_POWER) >= 9" in mechanics and
+        "member->HasAura(105490)" in mechanics,
+        "Zon'ozz bounces and Spine's controlled plate cycle are missing")
 
 print(json.dumps({
-    "checks": 29,
+    "checks": 32,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",
@@ -180,6 +197,10 @@ print(json.dumps({
     "tier14": {
         "priority_targets": "Mogu'shan Vaults, Heart of Fear, Terrace",
         "role_mechanics": ["spread", "stack", "kite", "tank-swap", "break-control"],
+    },
+    "dragon_soul": {
+        "heroic_will": True,
+        "priority_targets": "Zonozz through Madness",
     },
     "mop_dungeons": {
         "priority_targets": "phase adds and attackable encounter objectives",

@@ -419,9 +419,20 @@ reset_pull = lead[lead.index("void InstanceLeadershipAction::ResetCompletedPull"
 require("bot->AttackStop();" in reset_pull and
         "bot->GetVictim()" not in reset_pull,
         "wipe pull cleanup must not dereference a despawned victim")
+require("constexpr uint32 DragonSoulMap = 967" in lead and
+        "AdvanceDragonSoulRoute()" in lead and
+        "sScriptMgr->OnGossipHello(bot, npc)" in lead and
+        "sScriptMgr->OnGossipSelect(bot, npc, sender, action)" in lead and
+        "DsMorchok = 0" in lead and "DsMadness = 7" in lead and
+        "DsDragonSoulEvent = 98" in lead and "DsUltraxionTrash = 99" in lead,
+        "Dragon Soul must use its ordered boss states and scripted transports")
+require("bot->GetMapId() == 967" in follow and
+        "bot->GetDistance(leader) > 500.0f" in follow and
+        "bot->NearTeleportTo" in follow,
+        "Dragon Soul followers must recover after a missed portal or vehicle transition")
 
 print(json.dumps({
-    "checks": 62,
+    "checks": 64,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -432,6 +443,7 @@ print(json.dumps({
     "generic_route_scan_yards": 150,
     "generic_boss_route": "live-mmap-35-yard-steps",
     "temple_of_jade_serpent_route": "four-scripted-boss-states-in-order",
+    "dragon_soul_route": "ordered-boss-state scripted-transports",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_forward_search_ms": 20000,
     "post_combat_engine": "automatic-non-combat-resume",

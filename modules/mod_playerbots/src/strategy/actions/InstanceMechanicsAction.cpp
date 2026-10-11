@@ -21,6 +21,7 @@
 namespace
 {
 constexpr uint32 MapMogushanPalace = 994;
+constexpr uint32 MapDragonSoul = 967;
 constexpr uint32 MapTerraceOfEndlessSpring = 996;
 constexpr uint32 MapMogushanVaults = 1008;
 constexpr uint32 MapHeartOfFear = 1009;
@@ -93,6 +94,7 @@ struct ObjectiveRule
 // spread handling to older instances without requiring a row for every DoT.
 constexpr AuraRule SpreadAuras[] =
 {
+    { MapDragonSoul, 103434, 10.0f }, // Zon'ozz: Disrupting Shadows
     // Tier 14
     { MapMogushanVaults, 116417, 10.0f }, // Feng: Arcane Resonance
     { MapMogushanVaults, 116784, 10.0f }, // Feng: Wildfire Spark
@@ -138,6 +140,8 @@ constexpr AuraRule StackAuras[] =
 
 constexpr SwapRule TankSwapAuras[] =
 {
+    { MapDragonSoul, 103687, 2 }, // Morchok: Crush Armor
+    { MapDragonSoul, 106199, 2 }, // Spine: Blood Corruption: Death
     // Tier 14. These are the tank-facing debuffs used by the local 5.4.8
     // scripts; normal and heroic share the same aura ids.
     { MapMogushanVaults, 131788, 2 }, // Feng: Lightning Lash
@@ -174,6 +178,9 @@ constexpr uint32 StopAttackAuras[] =
 
 constexpr uint32 DefensiveCasts[] =
 {
+    103414, // Morchok: Stomp
+    107588, // Warmaster: Vengeance-powered Shockwave
+    106523, // Madness: Impale
     122713, // Zor'lok: Force and Verve
     122949, // Ta'yak: Unseen Strike
     122774, // Garalon: Crush
@@ -198,6 +205,18 @@ constexpr uint32 DefensiveCasts[] =
 // unrelated pack or attack passive encounter helpers.
 constexpr uint32 PriorityAdds[] =
 {
+    // Dragon Soul. Ordering is encounter-local: globules are selected before
+    // Yor'sahj's spawned adds; exposed tendons before all Spine targets; and
+    // Elementium Bolt/Blistering Tentacles before the current Madness limb.
+    55416, 55417, 55418, // Zon'ozz: Eye, Flail, Claw of Go'rath
+    55864, 55862, 55863, 55866, 55867, 55865, // Yor'sahj globules
+    56231, 56265, // Mana Void, Forgotten One
+    56136, 55695, 56700, // Hagara crystal, Icy Tomb, elemental
+    56923, 56855, 56587, 56854, 56848, 56781, // Skyfire wave
+    56341, 56575, // Spine: exposed Burning Tendons
+    53891, 56161, 56162, 53889, 53890, // Corruption, Blood, Amalgamation
+    56262, 57479, 56188, 56471, // Madness urgent targets
+    56724, 56710, 56263, 56168, 56846, 56167,
     // Trial of the King: an active Mu'Shiba must be killed before the active
     // boss because killing it immediately ends Ravage. Haiyan is the next
     // explicit Trial target when his scripted turn has made him attackable.
@@ -276,6 +295,22 @@ constexpr uint32 PriorityAdds[] =
 // the phase where killing them is required.
 constexpr ObjectiveRule EncounterObjectives[] =
 {
+    { MapDragonSoul, 55416 }, { MapDragonSoul, 55417 },
+    { MapDragonSoul, 55418 },
+    { MapDragonSoul, 55864 }, { MapDragonSoul, 55862 },
+    { MapDragonSoul, 55863 }, { MapDragonSoul, 55866 },
+    { MapDragonSoul, 55867 }, { MapDragonSoul, 55865 },
+    { MapDragonSoul, 56136 }, { MapDragonSoul, 55695 },
+    { MapDragonSoul, 56700 },
+    { MapDragonSoul, 56341 }, { MapDragonSoul, 56575 },
+    { MapDragonSoul, 53891 }, { MapDragonSoul, 56161 },
+    { MapDragonSoul, 56162 }, { MapDragonSoul, 53889 },
+    { MapDragonSoul, 53890 },
+    { MapDragonSoul, 56262 }, { MapDragonSoul, 57479 },
+    { MapDragonSoul, 56188 }, { MapDragonSoul, 56471 },
+    { MapDragonSoul, 56724 }, { MapDragonSoul, 56710 },
+    { MapDragonSoul, 56263 }, { MapDragonSoul, 56168 },
+    { MapDragonSoul, 56846 }, { MapDragonSoul, 56167 },
     { MapTempleOfTheJadeSerpent, 56511 }, // Corrupt Living Water
     { MapTempleOfTheJadeSerpent, 56762 }, // Yu'lon
     { MapTempleOfTheJadeSerpent, 56792 }, // Figment of Doubt
@@ -494,6 +529,60 @@ Unit* InstanceMechanics::PriorityTarget(PlayerbotAI* botAI, Player* bot,
                     member->GetMap() == bot->GetMap())
                     for (Unit* attacker : member->getAttackers())
                         addTarget(attacker);
+
+    if (bot->GetMapId() == MapDragonSoul && bot->IsInCombat())
+    {
+        auto findSpineTarget = [&](std::initializer_list<uint32> entries)
+            -> Unit*
+        {
+            Unit* nearest = nullptr;
+            for (Unit* unit : targets)
+                if (unit && unit->IsAlive() &&
+                    unit->GetMap() == bot->GetMap() &&
+                    bot->IsValidAttackTarget(unit) &&
+                    bot->IsWithinLOSInMap(unit) &&
+                    std::find(entries.begin(), entries.end(),
+                        unit->GetEntry()) != entries.end() &&
+                    (!nearest || bot->GetDistance(unit) <
+                        bot->GetDistance(nearest)))
+                    nearest = unit;
+            return nearest;
+        };
+
+        if (Unit* tendon = findSpineTarget({ 56341, 56575 }))
+            return tendon;
+
+        Unit* amalgamation = findSpineTarget({ 53890 });
+        bool fieryGrip = false;
+        if (group)
+            for (GroupReference* ref = group->GetFirstMember(); ref;
+                ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->HasAura(105490))
+                    {
+                        fieryGrip = true;
+                        break;
+                    }
+
+        // Kill exactly one Corruption to create an Amalgamation, then feed it
+        // Corrupted Blood. Only burn the Amalgamation at nine absorbed stacks;
+        // killing every Corruption first leaves the raid with several tanks'
+        // worth of adds and no controlled plate blast. Fiery Grip is the one
+        // exception and must be broken immediately.
+        if (fieryGrip)
+            if (Unit* corruption = findSpineTarget({ 53891, 56161, 56162 }))
+                return corruption;
+        if (amalgamation)
+        {
+            if (amalgamation->GetPower(POWER_ALTERNATE_POWER) >= 9)
+                return amalgamation;
+            if (Unit* blood = findSpineTarget({ 53889 }))
+                return blood;
+            return nullptr;
+        }
+        if (Unit* corruption = findSpineTarget({ 53891, 56161, 56162 }))
+            return corruption;
+    }
 
     Unit* best = nullptr;
     size_t bestRank = std::size(PriorityAdds) + 1;
@@ -722,6 +811,47 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
         }
     }
 
+    if (bot->GetMapId() == MapDragonSoul)
+    {
+        Unit* current = context->GetValue<Unit*>("current target")->Get();
+        if (current && current->GetEntry() == 53890 &&
+            current->GetPower(POWER_ALTERNATE_POWER) < 9 &&
+            PlayerBotSpec::IsDps(bot, true))
+            return { Reaction::StopAttack, current, nullptr, 0.0f };
+
+        // The Void travels away from Zon'ozz until a player intercepts it,
+        // then reverses on the same line and can strike the boss. Keep the
+        // tank on Zon'ozz while the rest of the raid forms the bounce group.
+        if (!PlayerBotSpec::IsTank(bot, true))
+            if (Creature* orb = bot->FindNearestCreature(55334, 80.0f, true))
+                if (orb->HasAura(109187))
+                    return { Reaction::InterceptOrb, orb, nullptr, 3.5f };
+
+        // Ice Waves are moving creatures rather than area triggers. Keep all
+        // roles out of their path while the Binding Crystals are focused.
+        if (Creature* wave = bot->FindNearestCreature(56104, 14.0f, true))
+            return { Reaction::AvoidUnitHazard, wave, nullptr, 16.0f };
+
+        // Heroic Will is an encounter-granted button, not a learned class
+        // spell. Fading Light always requires it near expiry. During Hour of
+        // Twilight the active tank remains to soak in 10-player normal while
+        // everybody else phases out; the off-tank is therefore also safe.
+        Creature* ultraxion = bot->FindNearestCreature(55294, 180.0f, true);
+        if (ultraxion && ultraxion->IsInCombat())
+        {
+            Aura* fading = bot->GetAura(105925);
+            if (fading && fading->GetDuration() > 0 &&
+                fading->GetDuration() <= 3500)
+                return { Reaction::HeroicWill, ultraxion, bot, 0.0f };
+
+            Spell* cast = CurrentSpell(ultraxion);
+            SpellInfo const* info = cast ? cast->GetSpellInfo() : nullptr;
+            if (info && info->Id == 106371 &&
+                ultraxion->GetVictim() != bot)
+                return { Reaction::HeroicWill, ultraxion, bot, 0.0f };
+        }
+    }
+
     if (Unit* friendly = FindFriendlyEncounterUnit())
         return { Reaction::HealEncounterUnit, nullptr, friendly, 0.0f };
 
@@ -861,6 +991,25 @@ bool InstanceMechanicsAction::Execute(Event /*event*/)
                 botAI->InterruptSpell();
             return FleePosition(plan.anchor->GetPosition(),
                 plan.distance, 250, MovementPriority::MOVEMENT_HAZARD);
+        case Reaction::HeroicWill:
+            if (bot->HasAura(106108))
+                return true;
+            if (bot->IsNonMeleeSpellCasted(true))
+                botAI->InterruptSpell();
+            bot->CastSpell(bot, 106108, true);
+            return true;
+        case Reaction::InterceptOrb:
+            if (!plan.anchor || !plan.anchor->IsInWorld())
+                return false;
+            if (bot->GetDistance(plan.anchor) <= plan.distance)
+            {
+                bot->StopMoving();
+                return true;
+            }
+            if (bot->IsNonMeleeSpellCasted(true))
+                botAI->InterruptSpell();
+            return MoveTo(plan.anchor, plan.distance,
+                MovementPriority::MOVEMENT_HAZARD);
         case Reaction::WiseMariDryPlatform:
         {
             // Split the group deterministically between both raised pads so
