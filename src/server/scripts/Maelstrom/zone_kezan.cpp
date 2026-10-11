@@ -22,12 +22,16 @@ namespace Kezan
 {
     enum FourthAndGoal
     {
+        QUEST_NECESSARY_ROUGHNESS      = 24502,
         QUEST_FOURTH_AND_GOAL_HORDE     = 24503,
         QUEST_FOURTH_AND_GOAL_GOBLIN    = 28414,
 
+        NPC_NECESSARY_ROUGHNESS_CREDIT = 48271,
+        NPC_NECESSARY_ROUGHNESS_VEHICLE = 37179,
         NPC_BILGEWATER_BUCCANEER        = 37213,
         NPC_FOURTH_AND_GOAL_TARGET      = 37203,
 
+        SPELL_SUMMON_ROUGHNESS_VEHICLE = 70015,
         SPELL_SUMMON_BUCCANEER          = 70075,
         SPELL_GOAL_DETECTION            = 70065,
         SPELL_GROUND_RUMBLE             = 78607,
@@ -39,6 +43,93 @@ namespace Kezan
         return player->GetQuestStatus(QUEST_FOURTH_AND_GOAL_HORDE) == QUEST_STATUS_INCOMPLETE ||
             player->GetQuestStatus(QUEST_FOURTH_AND_GOAL_GOBLIN) == QUEST_STATUS_INCOMPLETE;
     }
+
+    bool IsNecessaryRoughnessActive(Player const* player)
+    {
+        return player->GetQuestStatus(QUEST_NECESSARY_ROUGHNESS) == QUEST_STATUS_INCOMPLETE;
+    }
+
+    Creature* FindAvailableBuccaneer(Player* player, uint32 entry)
+    {
+        std::list<Creature*> vehicles;
+        GetCreatureListWithEntryInGrid(vehicles, player, entry, 50.0f);
+
+        Creature* nearest = nullptr;
+        float nearestDistance = 50.0f;
+        for (Creature* candidate : vehicles)
+        {
+            Vehicle* vehicle = candidate->GetVehicleKit();
+            if (!vehicle || vehicle->GetPassenger(0))
+                continue;
+
+            float distance = player->GetDistance(candidate);
+            if (distance < nearestDistance)
+            {
+                nearest = candidate;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    bool BoardNecessaryRoughnessBuccaneer(Player* player)
+    {
+        if (!IsNecessaryRoughnessActive(player))
+            return false;
+
+        if (Unit* base = player->GetVehicleBase())
+        {
+            if (base->GetEntry() != NPC_NECESSARY_ROUGHNESS_VEHICLE)
+                player->ExitVehicle();
+            else
+            {
+                player->KilledMonsterCredit(NPC_NECESSARY_ROUGHNESS_CREDIT);
+                player->VehicleSpellInitialize();
+                return true;
+            }
+        }
+
+        Creature* buccaneer = FindAvailableBuccaneer(player, NPC_NECESSARY_ROUGHNESS_VEHICLE);
+        if (!buccaneer)
+        {
+            player->CastSpell(player, SPELL_SUMMON_ROUGHNESS_VEHICLE, true);
+            buccaneer = FindAvailableBuccaneer(player, NPC_NECESSARY_ROUGHNESS_VEHICLE);
+        }
+
+        if (!buccaneer)
+            return false;
+
+        // The old SmartAI roots summoned copies even though vehicle 582 is a
+        // player-controlled shredder.  Clear that stale state before boarding.
+        buccaneer->SetControlled(false, UNIT_STATE_ROOT);
+        player->EnterVehicle(buccaneer, 0);
+        if (!player->GetVehicleBase() || player->GetVehicleBase()->GetEntry() != NPC_NECESSARY_ROUGHNESS_VEHICLE)
+            return false;
+
+        player->KilledMonsterCredit(NPC_NECESSARY_ROUGHNESS_CREDIT);
+        player->VehicleSpellInitialize();
+        return true;
+    }
+
+    Player* GetBuccaneerRider(Unit* caster, uint32 vehicleEntry)
+    {
+        if (!caster)
+            return nullptr;
+
+        if (Player* player = caster->ToPlayer())
+            if (Unit* base = player->GetVehicleBase())
+                return base->GetEntry() == vehicleEntry ? player : nullptr;
+
+        if (caster->GetEntry() != vehicleEntry)
+            return nullptr;
+
+        if (Vehicle* vehicle = caster->GetVehicleKit())
+            if (Unit* passenger = vehicle->GetPassenger(0))
+                return passenger->ToPlayer();
+
+        return nullptr;
+    }
 }
 
 class quest_kezan_fourth_and_goal : public QuestScript
@@ -48,6 +139,13 @@ public:
 
     void OnQuestStatusChange(Player* player, Quest const* quest, QuestStatus /*oldStatus*/, QuestStatus newStatus) override
     {
+        if (quest->GetQuestId() == Kezan::QUEST_NECESSARY_ROUGHNESS)
+        {
+            if (newStatus == QUEST_STATUS_INCOMPLETE)
+                Kezan::BoardNecessaryRoughnessBuccaneer(player);
+            return;
+        }
+
         if (quest->GetQuestId() != Kezan::QUEST_FOURTH_AND_GOAL_HORDE &&
             quest->GetQuestId() != Kezan::QUEST_FOURTH_AND_GOAL_GOBLIN)
             return;
@@ -74,7 +172,9 @@ public:
 
     bool OnGossipHello(Player* player, Creature* /*creature*/) override
     {
-        if (Kezan::IsFourthAndGoalActive(player) && !player->GetVehicle())
+        if (Kezan::IsNecessaryRoughnessActive(player))
+            Kezan::BoardNecessaryRoughnessBuccaneer(player);
+        else if (Kezan::IsFourthAndGoalActive(player) && !player->GetVehicle())
             player->CastSpell(player, Kezan::SPELL_SUMMON_BUCCANEER, true);
 
         return false;
@@ -93,7 +193,6 @@ struct npc_kezan_fourth_and_goal_buccaneer : public ScriptedAI
         if (!player || !Kezan::IsFourthAndGoalActive(player))
             return;
 
-        me->SetSpeed(MOVE_RUN, 0.001f);
         player->EnterVehicle(me, 0);
     }
 
@@ -104,7 +203,10 @@ struct npc_kezan_fourth_and_goal_buccaneer : public ScriptedAI
             return;
 
         if (apply)
+        {
             me->CastSpell(me, Kezan::SPELL_GOAL_DETECTION, true);
+            player->VehicleSpellInitialize();
+        }
         else
         {
             me->RemoveAurasDueToSpell(Kezan::SPELL_GOAL_DETECTION);
@@ -118,22 +220,10 @@ class spell_kezan_fourth_and_goal_kick : public SpellScript
 {
     PrepareSpellScript(spell_kezan_fourth_and_goal_kick);
 
-    void HandleBeforeCast()
+    void HandleAfterCast()
     {
-        Unit* caster = GetCaster();
-        Player* player = caster->ToPlayer();
-
-        if (!player && caster->GetVehicleKit())
-            if (Unit* passenger = caster->GetVehicleKit()->GetPassenger(0))
-                player = passenger->ToPlayer();
-
+        Player* player = Kezan::GetBuccaneerRider(GetCaster(), Kezan::NPC_BILGEWATER_BUCCANEER);
         if (!player || !Kezan::IsFourthAndGoalActive(player))
-            return;
-
-        WorldLocation const* destination = GetExplTargetDest();
-        if (!destination || destination->GetMapId() != 648 ||
-            destination->GetPositionY() < 1450.0f || destination->GetPositionY() > 1525.0f ||
-            destination->GetPositionZ() < 100.0f || destination->GetPositionZ() > 300.0f)
             return;
 
         player->KilledMonsterCredit(Kezan::NPC_FOURTH_AND_GOAL_TARGET);
@@ -141,9 +231,9 @@ class spell_kezan_fourth_and_goal_kick : public SpellScript
 
     void Register() override
     {
-        // The explicit destination still belongs to the spell during
-        // BeforeCast.  It is not guaranteed to survive until AfterCast.
-        BeforeCast += SpellCastFn(spell_kezan_fourth_and_goal_kick::HandleBeforeCast);
+        // A successful kick from the quest vehicle must always advance the
+        // objective.  Client trajectory destinations are not reliable in 5.4.8.
+        AfterCast += SpellCastFn(spell_kezan_fourth_and_goal_kick::HandleAfterCast);
     }
 };
 
