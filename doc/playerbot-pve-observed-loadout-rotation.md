@@ -12,6 +12,11 @@ window is not, by itself, proof that every cast was blocked.
   and the check that retains existing equipment use it. Main hand, off-hand and
   shields remain specialization-checked; stronger valid equipment is retained.
   Armor/jewelry minimums are not raised. Lower levels and PvP do not receive 559.
+- Non-scaling end-game armor and weapons without any primary stat are rejected
+  even when a malformed template reports RequiredLevel 0. This prevents items
+  such as the statless ilvl 600 Bland Blade and ilvl 813 placeholder armor from
+  producing a high displayed average item level but almost no combat output.
+  Already-equipped invalid pieces are replaced at the next managed preparation.
 - Trinket inspection recognizes script-driven healing proc IDs shared across
   difficulty variants, plus triggered Spirit buffs. Existing role, passive-only,
   and primary-stat checks still apply. This repairs affected equipment during

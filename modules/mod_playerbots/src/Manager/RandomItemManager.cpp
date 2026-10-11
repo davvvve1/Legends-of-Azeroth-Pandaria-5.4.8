@@ -1052,11 +1052,14 @@ bool RandomItemManager::MatchesPrimaryStatForSpec(Player* bot,
 
     // Jewelry, trinkets and low-level items can legitimately carry only
     // secondary stats. High-level armor and weapons cannot be considered
-    // specialization-correct when their primary-stat row is absent (several
-    // incomplete PvP templates in this database have exactly that shape).
+    // specialization-correct when their primary-stat row is absent. Several
+    // incomplete templates also have RequiredLevel 0, so item level and the
+    // absence of a scaling distribution must participate in this decision.
     if (!intellect && !agility && !strength)
     {
-        if (proto->RequiredLevel >= 80)
+        if (ManagedPveEquipmentPolicy::RequiresPrimaryStat(
+                proto->RequiredLevel, proto->ItemLevel,
+                proto->ScalingStatDistribution))
         {
             switch (proto->InventoryType)
             {

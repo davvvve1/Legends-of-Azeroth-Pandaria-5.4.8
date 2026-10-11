@@ -35,6 +35,17 @@ inline bool IsLevelAppropriate(std::uint32_t level, std::uint32_t itemLevel,
         itemLevel <= MaximumItemLevel(level, genuinePve);
 }
 
+// Some incomplete MoP templates advertise raid-level item levels while their
+// RequiredLevel and every stat row are zero. Treat non-scaling armor/weapons in
+// that range like normal end-game gear so they cannot inflate a managed bot's
+// average item level without contributing any primary stat or damage.
+inline bool RequiresPrimaryStat(std::uint32_t requiredLevel,
+    std::uint32_t itemLevel, std::uint32_t scalingStatDistribution)
+{
+    return requiredLevel >= 80 ||
+        (itemLevel >= 400 && scalingStatDistribution == 0);
+}
+
 // Base ilvl, before upgrades. Both hands, caster off-hands and shields.
 // Retain existing stronger weapons; do not change PvP or low-level gearing.
 inline std::uint32_t WeaponFloor(std::uint32_t reference, std::uint32_t level,

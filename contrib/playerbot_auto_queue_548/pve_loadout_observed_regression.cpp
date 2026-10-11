@@ -168,6 +168,11 @@ int main(){
  check(WeaponFloor(496,90,false)==461,"PvP unchanged");
  check(WeaponFloor(450,89,true)==415,"level 89 unchanged");
  check(WeaponFloor(20,10,true)==20,"no unsigned underflow");
+ check(RequiresPrimaryStat(0,600,0),"statless Bland Blade requires a primary stat");
+ check(RequiresPrimaryStat(0,813,0),"statless malformed armor requires a primary stat");
+ check(!RequiresPrimaryStat(0,399,0),"low-level statless equipment remains eligible");
+ check(!RequiresPrimaryStat(0,600,123),"scaling equipment remains eligible");
+ check(RequiresPrimaryStat(90,572,123),"normal end-game equipment requires a primary stat");
  for(unsigned id:{126590u,126641u,138849u,138924u,146315u,146316u}) check(IsHealingProc(id),"healer proc");
  for(unsigned id:{0u,126579u,146051u,146059u,148904u,138894u}) check(!IsHealingProc(id),"damage or shared proc not healer-only");
  Player bot,healer; Unit target; healer.healer=true;
