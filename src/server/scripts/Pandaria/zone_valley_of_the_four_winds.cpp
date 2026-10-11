@@ -3777,6 +3777,7 @@ namespace WeedWar
     constexpr uint32 Aura = 114494;
     constexpr uint32 NastyWeed = 57308;
     constexpr uint32 UglyWeed = 57306;
+    constexpr uint32 WeedHealth = 1000;
     constexpr uint32 QuestCredit = 57358;
     constexpr uint32 DailyQuestCredit = 59524;
     constexpr uint32 MapId = 870;
@@ -3889,6 +3890,9 @@ struct npc_vfw_weed_war_weed : public ScriptedAI
         // the client and prevents players who attack them from making progress.
         // Support both the retail spell-click interaction and ordinary damage.
         me->SetFaction(14);
+        me->SetCreateHealth(WeedWar::WeedHealth);
+        me->SetMaxHealth(WeedWar::WeedHealth);
+        me->SetHealth(WeedWar::WeedHealth);
         me->SetReactState(REACT_PASSIVE);
         me->RemoveFlag(UNIT_FIELD_FLAGS,
             UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC |

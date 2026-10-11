@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src/server/scripts/Pandaria/zone_valley_of_the_four_winds.cpp"
 SQL = ROOT / "sql/updates/world/2026_10_11_00_world_weed_war.sql"
 COMBAT_SQL = ROOT / "sql/updates/world/2026_10_11_01_world_weed_war_attackable.sql"
+HEALTH_SQL = ROOT / "sql/updates/world/2026_10_11_02_world_weed_war_health.sql"
 
 
 def require(condition: bool, message: str) -> None:
@@ -18,6 +19,7 @@ def require(condition: bool, message: str) -> None:
 source = SOURCE.read_text(encoding="utf-8-sig")
 sql = SQL.read_text(encoding="utf-8-sig")
 combat_sql = COMBAT_SQL.read_text(encoding="utf-8-sig")
+health_sql = HEALTH_SQL.read_text(encoding="utf-8-sig")
 
 require("constexpr uint32 Quest = 30052" in source and
         "constexpr uint32 DailyQuest = 30321" in source,
@@ -46,6 +48,11 @@ require("me->SetFaction(14)" in source and
         "void JustDied(Unit* /*killer*/) override" in source and
         "AwardCredit(owner)" in source,
         "weeds must be hostile and grant their owner credit when killed")
+require("constexpr uint32 WeedHealth = 1000" in source and
+        "me->SetCreateHealth(WeedWar::WeedHealth)" in source and
+        "me->SetMaxHealth(WeedWar::WeedHealth)" in source and
+        "me->SetHealth(WeedWar::WeedHealth)" in source,
+        "every spawned weed must have exactly 1000 health")
 require("(57385,0,3,0,61,0,100,0" in sql and
         "85,114494" in sql and "target_type" in sql,
         "Gai Lan's linked gossip action must cast Weed War on its invoker")
@@ -59,5 +66,8 @@ require("(114494,'spell_vfw_weed_war')" in sql and
 require("SET `faction` = 14" in combat_sql and
         "WHERE `entry` IN (57306,57308)" in combat_sql,
         "both weed templates must remain hostile after a restart")
+require("SET `Health_mod` = 0.00774923" in health_sql and
+        "WHERE `entry` IN (57306,57308)" in health_sql,
+        "both weed templates must have a 1000-health database fallback")
 
-print("Weed War: personal hostile weeds support click and kill credit")
+print("Weed War: personal hostile weeds have exactly 1000 health")
