@@ -67,6 +67,20 @@ public:
     }
 };
 
+class npc_kezan_coach_crosscheck : public CreatureScript
+{
+public:
+    npc_kezan_coach_crosscheck() : CreatureScript("npc_kezan_coach_crosscheck") { }
+
+    bool OnGossipHello(Player* player, Creature* /*creature*/) override
+    {
+        if (Kezan::IsFourthAndGoalActive(player) && !player->GetVehicle())
+            player->CastSpell(player, Kezan::SPELL_SUMMON_BUCCANEER, true);
+
+        return false;
+    }
+};
+
 struct npc_kezan_fourth_and_goal_buccaneer : public ScriptedAI
 {
     npc_kezan_fourth_and_goal_buccaneer(Creature* creature) : ScriptedAI(creature) { }
@@ -149,6 +163,7 @@ void AddSC_kezan()
 {
     new creature_script<npc_sister_goldskimmer>("npc_sister_goldskimmer");
     new quest_kezan_fourth_and_goal();
+    new npc_kezan_coach_crosscheck();
     new creature_script<npc_kezan_fourth_and_goal_buccaneer>("npc_kezan_fourth_and_goal_buccaneer");
     new spell_script<spell_kezan_fourth_and_goal_kick>("spell_kezan_fourth_and_goal_kick");
 }

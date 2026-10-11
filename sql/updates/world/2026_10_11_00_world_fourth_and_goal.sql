@@ -7,6 +7,10 @@ UPDATE `creature_template`
 SET `AIName` = '', `ScriptName` = 'npc_kezan_fourth_and_goal_buccaneer'
 WHERE `entry` = 37213;
 
+UPDATE `creature_template`
+SET `ScriptName` = 'npc_kezan_coach_crosscheck'
+WHERE `entry` = 37106;
+
 DELETE FROM `spell_script_names`
 WHERE `spell_id` = 70052;
 
