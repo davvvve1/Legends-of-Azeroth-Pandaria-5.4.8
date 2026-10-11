@@ -23,6 +23,7 @@
 
 namespace
 {
+constexpr uint32 TempleOfJadeSerpentMap = 960;
 constexpr uint32 MogushanPalaceMap = 994;
 constexpr uint32 MogushanElevator = 212162;
 constexpr float AutonomousTargetRange = 150.0f;
@@ -33,6 +34,20 @@ struct RoutePoint
     float y;
     float z;
     float radius;
+};
+
+// Temple of the Jade Serpent has only Sha of Doubt in instance_encounters in
+// this 5.4.8 database.  Generic encounter routing consequently aims straight
+// at the final room and can skip either side wing.  The script's four boss
+// slots are authoritative; these are reachable encounter-floor positions in
+// the original order.  Liu is summoned here after the corridor's 17 Minions
+// of Doubt die, so routing to her encounter floor also clears that prerequisite.
+constexpr RoutePoint TempleBossRoute[] =
+{
+    { 1047.01f, -2560.26f, 174.24f, 15.0f }, // Wise Mari
+    {  845.41f, -2457.49f, 174.96f, 15.0f }, // Lorewalker Stonestep
+    {  929.79f, -2561.02f, 185.07f, 15.0f }, // Liu Flameheart
+    {  893.98f, -2670.66f, 185.19f, 15.0f }  // Sha of Doubt
 };
 
 // Mogu'shan Palace is layered vertically. A proximity-only pull algorithm
@@ -247,6 +262,7 @@ bool InstanceLeadershipAction::GroupHasActiveCombat() const
 bool InstanceLeadershipAction::HasGenericDestination() const
 {
     if (!bot || bot->GetMapId() == MogushanPalaceMap ||
+        bot->GetMapId() == TempleOfJadeSerpentMap ||
         !bot->GetMap() || !bot->GetMap()->IsDungeon())
         return false;
 
@@ -262,6 +278,47 @@ bool InstanceLeadershipAction::HasGenericDestination() const
             encounter->dbcEntry->encounterIndex < 32 &&
             !(completed & (1u << encounter->dbcEntry->encounterIndex)))
             return true;
+
+    return false;
+}
+
+bool InstanceLeadershipAction::HasTempleOfJadeSerpentDestination() const
+{
+    if (!bot || bot->GetMapId() != TempleOfJadeSerpentMap)
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance)
+        return false;
+
+    for (uint32 encounter = 0; encounter < std::size(TempleBossRoute);
+        ++encounter)
+        if (instance->GetBossState(encounter) != DONE)
+            return true;
+
+    return false;
+}
+
+bool InstanceLeadershipAction::FindTempleOfJadeSerpentDestination(
+    Position& destination) const
+{
+    if (!bot || bot->GetMapId() != TempleOfJadeSerpentMap)
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance)
+        return false;
+
+    for (uint32 encounter = 0; encounter < std::size(TempleBossRoute);
+        ++encounter)
+    {
+        if (instance->GetBossState(encounter) == DONE)
+            continue;
+
+        RoutePoint const& point = TempleBossRoute[encounter];
+        destination.Relocate(point.x, point.y, point.z, 0.0f);
+        return true;
+    }
 
     return false;
 }
@@ -331,14 +388,12 @@ bool InstanceLeadershipAction::FindGenericDestination(Position& destination) con
     return false;
 }
 
-bool InstanceLeadershipAction::AdvanceGenericRoute()
+bool InstanceLeadershipAction::AdvanceRouteTo(Position const& destination,
+    char const* routeName)
 {
-    Position destination;
-    if (!FindGenericDestination(destination))
-        return false;
-
     if (bot->GetExactDist2d(destination.GetPositionX(),
-        destination.GetPositionY()) <= 15.0f)
+        destination.GetPositionY()) <= 15.0f &&
+        std::fabs(bot->GetPositionZ() - destination.GetPositionZ()) <= 18.0f)
     {
         bot->StopMoving();
         return true;
@@ -377,10 +432,17 @@ bool InstanceLeadershipAction::AdvanceGenericRoute()
         RouteMovementPriority(), true);
     if (moved)
         TC_LOG_INFO("server",
-            "gotank generic route leader=%s map=%u instance=%u waypoint=%.2f,%.2f,%.2f",
-            bot->GetName().c_str(), bot->GetMapId(), bot->GetInstanceId(),
-            waypoint.x, waypoint.y, waypoint.z);
+            "gotank %s route leader=%s map=%u instance=%u waypoint=%.2f,%.2f,%.2f",
+            routeName, bot->GetName().c_str(), bot->GetMapId(),
+            bot->GetInstanceId(), waypoint.x, waypoint.y, waypoint.z);
     return moved;
+}
+
+bool InstanceLeadershipAction::AdvanceGenericRoute()
+{
+    Position destination;
+    return FindGenericDestination(destination) &&
+        AdvanceRouteTo(destination, "generic");
 }
 
 Unit* InstanceLeadershipAction::GetLockedPullTarget() const
@@ -889,6 +951,7 @@ bool InstanceLeadershipAction::isUseful()
     }
 
     return SelectNextTarget() || HasMogushanPalaceDestination() ||
+        HasTempleOfJadeSerpentDestination() ||
         HasGenericDestination();
 }
 
@@ -904,6 +967,13 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
 
     if (bot->GetMapId() == MogushanPalaceMap)
         return AdvanceMogushanPalaceRoute();
+
+    if (bot->GetMapId() == TempleOfJadeSerpentMap)
+    {
+        Position destination;
+        return FindTempleOfJadeSerpentDestination(destination) &&
+            AdvanceRouteTo(destination, "Temple of the Jade Serpent");
+    }
 
     return AdvanceGenericRoute();
 }

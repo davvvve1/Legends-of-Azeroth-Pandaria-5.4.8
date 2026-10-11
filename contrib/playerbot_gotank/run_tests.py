@@ -236,6 +236,15 @@ require("waypoint.z, false, false, false, true" in lead and
         "point.z,\n        false, false, false, true" in lead and
         '"gotank Mogu\'shan route leader=' in lead,
         "validated route waypoints must bypass a second fallible path search")
+require("TempleOfJadeSerpentMap = 960" in lead and
+        "TempleBossRoute[]" in lead and
+        "FindTempleOfJadeSerpentDestination" in lead and
+        "instance->GetBossState(encounter) == DONE" in lead,
+        "Temple routing must visit all four scripted boss states in order")
+require("bot->GetMapId() == TempleOfJadeSerpentMap" in lead and
+        'AdvanceRouteTo(destination, "Temple of the Jade Serpent")' in lead and
+        "bot->GetMapId() == TempleOfJadeSerpentMap ||" in lead,
+        "Temple must use its explicit route instead of Sha-only generic encounter data")
 require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
         'announcePullCountdown("Pull in 15 seconds - follow the tank. 15")' in ai and
         "PSendSysMessage(" in ai and
@@ -374,7 +383,7 @@ require("bot->AttackStop();" in reset_pull and
         "wipe pull cleanup must not dereference a despawned victim")
 
 print(json.dumps({
-    "checks": 58,
+    "checks": 60,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",
@@ -384,6 +393,7 @@ print(json.dumps({
     "living_master_distance_limit": "disabled-during-leadership",
     "generic_route_scan_yards": 150,
     "generic_boss_route": "live-mmap-35-yard-steps",
+    "temple_of_jade_serpent_route": "four-scripted-boss-states-in-order",
     "post_combat": "dead-target-and-movement-cleared",
     "post_combat_forward_search_ms": 20000,
     "post_combat_engine": "automatic-non-combat-resume",

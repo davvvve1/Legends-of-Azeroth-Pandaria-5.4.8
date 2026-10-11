@@ -3770,6 +3770,111 @@ public:
     }
 };
 
+namespace WeedWar
+{
+    constexpr uint32 Quest = 30052;
+    constexpr uint32 DailyQuest = 30321;
+    constexpr uint32 Aura = 114494;
+    constexpr uint32 NastyWeed = 57308;
+    constexpr uint32 UglyWeed = 57306;
+    constexpr uint32 QuestCredit = 57358;
+    constexpr uint32 DailyQuestCredit = 59524;
+    constexpr uint32 MapId = 870;
+    constexpr float FarmX = -220.0f;
+    constexpr float FarmY = 1160.0f;
+    constexpr float FarmRadius = 125.0f;
+
+    bool HasActiveQuest(Player* player)
+    {
+        return player && (player->GetQuestStatus(Quest) == QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestStatus(DailyQuest) == QUEST_STATUS_INCOMPLETE);
+    }
+}
+
+// The retail event is driven by Weed War's one-second periodic dummy aura.
+// Its missing script left the player with the aura but no weeds and therefore
+// no possible objective progress.  Keep a bounded set of personal summons
+// around the player for the full three-minute event.
+class spell_vfw_weed_war : public AuraScript
+{
+    PrepareAuraScript(spell_vfw_weed_war);
+
+    void HandlePeriodic(AuraEffect const* /*auraEffect*/)
+    {
+        Player* player = GetOwner() ? GetOwner()->ToPlayer() : nullptr;
+        if (!WeedWar::HasActiveQuest(player) ||
+            player->GetMapId() != WeedWar::MapId ||
+            player->GetExactDist2d(WeedWar::FarmX, WeedWar::FarmY) >
+                WeedWar::FarmRadius)
+            return;
+
+        std::list<TempSummon*> weeds;
+        player->GetSummons(weeds, WeedWar::NastyWeed);
+        std::list<TempSummon*> uglyWeeds;
+        player->GetSummons(uglyWeeds, WeedWar::UglyWeed);
+        weeds.splice(weeds.end(), uglyWeeds);
+
+        uint32 const outstanding = uint32(weeds.size());
+        uint32 const toSummon = outstanding < 16 ?
+            std::min<uint32>(4, 16 - outstanding) : 0;
+        for (uint32 index = 0; index < toSummon; ++index)
+        {
+            Position position = player->GetNearPosition(frand(4.0f, 16.0f),
+                frand(0.0f, 2.0f * float(M_PI)));
+            player->UpdateGroundPositionZ(position.m_positionX,
+                position.m_positionY, position.m_positionZ);
+            uint32 const entry = (outstanding + index) % 3 ?
+                WeedWar::NastyWeed : WeedWar::UglyWeed;
+            player->SummonCreature(entry, position,
+                TEMPSUMMON_TIMED_DESPAWN, 30 * IN_MILLISECONDS, 0,
+                player->GetGUID());
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(
+            spell_vfw_weed_war::HandlePeriodic, EFFECT_0,
+            SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+struct npc_vfw_weed_war_weed : public ScriptedAI
+{
+    npc_vfw_weed_war_weed(Creature* creature) : ScriptedAI(creature)
+    {
+        me->SetReactState(REACT_PASSIVE);
+        me->SetFlag(UNIT_FIELD_FLAGS,
+            UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC |
+            UNIT_FLAG_IMMUNE_TO_NPC);
+        me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+    }
+
+    void OnSpellClick(Unit* clicker, bool& result) override
+    {
+        Player* player = clicker ? clicker->ToPlayer() : nullptr;
+        TempSummon* summon = me->ToTempSummon();
+        if (!WeedWar::HasActiveQuest(player) || !summon ||
+            summon->GetSummonerGUID() != player->GetGUID())
+            return;
+
+        result = true;
+        me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+
+        if (player->GetQuestStatus(WeedWar::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(WeedWar::QuestCredit);
+        if (player->GetQuestStatus(WeedWar::DailyQuest) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(WeedWar::DailyQuestCredit);
+
+        if (!WeedWar::HasActiveQuest(player))
+            player->RemoveAurasDueToSpell(WeedWar::Aura);
+        me->DespawnOrUnsummon(250);
+    }
+
+    void UpdateAI(uint32 /*diff*/) override { }
+};
+
 void AddSC_valley_of_the_four_winds()
 {
     // Rare Mobs
@@ -3835,4 +3940,6 @@ void AddSC_valley_of_the_four_winds()
     new npc_chen_and_li_li_escort();
     new player_chen_and_li_li_recovery();
     new npc_li_li_day_off_companion();
+    new aura_script<spell_vfw_weed_war>("spell_vfw_weed_war");
+    new creature_script<npc_vfw_weed_war_weed>("npc_vfw_weed_war_weed");
 }

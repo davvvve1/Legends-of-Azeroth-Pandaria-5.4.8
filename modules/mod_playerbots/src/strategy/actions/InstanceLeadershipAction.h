@@ -25,6 +25,9 @@ private:
     bool GroupHasActiveCombat() const;
     bool HasGenericDestination() const;
     bool FindGenericDestination(Position& destination) const;
+    bool HasTempleOfJadeSerpentDestination() const;
+    bool FindTempleOfJadeSerpentDestination(Position& destination) const;
+    bool AdvanceRouteTo(Position const& destination, char const* routeName);
     bool AdvanceGenericRoute();
     void ResetCompletedPull();
     bool HasMogushanPalaceDestination() const;
