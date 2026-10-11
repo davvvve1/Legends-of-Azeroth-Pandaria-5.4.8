@@ -3846,11 +3846,30 @@ struct npc_vfw_weed_war_weed : public ScriptedAI
 {
     npc_vfw_weed_war_weed(Creature* creature) : ScriptedAI(creature)
     {
+        // Weed War is completed by pulling weeds, but keeping the creatures on
+        // their friendly/neutral template factions makes them look unusable to
+        // the client and prevents players who attack them from making progress.
+        // Support both the retail spell-click interaction and ordinary damage.
+        me->SetFaction(14);
         me->SetReactState(REACT_PASSIVE);
-        me->SetFlag(UNIT_FIELD_FLAGS,
+        me->RemoveFlag(UNIT_FIELD_FLAGS,
             UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC |
-            UNIT_FLAG_IMMUNE_TO_NPC);
+            UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_NOT_SELECTABLE);
         me->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+    }
+
+    void AwardCredit(Player* player)
+    {
+        if (!WeedWar::HasActiveQuest(player))
+            return;
+
+        if (player->GetQuestStatus(WeedWar::Quest) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(WeedWar::QuestCredit);
+        if (player->GetQuestStatus(WeedWar::DailyQuest) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(WeedWar::DailyQuestCredit);
+
+        if (!WeedWar::HasActiveQuest(player))
+            player->RemoveAurasDueToSpell(WeedWar::Aura);
     }
 
     void OnSpellClick(Unit* clicker, bool& result) override
@@ -3864,15 +3883,16 @@ struct npc_vfw_weed_war_weed : public ScriptedAI
         result = true;
         me->RemoveFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-
-        if (player->GetQuestStatus(WeedWar::Quest) == QUEST_STATUS_INCOMPLETE)
-            player->KilledMonsterCredit(WeedWar::QuestCredit);
-        if (player->GetQuestStatus(WeedWar::DailyQuest) == QUEST_STATUS_INCOMPLETE)
-            player->KilledMonsterCredit(WeedWar::DailyQuestCredit);
-
-        if (!WeedWar::HasActiveQuest(player))
-            player->RemoveAurasDueToSpell(WeedWar::Aura);
+        AwardCredit(player);
         me->DespawnOrUnsummon(250);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        TempSummon* summon = me->ToTempSummon();
+        Player* owner = summon && summon->GetSummoner() ?
+            summon->GetSummoner()->ToPlayer() : nullptr;
+        AwardCredit(owner);
     }
 
     void UpdateAI(uint32 /*diff*/) override { }
