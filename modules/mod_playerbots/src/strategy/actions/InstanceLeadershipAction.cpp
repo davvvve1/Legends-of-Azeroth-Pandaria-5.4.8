@@ -28,6 +28,7 @@ constexpr uint32 TempleWiseMari = 56448;
 constexpr uint32 MogushanPalaceMap = 994;
 constexpr uint32 MogushanElevator = 212162;
 constexpr float AutonomousTargetRange = 150.0f;
+constexpr float AutonomousRouteStep = 35.0f;
 
 struct RoutePoint
 {
@@ -263,6 +264,63 @@ bool IsReadyForAutonomousPull(Player* bot, Creature* creature)
 
     return creature->IsHostileTo(bot) || creature->IsInCombat();
 }
+
+bool IsCompleteNavigationPath(PathGenerator const& path)
+{
+    PathType const pathType = path.GetPathType();
+    return (pathType & PATHFIND_NORMAL) &&
+        !(pathType & (PATHFIND_NOPATH | PATHFIND_INCOMPLETE |
+            PATHFIND_SHORTCUT | PATHFIND_NOT_USING_PATH |
+            PATHFIND_FARFROMPOLY_END));
+}
+
+bool IsDynamicObjectPathClear(Player* bot,
+    Movement::PointsArray const& points, size_t lastPoint)
+{
+    if (!bot || !bot->GetMap() || points.size() < 2)
+        return false;
+
+    float const height = bot->GetCollisionHeight() * 0.5f;
+    size_t const end = std::min(lastPoint, points.size() - 1);
+    for (size_t i = 1; i <= end; ++i)
+    {
+        G3D::Vector3 const& from = points[i - 1];
+        G3D::Vector3 const& to = points[i];
+        float hitX = to.x;
+        float hitY = to.y;
+        float hitZ = to.z + height;
+        if (bot->GetMap()->GetObjectHitPos(bot->GetPhaseMask(),
+            from.x, from.y, from.z + height,
+            to.x, to.y, to.z + height,
+            hitX, hitY, hitZ, -CONTACT_DISTANCE))
+            return false;
+    }
+
+    return true;
+}
+
+bool SelectRouteWaypoint(Player* bot, Movement::PointsArray const& points,
+    float maximumWalk, G3D::Vector3& waypoint)
+{
+    if (!bot || points.size() < 2)
+        return false;
+
+    float walked = 0.0f;
+    size_t selected = 0;
+    for (size_t i = 1; i < points.size(); ++i)
+    {
+        walked += (points[i] - points[i - 1]).length();
+        selected = i;
+        if (walked >= maximumWalk)
+            break;
+    }
+
+    if (!selected || !IsDynamicObjectPathClear(bot, points, selected))
+        return false;
+
+    waypoint = points[selected];
+    return true;
+}
 }
 
 bool InstanceLeadershipAction::GroupHasActiveCombat() const
@@ -419,24 +477,13 @@ bool InstanceLeadershipAction::AdvanceRouteTo(Position const& destination,
         destination.GetPositionY(), destination.GetPositionZ(), false))
         return false;
 
-    PathType const pathType = path.GetPathType();
-    if (pathType & (PATHFIND_NOPATH | PATHFIND_SHORTCUT |
-        PATHFIND_NOT_USING_PATH))
+    if (!IsCompleteNavigationPath(path))
         return false;
 
     Movement::PointsArray const& points = path.GetPath();
-    if (points.size() < 2)
+    G3D::Vector3 waypoint;
+    if (!SelectRouteWaypoint(bot, points, AutonomousRouteStep, waypoint))
         return false;
-
-    G3D::Vector3 waypoint = points.back();
-    float walked = 0.0f;
-    for (size_t i = 1; i < points.size(); ++i)
-    {
-        walked += (points[i] - points[i - 1]).length();
-        waypoint = points[i];
-        if (walked >= 35.0f)
-            break;
-    }
 
     bool const moved = MoveTo(bot->GetMapId(), waypoint.x, waypoint.y,
         waypoint.z, false, false, false, true,
@@ -447,6 +494,24 @@ bool InstanceLeadershipAction::AdvanceRouteTo(Position const& destination,
             routeName, bot->GetName().c_str(), bot->GetMapId(),
             bot->GetInstanceId(), waypoint.x, waypoint.y, waypoint.z);
     return moved;
+}
+
+bool InstanceLeadershipAction::AdvanceValidatedWaypoint(float x, float y,
+    float z)
+{
+    PathGenerator path(bot);
+    path.SetPathLengthLimit(240.0f);
+    if (!path.CalculatePath(x, y, z, false) ||
+        !IsCompleteNavigationPath(path))
+        return false;
+
+    G3D::Vector3 waypoint;
+    if (!SelectRouteWaypoint(bot, path.GetPath(), AutonomousRouteStep,
+        waypoint))
+        return false;
+
+    return MoveTo(bot->GetMapId(), waypoint.x, waypoint.y, waypoint.z,
+        false, false, false, true, RouteMovementPriority(), true);
 }
 
 bool InstanceLeadershipAction::AdvanceGenericRoute()
@@ -561,11 +626,14 @@ Unit* InstanceLeadershipAction::SelectNextTarget() const
         path.SetPathLengthLimit(240.0f);
         bool const calculated = path.CalculatePath(creature->GetPositionX(),
             creature->GetPositionY(), creature->GetPositionZ(), false);
-        PathType const pathType = path.GetPathType();
-        bool const cleanPath = calculated && (pathType & PATHFIND_NORMAL) &&
-            !(pathType & (PATHFIND_NOPATH | PATHFIND_INCOMPLETE |
-                PATHFIND_SHORTCUT | PATHFIND_NOT_USING_PATH |
-                PATHFIND_FARFROMPOLY_END));
+        bool const completePath = calculated &&
+            IsCompleteNavigationPath(path);
+        bool const dynamicPathClear = completePath &&
+            IsDynamicObjectPathClear(bot, path.GetPath(),
+                path.GetPath().empty() ? 0 : path.GetPath().size() - 1);
+        if (completePath && !dynamicPathClear)
+            return;
+        bool const cleanPath = completePath && dynamicPathClear;
         if (cleanPath && !path.GetPath().empty())
         {
             G3D::Vector3 const& end = path.GetPath().back();
@@ -732,8 +800,7 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
     }
 
     RoutePoint const& point = route[_mogushanRouteIndex];
-    bool const moved = MoveTo(bot->GetMapId(), point.x, point.y, point.z,
-        false, false, false, true, RouteMovementPriority(), true);
+    bool const moved = AdvanceValidatedWaypoint(point.x, point.y, point.z);
     if (moved)
         TC_LOG_INFO("server",
             "gotank Mogu'shan route leader=%s instance=%u stage=%u index=%u waypoint=%.2f,%.2f,%.2f",

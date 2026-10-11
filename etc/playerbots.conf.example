@@ -341,7 +341,7 @@ AiPlayerbot.LootDelay = 1000
 #
 
 AiPlayerbot.FarDistance = 20.0
-AiPlayerbot.SightDistance = 75.0
+AiPlayerbot.SightDistance = 150.0
 AiPlayerbot.SpellDistance = 28.5
 AiPlayerbot.ShootDistance = 5.0
 AiPlayerbot.ReactDistance = 150.0

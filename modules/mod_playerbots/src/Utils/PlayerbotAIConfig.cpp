@@ -98,7 +98,11 @@ bool PlayerbotAIConfig::Initialize()
     lootDelay = sConfigMgr->GetIntDefault("AiPlayerbot.LootDelay", 1000);
 
     farDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.FarDistance", 20.0f);
-    sightDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.SightDistance", 75.0f);
+    // Instance leadership and group support operate at 150 yards.  A legacy
+    // 75-yard local configuration must not silently reintroduce a shorter
+    // perception horizon and make the autonomous tank stop near its master.
+    sightDistance = std::max(150.0f,
+        sConfigMgr->GetFloatDefault("AiPlayerbot.SightDistance", 150.0f));
     spellDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.SpellDistance", 25.0f);
     shootDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.ShootDistance", 25.0f);
     healDistance = sConfigMgr->GetFloatDefault("AiPlayerbot.HealDistance", 25.0f);

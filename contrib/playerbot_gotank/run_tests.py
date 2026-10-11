@@ -19,6 +19,8 @@ TANK_TARGET_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/TankTarge
 ATTACKERS_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/AttackersValue.cpp"
 RESURRECT_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/value/PartyMemberToResurectValue.cpp"
 GROUP_SOURCE = ROOT / "src/server/game/Groups/Group.cpp"
+CONFIG_SOURCE = ROOT / "modules/mod_playerbots/src/Utils/PlayerbotAIConfig.cpp"
+LIVE_CONFIG = ROOT / "etc/playerbots.conf"
 
 
 def require(condition: bool, message: str) -> None:
@@ -39,6 +41,8 @@ tank_target = TANK_TARGET_SOURCE.read_text(encoding="utf-8-sig")
 attackers = ATTACKERS_SOURCE.read_text(encoding="utf-8-sig")
 resurrect = RESURRECT_SOURCE.read_text(encoding="utf-8-sig")
 group = GROUP_SOURCE.read_text(encoding="utf-8-sig")
+config_source = CONFIG_SOURCE.read_text(encoding="utf-8-sig")
+live_config = LIVE_CONFIG.read_text(encoding="utf-8-sig")
 group_combat = combat[combat.index("bool GroupPveCombat::GroupHasActiveCombat"):
                       combat.index("bool GroupPveCombat::IsEngaged")]
 
@@ -160,6 +164,19 @@ require("constexpr float AutonomousTargetRange = 150.0f" in lead and
         '"instance leadership targets", AutonomousTargetRange' in lead and
         "if (!best)" in lead,
         "instance leadership must scan 150 yards for the next mmap-reachable pack")
+require("sightDistance = std::max(150.0f" in config_source and
+        'GetFloatDefault("AiPlayerbot.SightDistance", 150.0f)' in config_source and
+        "AiPlayerbot.SightDistance = 150.0" in live_config,
+        "playerbot perception must not impose the old 75-yard master horizon")
+require("IsCompleteNavigationPath" in lead and
+        "PATHFIND_INCOMPLETE" in lead and
+        "PATHFIND_FARFROMPOLY_END" in lead and
+        "IsDynamicObjectPathClear" in lead and
+        "GetObjectHitPos" in lead and
+        "if (completePath && !dynamicPathClear)" in lead and
+        "SelectRouteWaypoint" in lead and
+        "AdvanceValidatedWaypoint" in lead,
+        "leadership routes must reject partial paths, walls, and closed dynamic doors")
 require("InstanceMechanics::IsActiveMogushanTrialTarget(bot, creature)" in lead and
         "Treat that active window as pull-ready" in lead,
         "an active Trial target must survive pull validation before combat starts")
@@ -212,7 +229,8 @@ require("GroupIsReady" not in lead and "_groupWaitStarted" not in lead and
 require("GetDungeonEncounterList" in lead and
         "GetCompletedEncounterMask" in lead and
         "path.SetPathLengthLimit(4000.0f)" in lead and
-        "walked >= 35.0f" in lead,
+        "constexpr float AutonomousRouteStep = 35.0f" in lead and
+        "SelectRouteWaypoint(bot, points, AutonomousRouteStep" in lead,
         "generic instances must advance toward the next encounter over mmap steps")
 require("IsInstanceComplete" not in lead and
         "FinishLeadership" not in lead and
@@ -387,7 +405,7 @@ require("bot->AttackStop();" in reset_pull and
         "wipe pull cleanup must not dereference a despawned victim")
 
 print(json.dumps({
-    "checks": 60,
+    "checks": 62,
     "automatic_start": "deterministic-main-bottank-on-instance-entry",
     "commands": ["gotank", "go tank", "go-tank"],
     "toggle_off": "clears-map-thread-movement",

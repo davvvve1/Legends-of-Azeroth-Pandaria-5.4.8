@@ -6,7 +6,7 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 source = (root / 'modules/mod_playerbots/src/strategy/actions/FollowActions.cpp').read_text()
 start = source.index('bool FollowAction::UseGroupFollowFormation()')
-end = source.index('bool FollowAction::Execute(', start)
+end = source.index('bool FollowAction::MoveToCombatFollowPoint(', start)
 methods = source[start:end]
 fixture = r'''
 #include <cassert>

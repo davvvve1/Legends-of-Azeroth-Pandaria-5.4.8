@@ -28,6 +28,7 @@ private:
     bool HasTempleOfJadeSerpentDestination() const;
     bool FindTempleOfJadeSerpentDestination(Position& destination) const;
     bool AdvanceRouteTo(Position const& destination, char const* routeName);
+    bool AdvanceValidatedWaypoint(float x, float y, float z);
     bool AdvanceGenericRoute();
     void ResetCompletedPull();
     bool HasMogushanPalaceDestination() const;
