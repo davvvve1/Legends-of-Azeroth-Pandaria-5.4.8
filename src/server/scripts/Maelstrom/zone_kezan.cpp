@@ -118,7 +118,7 @@ class spell_kezan_fourth_and_goal_kick : public SpellScript
 {
     PrepareSpellScript(spell_kezan_fourth_and_goal_kick);
 
-    void HandleAfterCast()
+    void HandleBeforeCast()
     {
         Unit* caster = GetCaster();
         Player* player = caster->ToPlayer();
@@ -141,7 +141,9 @@ class spell_kezan_fourth_and_goal_kick : public SpellScript
 
     void Register() override
     {
-        AfterCast += SpellCastFn(spell_kezan_fourth_and_goal_kick::HandleAfterCast);
+        // The explicit destination still belongs to the spell during
+        // BeforeCast.  It is not guaranteed to survive until AfterCast.
+        BeforeCast += SpellCastFn(spell_kezan_fourth_and_goal_kick::HandleBeforeCast);
     }
 };
 

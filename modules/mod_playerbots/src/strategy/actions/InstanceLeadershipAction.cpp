@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <sstream>
 
 #include "Group.h"
 #include "GameObject.h"
@@ -15,7 +14,6 @@
 #include "ObjectMgr.h"
 #include "PathGenerator.h"
 #include "PlayerbotAI.h"
-#include "PlayerbotFlightRecorder.h"
 #include "Playerbots.h"
 #include "PlayerbotSpec.h"
 #include "PossibleTargetsValue.h"
@@ -408,9 +406,6 @@ void InstanceLeadershipAction::ResetCompletedPull()
     if (GetLockedPullTarget())
         return;
 
-    PlayerbotFlightRecorder::Record(bot, "pull-reset.begin",
-        "pull-guid=" + std::to_string(pullGuid.GetCounter()));
-
     pullValue->Set(ObjectGuid::Empty);
     _forwardSearchStarted = getMSTime();
     _approachTargetGuid = 0;
@@ -437,8 +432,6 @@ void InstanceLeadershipAction::ResetCompletedPull()
         group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
 
     botAI->SetNextCheckDelay(0);
-    PlayerbotFlightRecorder::Record(bot, "pull-reset.end",
-        "pull-guid=" + std::to_string(pullGuid.GetCounter()));
 }
 
 Unit* InstanceLeadershipAction::SelectNextTarget() const
@@ -666,18 +659,8 @@ bool InstanceLeadershipAction::AdvanceMogushanPalaceRoute()
     }
 
     RoutePoint const& point = route[_mogushanRouteIndex];
-    std::ostringstream routeDetail;
-    routeDetail << "stage=" << uint32(stage)
-                << " index=" << uint32(_mogushanRouteIndex)
-                << " waypoint=" << point.x << ',' << point.y << ','
-                << point.z;
-    PlayerbotFlightRecorder::Record(bot, "route-move.begin",
-        routeDetail.str());
     bool const moved = MoveTo(bot->GetMapId(), point.x, point.y, point.z,
         false, false, false, true, RouteMovementPriority(), true);
-    PlayerbotFlightRecorder::Record(bot,
-        moved ? "route-move.end.ok" : "route-move.end.failed",
-        routeDetail.str());
     if (moved)
         TC_LOG_INFO("server",
             "gotank Mogu'shan route leader=%s instance=%u stage=%u index=%u waypoint=%.2f,%.2f,%.2f",
@@ -756,8 +739,6 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
     }
     else
     {
-        PlayerbotFlightRecorder::Record(bot, "opening-attack.begin",
-            "target-guid=" + std::to_string(targetGuid));
         bool const attackIssued = Attack(target);
         // Attack() enters creature/instance scripts and can synchronously
         // invalidate the selected Unit. Resolve the durable GUID again before
@@ -766,17 +747,9 @@ bool InstanceLeadershipAction::EngageTarget(Unit* target)
         if (!liveTarget || !liveTarget->IsInWorld() ||
             !liveTarget->IsAlive() || liveTarget->GetMap() != bot->GetMap())
         {
-            PlayerbotFlightRecorder::Record(bot,
-                "opening-attack.target-invalidated",
-                "target-guid=" + std::to_string(targetGuid));
             AbandonUnreachableTarget();
             return true;
         }
-
-        PlayerbotFlightRecorder::Record(bot,
-            attackIssued ? "opening-attack.end.ok" :
-                "opening-attack.end.failed",
-            "target-guid=" + std::to_string(targetGuid));
 
         bool const ownsOpeningAttack = bot->GetVictim() == liveTarget &&
             botAI->GetState() == BOT_STATE_COMBAT;
@@ -838,9 +811,6 @@ void InstanceLeadershipAction::AbandonUnreachableTarget()
     if (!guid)
         return;
 
-    PlayerbotFlightRecorder::Record(bot, "pull-abandon.begin",
-        "pull-guid=" + std::to_string(guid.GetCounter()));
-
     uint32 const now = getMSTime();
     for (auto it = _unreachableTargets.begin();
         it != _unreachableTargets.end();)
@@ -878,9 +848,6 @@ void InstanceLeadershipAction::AbandonUnreachableTarget()
         if (group && group->GetTargetIcon(7) == guid)
             group->SetTargetIcon(7, bot->GetGUID(), ObjectGuid::Empty);
     }
-
-    PlayerbotFlightRecorder::Record(bot, "pull-abandon.end",
-        "pull-guid=" + std::to_string(guid.GetCounter()));
 
     TC_LOG_WARN("server",
         "gotank abandoned unreachable pull leader=%s target-guid=%u map=%u instance=%u position=%.2f,%.2f,%.2f",

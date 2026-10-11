@@ -18,6 +18,7 @@ private:
     Player* GetFollowTarget();
     bool UseGroupFollowFormation();
     WorldLocation GetGroupFollowLocation();
+    bool MoveToCombatFollowPoint(Player* leader, float distance);
 };
 
 class FleeToMasterAction : public FollowAction

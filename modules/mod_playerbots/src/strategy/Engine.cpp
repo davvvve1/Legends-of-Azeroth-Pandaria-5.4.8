@@ -11,7 +11,6 @@
 #include "Playerbots.h"
 #include "PlayerbotAIConfig.h"
 #include "PerformanceMonitor.h"
-#include "PlayerbotFlightRecorder.h"
 #include "Queue.h"
 #include "Strategy.h"
 
@@ -566,13 +565,6 @@ bool Engine::ListenAndExecute(Action* action, Event event)
 {
     bool actionExecuted = false;
 
-    // This direct-to-file breadcrumb brackets listener and action code. If
-    // either crashes the map thread, the unmatched action.begin is the exact
-    // operation which was executing rather than merely the previous action
-    // that happened to reach the normal server log.
-    PlayerbotFlightRecorder::Record(botAI->GetBot(), "action.begin",
-        action->getName());
-
     if (actionExecutionListeners.Before(action, event))
     {
         actionExecuted = actionExecutionListeners.AllowExecution(action, event) ? action->Execute(event) : true;
@@ -599,9 +591,6 @@ bool Engine::ListenAndExecute(Action* action, Event event)
 
     actionExecuted = actionExecutionListeners.OverrideResult(action, actionExecuted, event);
     actionExecutionListeners.After(action, actionExecuted, event);
-    PlayerbotFlightRecorder::Record(botAI->GetBot(),
-        actionExecuted ? "action.end.ok" : "action.end.failed",
-        action->getName());
     return actionExecuted;
 }
 

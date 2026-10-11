@@ -89,6 +89,39 @@ WorldLocation FollowAction::GetGroupFollowLocation()
         master->GetPositionY(), master->GetPositionZ());
 }
 
+bool FollowAction::MoveToCombatFollowPoint(Player* leader, float distance)
+{
+    if (!leader || !leader->IsInWorld() ||
+        leader->GetMap() != bot->GetMap())
+        return false;
+
+    // Targeted follow generators keep a raw Unit pointer for their lifetime.
+    // During a combat-to-non-combat transition the old enemy movement and a
+    // newly elected tank follow can be replaced in the same map update.  Use
+    // a copied point for combat catch-up so no movement generator retains a
+    // group-member pointer across that transition.
+    float const leaderX = leader->GetPositionX();
+    float const leaderY = leader->GetPositionY();
+    float const leaderZ = leader->GetPositionZ();
+    float deltaX = bot->GetPositionX() - leaderX;
+    float deltaY = bot->GetPositionY() - leaderY;
+    float const separation = std::hypot(deltaX, deltaY);
+    if (separation > 0.1f)
+    {
+        deltaX /= separation;
+        deltaY /= separation;
+    }
+    else
+    {
+        deltaX = -std::cos(leader->GetOrientation());
+        deltaY = -std::sin(leader->GetOrientation());
+    }
+
+    return MoveTo(leader->GetMapId(), leaderX + deltaX * distance,
+        leaderY + deltaY * distance, leaderZ, false, false, true, false,
+        MovementPriority::MOVEMENT_COMBAT, true);
+}
+
 bool FollowAction::Execute(Event event)
 {
     if (AhnQirajStrategy::IsActive(bot)) return false;
@@ -112,9 +145,9 @@ bool FollowAction::Execute(Event event)
         // A healer displaced by mechanics or a fast chain pull closes to a
         // stable 20-yard casting position before selecting its next heal.
         if (healerCatchup)
-            return Follow(leader, 20.0f, static_cast<float>(M_PI));
+            return MoveToCombatFollowPoint(leader, 20.0f);
         if (idleCombatCatchup)
-            return Follow(leader, 6.0f, static_cast<float>(M_PI));
+            return MoveToCombatFollowPoint(leader, 6.0f);
 
         if (UseGroupFollowFormation())
         {
