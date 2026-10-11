@@ -27,6 +27,10 @@ require("SPELL_AURA_PERIODIC_DUMMY" in source and
         "std::min<uint32>(4, 16 - outstanding)" in source and
         "player->GetGUID()" in source,
         "the periodic aura must maintain a bounded set of personal weeds")
+require("constexpr float FarmX = -65.0f" in source and
+        "constexpr float FarmY = 1152.0f" in source and
+        "constexpr float FarmRadius = 125.0f" in source,
+        "the event boundary must contain the real crop rows and live field position")
 require("void OnSpellClick(Unit* clicker, bool& result) override" in source and
         "summon->GetSummonerGUID() != player->GetGUID()" in source and
         "KilledMonsterCredit(WeedWar::QuestCredit)" in source and

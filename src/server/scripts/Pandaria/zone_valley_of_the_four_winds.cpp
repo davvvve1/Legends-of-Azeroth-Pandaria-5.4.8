@@ -3780,8 +3780,11 @@ namespace WeedWar
     constexpr uint32 QuestCredit = 57358;
     constexpr uint32 DailyQuestCredit = 59524;
     constexpr uint32 MapId = 870;
-    constexpr float FarmX = -220.0f;
-    constexpr float FarmY = 1160.0f;
+    // Gai Lan stands west of the actual field.  Center the event on the crop
+    // rows (the live field spans roughly x -150..25, y 1090..1215), otherwise
+    // valid players on the eastern half never receive a single summon.
+    constexpr float FarmX = -65.0f;
+    constexpr float FarmY = 1152.0f;
     constexpr float FarmRadius = 125.0f;
 
     bool HasActiveQuest(Player* player)
