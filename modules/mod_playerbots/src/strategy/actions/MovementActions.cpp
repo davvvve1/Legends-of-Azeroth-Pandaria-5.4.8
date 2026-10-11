@@ -3143,7 +3143,7 @@ bool MovementAction::MoveNear(WorldObject* target, float distance, MovementPrior
         (priority != MovementPriority::MOVEMENT_FORCED && WaitForTankPull(target)))
         return false;
 
-    if (!target)
+    if (!target || !target->IsInWorld())
         return false;
 
     distance += target->GetCombatReach();
@@ -3289,7 +3289,7 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
 {
     UpdateMovementState();
 
-    if (!target)
+    if (!target || !target->IsInWorld())
         return false;
 
     if (!bot->InBattleground() && sServerFacade->IsDistanceLessOrEqualThan(sServerFacade->GetDistance2d(bot, target),
@@ -3328,8 +3328,17 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
             {
                 WorldPosition botPos(bot);
                 WorldPosition tarPos(target);
-                WorldPosition longMove =
-                    targetBotAI->GetAiObjectContext()->GetValue<WorldPosition>("last long move")->Get();
+                // A bot context can be reset while an instance is completing
+                // or its group is being recovered. In that short transition
+                // the optional value is absent; never call Get() on the null
+                // result (the Temple completion crash was here).
+                AiObjectContext* targetContext =
+                    targetBotAI->GetAiObjectContext();
+                Value<WorldPosition>* longMoveValue = targetContext ?
+                    targetContext->GetValue<WorldPosition>("last long move") :
+                    nullptr;
+                WorldPosition longMove = longMoveValue ?
+                    longMoveValue->Get() : WorldPosition();
 
                 if (longMove)
                 {

@@ -10,6 +10,7 @@ AI_HEADER = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.h"
 AI_SOURCE = ROOT / "modules/mod_playerbots/src/AI/PlayerbotAI.cpp"
 CHAT_SOURCE = ROOT / "modules/mod_playerbots/src/mod_playerbots.cpp"
 FOLLOW_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/FollowActions.cpp"
+MOVEMENT_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/MovementActions.cpp"
 LEAD_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/InstanceLeadershipAction.cpp"
 ATTACK_SOURCE = ROOT / "modules/mod_playerbots/src/strategy/actions/AttackActions.cpp"
 COMBAT_HEADER = ROOT / "modules/mod_playerbots/src/AI/GroupPveCombat.h"
@@ -32,6 +33,7 @@ header = AI_HEADER.read_text(encoding="utf-8-sig")
 ai = AI_SOURCE.read_text(encoding="utf-8-sig")
 chat = CHAT_SOURCE.read_text(encoding="utf-8-sig")
 follow = FOLLOW_SOURCE.read_text(encoding="utf-8-sig")
+movement = MOVEMENT_SOURCE.read_text(encoding="utf-8-sig")
 lead = LEAD_SOURCE.read_text(encoding="utf-8-sig")
 attack = ATTACK_SOURCE.read_text(encoding="utf-8-sig")
 combat_header = COMBAT_HEADER.read_text(encoding="utf-8-sig")
@@ -139,6 +141,16 @@ require("idleCombatCatchup" in ai and "idleCombatCatchup" in follow and
         "MoveToCombatFollowPoint(leader, 6.0f" in follow and
         "GetOffTankOffset" in follow,
         "idle combat followers and the off-tank must stay anchored to the main tank")
+require('GetValue<WorldPosition>("last long move")' in movement and
+        "longMoveValue ?" in movement and
+        "longMoveValue->Get() : WorldPosition()" in movement,
+        "following a bot must tolerate a missing last-long-move value during context reset")
+require("bool MovementAction::Follow(Unit* target, float distance, float angle)\n{\n"
+        "    UpdateMovementState();\n\n"
+        "    if (!target || !target->IsInWorld())" in movement and
+        "if (!target || !target->IsInWorld())" in follow and
+        "fTarget->GetMap() != bot->GetMap()" in follow,
+        "follow and flee-to-master must reject disappearing or cross-map targets")
 require("member->IsInWorld() &&\n                    member->GetMap()" in ai and
         "member->IsInWorld() && member->IsAlive()" not in
         ai[ai.index("Player* PlayerbotAI::GetInstanceTankLeader"):ai.index("bool PlayerbotAI::IsInstanceTankLeadershipActive")],

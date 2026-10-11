@@ -356,6 +356,9 @@ bool FollowAction::isUseful()
 
 bool FollowAction::CanDeadFollow(Unit* target)
 {
+    if (!target || !target->IsInWorld())
+        return false;
+
     // Move to corpse when dead and player is alive or not a ghost.
     if (!bot->IsAlive() && (target->IsAlive() || !target->HasFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_GHOST)))
         return false;
@@ -369,6 +372,10 @@ bool FleeToMasterAction::Execute(Event event)
         return false;
 
     Unit* fTarget = AI_VALUE(Unit*, "master target");
+    if (!fTarget || fTarget == bot || !fTarget->IsInWorld() ||
+        fTarget->GetMap() != bot->GetMap())
+        return false;
+
     bool canFollow = Follow(fTarget);
     if (!canFollow)
     {
@@ -403,14 +410,12 @@ bool FleeToMasterAction::isUseful()
     if (botAI->IsInstanceTankLeader())
         return false;
 
-    if (!botAI->GetGroupMaster())
-        return false;
-
-    if (botAI->GetGroupMaster() == bot)
+    Player* groupMaster = botAI->GetGroupMaster();
+    if (!groupMaster || groupMaster == bot || !groupMaster->IsInWorld())
         return false;
 
     Unit* target = AI_VALUE(Unit*, "current target");
-    if (target && botAI->GetGroupMaster()->GetTarget() == target->GetGUID())
+    if (target && groupMaster->GetTarget() == target->GetGUID())
         return false;
 
     if (!botAI->HasStrategy("follow", BOT_STATE_NON_COMBAT))
@@ -418,7 +423,8 @@ bool FleeToMasterAction::isUseful()
 
     Unit* fTarget = AI_VALUE(Unit*, "master target");
 
-    if (!CanDeadFollow(fTarget))
+    if (!fTarget || fTarget != groupMaster ||
+        fTarget->GetMap() != bot->GetMap() || !CanDeadFollow(fTarget))
         return false;
 
     return true;
