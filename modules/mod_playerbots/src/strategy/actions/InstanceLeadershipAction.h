@@ -27,6 +27,8 @@ private:
     bool FindGenericDestination(Position& destination) const;
     bool HasTempleOfJadeSerpentDestination() const;
     bool FindTempleOfJadeSerpentDestination(Position& destination) const;
+    bool AdvanceTempleOfJadeSerpentRoute();
+    bool AdvanceTempleLorewalkerRoute();
     bool AdvanceRouteTo(Position const& destination, char const* routeName);
     bool AdvanceValidatedWaypoint(float x, float y, float z);
     bool AdvanceGenericRoute();
@@ -39,6 +41,7 @@ private:
 
     uint8 _mogushanRouteStage = 0xFF;
     uint16 _mogushanRouteIndex = 0;
+    uint16 _templeLorewalkerRouteIndex = 0;
     uint32 _leadershipGeneration = 0;
     uint32 _forwardSearchStarted = 0;
     uint32 _approachTargetGuid = 0;

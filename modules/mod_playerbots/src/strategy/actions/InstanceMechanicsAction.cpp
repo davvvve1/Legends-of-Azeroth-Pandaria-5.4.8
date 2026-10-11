@@ -48,6 +48,8 @@ constexpr uint32 SpellMagneticFieldAura = 120100;
 constexpr uint32 SpellWiseMariWaterBubble = 106062;
 constexpr uint32 SpellWiseMariHydrolanceVisual = 106055;
 constexpr uint32 SpellWiseMariWashAway = 106331;
+constexpr float WiseMariSafeRingRadius = 26.0f;
+constexpr float WiseMariPlatformArrival = 4.0f;
 constexpr float MingMagneticFieldClearance = 18.0f;
 constexpr float MingDervishClearance = 10.0f;
 
@@ -681,10 +683,23 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
         {
             // During phase one, fight the four Living Waters from a raised
             // platform instead of following targets into Corrupted Waters.
-            if (wiseMari->HasAura(SpellWiseMariWaterBubble) &&
-                bot->GetPositionZ() <= 174.7f)
-                return { Reaction::WiseMariDryPlatform, wiseMari, nullptr,
-                    0.0f };
+            if (wiseMari->HasAura(SpellWiseMariWaterBubble))
+            {
+                bool onDryPlatform = false;
+                for (EncounterPosition const& platform :
+                    WiseMariDryPlatforms)
+                    if (bot->GetExactDist2d(platform.x, platform.y) <=
+                            WiseMariPlatformArrival &&
+                        std::fabs(bot->GetPositionZ() - platform.z) <= 3.0f)
+                    {
+                        onDryPlatform = true;
+                        break;
+                    }
+
+                if (!onDryPlatform)
+                    return { Reaction::WiseMariDryPlatform, wiseMari,
+                        nullptr, 0.0f };
+            }
 
             Spell* cast = CurrentSpell(wiseMari);
             uint32 const castId = cast && cast->GetSpellInfo() ?
@@ -694,7 +709,8 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
             // tank (the phase is not tankable), one quarter-turn ahead of it.
             if (wiseMari->HasAura(SpellWiseMariWashAway) ||
                 castId == SpellWiseMariWashAway)
-                return { Reaction::CircleWiseMari, wiseMari, nullptr, 20.0f };
+                return { Reaction::CircleWiseMari, wiseMari, nullptr,
+                    WiseMariSafeRingRadius };
 
             // Hydrolance telegraphs the active fountain sector through Wise
             // Mari's facing. The normal frontal escape is correct here, but
@@ -847,26 +863,18 @@ bool InstanceMechanicsAction::Execute(Event /*event*/)
                 plan.distance, 250, MovementPriority::MOVEMENT_HAZARD);
         case Reaction::WiseMariDryPlatform:
         {
-            EncounterPosition const* best = nullptr;
-            float bestDistance = FLT_MAX;
-            for (EncounterPosition const& platform : WiseMariDryPlatforms)
-            {
-                float const dx = platform.x - bot->GetPositionX();
-                float const dy = platform.y - bot->GetPositionY();
-                float const distance = dx * dx + dy * dy;
-                if (distance < bestDistance)
-                {
-                    best = &platform;
-                    bestDistance = distance;
-                }
-            }
-            if (!best)
-                return false;
+            // Split the group deterministically between both raised pads so
+            // melee and ranged bots do not body-block one another in water.
+            EncounterPosition const& platform = WiseMariDryPlatforms[
+                bot->GetGUID().GetCounter() %
+                    std::size(WiseMariDryPlatforms)];
             if (bot->IsNonMeleeSpellCasted(true))
                 botAI->InterruptSpell();
-            return MoveTo(bot->GetMapId(), best->x, best->y, best->z,
+            bool const moved = MoveTo(bot->GetMapId(), platform.x,
+                platform.y, platform.z,
                 false, false, true, true,
                 MovementPriority::MOVEMENT_HAZARD, true);
+            return moved || bot->isMoving();
         }
         case Reaction::CircleWiseMari:
         {
@@ -884,13 +892,17 @@ bool InstanceMechanicsAction::Execute(Event /*event*/)
                 std::cos(angle) * plan.distance;
             float y = plan.anchor->GetPositionY() +
                 std::sin(angle) * plan.distance;
-            float z = std::max(175.0f, bot->GetPositionZ());
+            float z = std::max(175.5f, bot->GetPositionZ());
             if (!bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
                 bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(),
                 x, y, z))
                 return Flee(plan.anchor);
-            return MoveTo(bot->GetMapId(), x, y, z, false, false, true, true,
-                MovementPriority::MOVEMENT_FORCED, true);
+            bool const moved = MoveTo(bot->GetMapId(), x, y, z, false,
+                false, true, true, MovementPriority::MOVEMENT_FORCED, true);
+            // Keep mechanic ownership while the prior safe-ring point is in
+            // flight; ordinary combat chase must never replace it with a
+            // straight movement through the beam or central water.
+            return moved || bot->isMoving();
         }
         case Reaction::Spread:
             if (bot->IsNonMeleeSpellCasted(true))

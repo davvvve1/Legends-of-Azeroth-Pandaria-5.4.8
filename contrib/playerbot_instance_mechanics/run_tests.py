@@ -152,6 +152,10 @@ require("NpcWiseMari = 56448" in mechanics and
         "Reaction::WiseMariDryPlatform" in mechanics and
         "Reaction::CircleWiseMari" in mechanics and
         "WiseMariDryPlatforms" in mechanics and
+        "WiseMariSafeRingRadius = 26.0f" in mechanics and
+        "WiseMariPlatformArrival = 4.0f" in mechanics and
+        "bot->GetGUID().GetCounter() %" in mechanics and
+        "return moved || bot->isMoving();" in mechanics and
         "plan.anchor->GetOrientation() + float(M_PI_2)" in mechanics,
         "Wise Mari must use dry platforms, living-water focus and rotating Wash Away avoidance")
 require("if (!_JustEngagedWith())" in sha_of_doubt and

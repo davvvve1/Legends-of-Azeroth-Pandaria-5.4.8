@@ -52,6 +52,27 @@ constexpr RoutePoint TempleBossRoute[] =
     {  893.98f, -2670.66f, 185.19f, 15.0f }  // Sha of Doubt
 };
 
+// The shortcut south-west of Wise Mari (door 213550) stays closed until both
+// Wise Mari and Lorewalker Stonestep are complete. The mmap does not model
+// that encounter-controlled door and otherwise chooses a route straight
+// through it. These points retrace the real northern corridor, cross Wise
+// Mari's room door (which opens when he is done), and stay on Lorewalker's
+// lower encounter floor instead of climbing onto the balcony above him.
+constexpr RoutePoint TempleWiseToLorewalkerRoute[] =
+{
+    { 1052.0f, -2492.7f, 174.7f, 8.0f },
+    { 1021.0f, -2493.5f, 174.8f, 7.0f },
+    { 1007.1f, -2519.3f, 180.6f, 7.0f },
+    {  970.0f, -2518.0f, 180.6f, 8.0f },
+    {  939.1f, -2483.6f, 181.0f, 8.0f },
+    {  910.0f, -2500.0f, 181.0f, 8.0f },
+    {  885.0f, -2520.0f, 181.0f, 8.0f },
+    {  865.0f, -2505.0f, 178.0f, 7.0f },
+    {  853.8f, -2496.3f, 176.4f, 7.0f },
+    {  850.0f, -2478.0f, 175.0f, 7.0f },
+    {  845.4f, -2457.5f, 175.0f, 15.0f }
+};
+
 // Mogu'shan Palace is layered vertically. A proximity-only pull algorithm
 // sees enemies through the floors and sends the tank toward the wrong wall.
 // These points follow the actual dungeon order and include the hidden stairs
@@ -176,6 +197,7 @@ constexpr bool RouteSegmentsAreContinuous(RoutePoint const (&route)[N],
 static_assert(RouteSegmentsAreContinuous(TrialRoute));
 static_assert(RouteSegmentsAreContinuous(GekkanRoute));
 static_assert(RouteSegmentsAreContinuous(XinRoute, MogushanUpperRouteIndex));
+static_assert(RouteSegmentsAreContinuous(TempleWiseToLorewalkerRoute));
 static_assert(RouteDistanceSquared(GekkanRoute[0], TrialRoute[
     std::size(TrialRoute) - 1].x, TrialRoute[std::size(TrialRoute) - 1].y,
     TrialRoute[std::size(TrialRoute) - 1].z) < 40.0f * 40.0f);
@@ -390,6 +412,69 @@ bool InstanceLeadershipAction::FindTempleOfJadeSerpentDestination(
     }
 
     return false;
+}
+
+bool InstanceLeadershipAction::AdvanceTempleLorewalkerRoute()
+{
+    uint32 const generation =
+        botAI->GetInstanceTankLeadershipGeneration();
+    if (_leadershipGeneration != generation)
+    {
+        _leadershipGeneration = generation;
+        _templeLorewalkerRouteIndex = 0;
+    }
+
+    constexpr size_t count = std::size(TempleWiseToLorewalkerRoute);
+    if (!_templeLorewalkerRouteIndex)
+    {
+        float closest = std::numeric_limits<float>::max();
+        for (uint16 i = 0; i < count; ++i)
+        {
+            float const distance = RouteDistanceSquared(
+                TempleWiseToLorewalkerRoute[i], bot->GetPositionX(),
+                bot->GetPositionY(), bot->GetPositionZ());
+            if (distance < closest)
+            {
+                closest = distance;
+                _templeLorewalkerRouteIndex = i;
+            }
+        }
+    }
+
+    while (_templeLorewalkerRouteIndex < count)
+    {
+        RoutePoint const& point = TempleWiseToLorewalkerRoute[
+            _templeLorewalkerRouteIndex];
+        if (bot->GetExactDist2d(point.x, point.y) > point.radius ||
+            std::fabs(bot->GetPositionZ() - point.z) > 8.0f)
+            break;
+        ++_templeLorewalkerRouteIndex;
+    }
+
+    if (_templeLorewalkerRouteIndex >= count)
+        return false;
+
+    RoutePoint const& point = TempleWiseToLorewalkerRoute[
+        _templeLorewalkerRouteIndex];
+    return AdvanceValidatedWaypoint(point.x, point.y, point.z);
+}
+
+bool InstanceLeadershipAction::AdvanceTempleOfJadeSerpentRoute()
+{
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance)
+        return false;
+
+    // After Wise Mari the south-west exit remains locked until Lorewalker is
+    // also done. Always take the ordered northern return corridor here.
+    if (instance->GetBossState(0) == DONE &&
+        instance->GetBossState(1) != DONE)
+        return AdvanceTempleLorewalkerRoute();
+
+    _templeLorewalkerRouteIndex = 0;
+    Position destination;
+    return FindTempleOfJadeSerpentDestination(destination) &&
+        AdvanceRouteTo(destination, "Temple of the Jade Serpent");
 }
 
 bool InstanceLeadershipAction::FindGenericDestination(Position& destination) const
@@ -1047,11 +1132,7 @@ bool InstanceLeadershipAction::Execute(Event /*event*/)
         return AdvanceMogushanPalaceRoute();
 
     if (bot->GetMapId() == TempleOfJadeSerpentMap)
-    {
-        Position destination;
-        return FindTempleOfJadeSerpentDestination(destination) &&
-            AdvanceRouteTo(destination, "Temple of the Jade Serpent");
-    }
+        return AdvanceTempleOfJadeSerpentRoute();
 
     return AdvanceGenericRoute();
 }

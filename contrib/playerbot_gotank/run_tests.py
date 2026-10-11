@@ -256,6 +256,10 @@ require("waypoint.z, false, false, false, true" in lead and
         "validated route waypoints must bypass a second fallible path search")
 require("TempleOfJadeSerpentMap = 960" in lead and
         "TempleBossRoute[]" in lead and
+        "TempleWiseToLorewalkerRoute[]" in lead and
+        "AdvanceTempleLorewalkerRoute" in lead and
+        "instance->GetBossState(0) == DONE" in lead and
+        "instance->GetBossState(1) != DONE" in lead and
         "FindTempleOfJadeSerpentDestination" in lead and
         "instance->GetBossState(encounter) == DONE" in lead,
         "Temple routing must visit all four scripted boss states in order")
@@ -266,7 +270,7 @@ require("TempleWiseMari = 56448" in lead and
 require("bot->GetMapId() == TempleOfJadeSerpentMap" in lead and
         'AdvanceRouteTo(destination, "Temple of the Jade Serpent")' in lead and
         "bot->GetMapId() == TempleOfJadeSerpentMap ||" in lead,
-        "Temple must use its explicit route instead of Sha-only generic encounter data")
+        "Temple must use its explicit boss and locked-door return routes")
 require("member->SendStartTimer(15, 15, TIMER_PVP)" in ai and
         'announcePullCountdown("Pull in 15 seconds - follow the tank. 15")' in ai and
         "PSendSysMessage(" in ai and
