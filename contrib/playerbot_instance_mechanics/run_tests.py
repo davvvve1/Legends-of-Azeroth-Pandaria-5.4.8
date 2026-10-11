@@ -14,6 +14,7 @@ FACTORY = ROOT / "modules/mod_playerbots/src/Factory/AiFactory.cpp"
 MOVEMENT = ROOT / "modules/mod_playerbots/src/strategy/actions/MovementActions.cpp"
 MAP_DBC = ROOT / "src/server/game/DataStores/DBCStructure.h"
 MOGUSHAN_INSTANCE = ROOT / "src/server/scripts/Pandaria/MogushanPalace/instance_mogu_shan_palace.cpp"
+SHA_OF_DOUBT = ROOT / "src/server/scripts/Pandaria/TempleOfTheJadeSerpent/boss_sha_of_doubt.cpp"
 
 
 def require(condition: bool, message: str) -> None:
@@ -28,6 +29,7 @@ factory = FACTORY.read_text(encoding="utf-8")
 movement = MOVEMENT.read_text(encoding="utf-8-sig")
 map_dbc = MAP_DBC.read_text(encoding="utf-8")
 mogushan_instance = MOGUSHAN_INSTANCE.read_text(encoding="utf-8")
+sha_of_doubt = SHA_OF_DOUBT.read_text(encoding="utf-8")
 
 priority_match = re.search(
     r"constexpr uint32 PriorityAdds\[\]\s*=\s*\{(?P<body>.*?)\n\};",
@@ -143,9 +145,24 @@ require("constexpr ObjectiveRule EncounterObjectives[]" in mechanics and
         "FindNearestCreature(rule.entry, 150.0f, true)" in mechanics and
         "!trialPriority && !encounterObjective" in mechanics,
         "victimless phase objectives must be discoverable without becoming free pulls")
+require("NpcWiseMari = 56448" in mechanics and
+        "SpellWiseMariWaterBubble = 106062" in mechanics and
+        "SpellWiseMariHydrolanceVisual = 106055" in mechanics and
+        "SpellWiseMariWashAway = 106331" in mechanics and
+        "Reaction::WiseMariDryPlatform" in mechanics and
+        "Reaction::CircleWiseMari" in mechanics and
+        "WiseMariDryPlatforms" in mechanics and
+        "plan.anchor->GetOrientation() + float(M_PI_2)" in mechanics,
+        "Wise Mari must use dry platforms, living-water focus and rotating Wash Away avoidance")
+require("if (!_JustEngagedWith())" in sha_of_doubt and
+        "me->m_Events.Schedule" not in sha_of_doubt and
+        "if (!player || !player->IsAlive())" in sha_of_doubt and
+        "if (!figmentsCount)" in sha_of_doubt and
+        "if (instance)" in sha_of_doubt,
+        "Sha of Doubt must start synchronously and safely handle an all-dead-party wipe")
 
 print(json.dumps({
-    "checks": 27,
+    "checks": 29,
     "shared_instance_layer": "loaded-by-default",
     "map_types": ["dungeon", "raid", "scenario"],
     "difficulty_keying": "shared-map-entry",

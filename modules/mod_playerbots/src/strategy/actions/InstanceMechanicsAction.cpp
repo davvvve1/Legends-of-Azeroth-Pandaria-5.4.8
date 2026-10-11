@@ -42,10 +42,29 @@ constexpr uint32 NpcMuShiba = 61453;
 constexpr uint32 NpcMingTheCunning = 61444;
 constexpr uint32 NpcHaiyanTheUnstoppable = 61445;
 constexpr uint32 NpcWhirlingDervish = 61626;
+constexpr uint32 NpcWiseMari = 56448;
 constexpr uint32 SpellRavage = 119948;
 constexpr uint32 SpellMagneticFieldAura = 120100;
+constexpr uint32 SpellWiseMariWaterBubble = 106062;
+constexpr uint32 SpellWiseMariHydrolanceVisual = 106055;
+constexpr uint32 SpellWiseMariWashAway = 106331;
 constexpr float MingMagneticFieldClearance = 18.0f;
 constexpr float MingDervishClearance = 10.0f;
+
+struct EncounterPosition
+{
+    float x;
+    float y;
+    float z;
+};
+
+// The two raised dry platforms nearest Wise Mari's approach remain outside
+// Corrupted Waters. Living Water adds path to the group there during phase 1.
+constexpr EncounterPosition WiseMariDryPlatforms[] =
+{
+    { 1059.94f, -2581.65f, 176.143f },
+    { 1023.31f, -2569.70f, 176.034f }
+};
 
 struct AuraRule
 {
@@ -654,6 +673,39 @@ InstanceMechanicsAction::Plan InstanceMechanicsAction::BuildPlan() const
                 MingDervishClearance };
     }
 
+    if (bot->GetMapId() == MapTempleOfTheJadeSerpent)
+    {
+        Creature* wiseMari = bot->FindNearestCreature(NpcWiseMari,
+            150.0f, true);
+        if (wiseMari && wiseMari->IsInCombat())
+        {
+            // During phase one, fight the four Living Waters from a raised
+            // platform instead of following targets into Corrupted Waters.
+            if (wiseMari->HasAura(SpellWiseMariWaterBubble) &&
+                bot->GetPositionZ() <= 174.7f)
+                return { Reaction::WiseMariDryPlatform, wiseMari, nullptr,
+                    0.0f };
+
+            Spell* cast = CurrentSpell(wiseMari);
+            uint32 const castId = cast && cast->GetSpellInfo() ?
+                cast->GetSpellInfo()->Id : 0;
+
+            // Wash Away is a rotating cone. Keep every role, including the
+            // tank (the phase is not tankable), one quarter-turn ahead of it.
+            if (wiseMari->HasAura(SpellWiseMariWashAway) ||
+                castId == SpellWiseMariWashAway)
+                return { Reaction::CircleWiseMari, wiseMari, nullptr, 20.0f };
+
+            // Hydrolance telegraphs the active fountain sector through Wise
+            // Mari's facing. The normal frontal escape is correct here, but
+            // must also apply to the active tank because the boss is passive.
+            if ((wiseMari->HasAura(SpellWiseMariHydrolanceVisual) ||
+                 castId == SpellWiseMariHydrolanceVisual) &&
+                wiseMari->HasInArc(float(M_PI) * 0.65f, bot))
+                return { Reaction::AvoidFrontal, wiseMari, nullptr, 0.0f };
+        }
+    }
+
     if (Unit* friendly = FindFriendlyEncounterUnit())
         return { Reaction::HealEncounterUnit, nullptr, friendly, 0.0f };
 
@@ -793,6 +845,53 @@ bool InstanceMechanicsAction::Execute(Event /*event*/)
                 botAI->InterruptSpell();
             return FleePosition(plan.anchor->GetPosition(),
                 plan.distance, 250, MovementPriority::MOVEMENT_HAZARD);
+        case Reaction::WiseMariDryPlatform:
+        {
+            EncounterPosition const* best = nullptr;
+            float bestDistance = FLT_MAX;
+            for (EncounterPosition const& platform : WiseMariDryPlatforms)
+            {
+                float const dx = platform.x - bot->GetPositionX();
+                float const dy = platform.y - bot->GetPositionY();
+                float const distance = dx * dx + dy * dy;
+                if (distance < bestDistance)
+                {
+                    best = &platform;
+                    bestDistance = distance;
+                }
+            }
+            if (!best)
+                return false;
+            if (bot->IsNonMeleeSpellCasted(true))
+                botAI->InterruptSpell();
+            return MoveTo(bot->GetMapId(), best->x, best->y, best->z,
+                false, false, true, true,
+                MovementPriority::MOVEMENT_HAZARD, true);
+        }
+        case Reaction::CircleWiseMari:
+        {
+            if (!plan.anchor)
+                return false;
+            if (bot->IsNonMeleeSpellCasted(true))
+                botAI->InterruptSpell();
+
+            // The local encounter script rotates Wash Away by increasing the
+            // boss orientation. Staying 90 degrees ahead follows the safe side
+            // around the inner dry ring without ever crossing the beam.
+            float const angle = Position::NormalizeOrientation(
+                plan.anchor->GetOrientation() + float(M_PI_2));
+            float x = plan.anchor->GetPositionX() +
+                std::cos(angle) * plan.distance;
+            float y = plan.anchor->GetPositionY() +
+                std::sin(angle) * plan.distance;
+            float z = std::max(175.0f, bot->GetPositionZ());
+            if (!bot->GetMap()->CheckCollisionAndGetValidCoords(bot,
+                bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(),
+                x, y, z))
+                return Flee(plan.anchor);
+            return MoveTo(bot->GetMapId(), x, y, z, false, false, true, true,
+                MovementPriority::MOVEMENT_FORCED, true);
+        }
         case Reaction::Spread:
             if (bot->IsNonMeleeSpellCasted(true))
                 botAI->InterruptSpell();

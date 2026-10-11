@@ -241,6 +241,10 @@ require("TempleOfJadeSerpentMap = 960" in lead and
         "FindTempleOfJadeSerpentDestination" in lead and
         "instance->GetBossState(encounter) == DONE" in lead,
         "Temple routing must visit all four scripted boss states in order")
+require("TempleWiseMari = 56448" in lead and
+        "creature->GetEntry() == TempleWiseMari" in lead and
+        "instance->GetBossState(0) != DONE" in lead,
+        "gotank must pull passive Wise Mari and gate progression on his boss state")
 require("bot->GetMapId() == TempleOfJadeSerpentMap" in lead and
         'AdvanceRouteTo(destination, "Temple of the Jade Serpent")' in lead and
         "bot->GetMapId() == TempleOfJadeSerpentMap ||" in lead,

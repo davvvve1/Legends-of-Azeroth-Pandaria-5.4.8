@@ -39,6 +39,8 @@ private:
     {
         None,
         AvoidUnitHazard,
+        WiseMariDryPlatform,
+        CircleWiseMari,
         Spread,
         Stack,
         Kite,

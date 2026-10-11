@@ -61,7 +61,7 @@ class boss_sha_of_doubt : public CreatureScript
         {
             boss_sha_of_doubt_AI(Creature* creature) : BossAI(creature, DATA_SHA_OF_DOUBT) { }
 
-            uint32 figmentsCount, figmentsDie, delay;
+            uint32 figmentsCount, figmentsDie;
             EventMap nonCombatEvents;
 
             void InitializeAI() override
@@ -104,7 +104,6 @@ class boss_sha_of_doubt : public CreatureScript
             {
                 figmentsCount = 0;
                 figmentsDie   = 0;
-                delay         = 0;
                 events.Reset();
                 Talk(TALK_RESET);
                 me->SetReactState(REACT_DEFENSIVE);
@@ -150,6 +149,13 @@ class boss_sha_of_doubt : public CreatureScript
 
             void JustEngagedWith(Unit* /*who*/) override
             {
+                // Start the BossAI encounter synchronously. The former
+                // delayed Unit event captured this AI by raw pointer, crossed
+                // the wipe/reset boundary, and left the boss state unset for
+                // the opening seconds.
+                if (!_JustEngagedWith())
+                    return;
+
                 Talk(TALK_AGGRO);
                 events.ScheduleEvent(EVENT_WITHER_WILL, 5 * IN_MILLISECONDS);
                 events.ScheduleEvent(EVENT_TOUCH_OF_NOTHINGNESS, 1 * IN_MILLISECONDS);
@@ -160,13 +166,6 @@ class boss_sha_of_doubt : public CreatureScript
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me);
                     instance->SetData(DATA_SHA_OF_DOUBT, IN_PROGRESS);
                 }
-
-                delay = 0;
-                me->m_Events.Schedule(delay += 3000, 20, [this]()
-                {
-                    if (me->IsInCombat())
-                        _JustEngagedWith();
-                });
             }
 
             void EnterEvadeMode() override
@@ -236,15 +235,19 @@ class boss_sha_of_doubt : public CreatureScript
                             me->CastSpell(me, SPELL_BOUNDS_OF_REALITY, false);
 
                             Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
-                            if (!playerList.isEmpty())
+                            figmentsCount = 0;
+                            for (Map::PlayerList::const_iterator i = playerList.begin();
+                                i != playerList.end(); ++i)
                             {
-                               figmentsCount = playerList.getSize();
-                               for (Map::PlayerList::const_iterator i = playerList.begin(); i != playerList.end(); ++i)
-                               {
-                                   if (Player* plr = i->GetSource())
-                                       plr->CastSpell(plr, SPELL_FIGMENT_OF_DOUBT_2, false);
-                               }
+                                Player* player = i->GetSource();
+                                if (!player || !player->IsAlive())
+                                    continue;
+
+                                ++figmentsCount;
+                                player->CastSpell(player, SPELL_FIGMENT_OF_DOUBT_2, false);
                             }
+                            if (!figmentsCount)
+                                me->RemoveAura(SPELL_BOUNDS_OF_REALITY);
                             events.ScheduleEvent(EVENT_BOUNDS_OF_REALITY, 60 * IN_MILLISECONDS);
                             break;
                         }
@@ -365,10 +368,14 @@ class npc_figment_of_doubt : public CreatureScript
                         summoner->RemoveAura(SPELL_DRAW_DOUBT);
                 }
 
-                if (Creature* sha = Unit::GetCreature(*me, instance->GetGuidData(DATA_SHA_OF_DOUBT)))
+                if (instance)
                 {
-                    if (sha->IsAIEnabled)
-                        sha->AI()->DoAction(ACTION_FIGMENT_DIE);
+                    if (Creature* sha = Unit::GetCreature(*me,
+                        instance->GetGuidData(DATA_SHA_OF_DOUBT)))
+                    {
+                        if (sha->IsAIEnabled)
+                            sha->AI()->DoAction(ACTION_FIGMENT_DIE);
+                    }
                 }
             }
 

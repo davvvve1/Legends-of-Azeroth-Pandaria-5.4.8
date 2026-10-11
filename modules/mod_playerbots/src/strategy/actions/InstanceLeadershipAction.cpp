@@ -24,6 +24,7 @@
 namespace
 {
 constexpr uint32 TempleOfJadeSerpentMap = 960;
+constexpr uint32 TempleWiseMari = 56448;
 constexpr uint32 MogushanPalaceMap = 994;
 constexpr uint32 MogushanElevator = 212162;
 constexpr float AutonomousTargetRange = 150.0f;
@@ -240,6 +241,16 @@ bool IsReadyForAutonomousPull(Player* bot, Creature* creature)
     // by encounter mechanics, rejected here, and cleared again every tick.
     if (InstanceMechanics::IsActiveMogushanTrialTarget(bot, creature))
         return true;
+
+    // Wise Mari deliberately waits in REACT_PASSIVE before the opening hit.
+    // Treating every passive actor as an inactive encounter made gotank reach
+    // his room, reject him as a target, and appear to skip the first boss.
+    // The scripted boss state is the authoritative gate: he is a mandatory
+    // pull until the encounter has actually completed.
+    if (bot->GetMapId() == TempleOfJadeSerpentMap &&
+        creature->GetEntry() == TempleWiseMari)
+        if (InstanceScript* instance = bot->GetInstanceScript())
+            return instance->GetBossState(0) != DONE;
 
     // Yellow/passive encounter actors are often present beside the active
     // red boss. They are technically attackable in the core, but pulling one
